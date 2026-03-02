@@ -1,98 +1,151 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { useRouter } from "expo-router";
+import React from "react";
+import { StyleSheet, TouchableOpacity, View } from "react-native";
+import { Card } from "../../components/ui/Card";
+import { Header } from "../../components/ui/Header";
+import { ScreenContainer } from "../../components/ui/ScreenContainer";
+import {
+    BengaliBody,
+    BengaliTitle,
+    BodyText,
+    Caption,
+    TitleMedium,
+} from "../../components/ui/Typography";
+import { BorderRadius, Palette, Spacing } from "../../constants/theme";
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+// ── Quick-action menu items ────────────────────────────────────────────────
+
+const MENU_ITEMS = [
+  {
+    route: "/(tabs)/customers" as const,
+    label: "Customers",
+    bengali: "কাস্টমার",
+    color: Palette.primary,
+  },
+  {
+    route: "/sales" as const,
+    label: "Sales",
+    bengali: "বিক্রয়",
+    color: Palette.secondary,
+  },
+  {
+    route: "/inventory" as const,
+    label: "Inventory",
+    bengali: "স্টক",
+    color: Palette.accent,
+  },
+  {
+    route: "/suggestions" as const,
+    label: "Suggestions",
+    bengali: "পরামর্শ",
+    color: Palette.dark,
+  },
+] as const;
+
+// ── Component ────────────────────────────────────────────────────────────────
 
 export default function HomeScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+  const router = useRouter();
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+  return (
+    <View style={{ flex: 1, backgroundColor: Palette.offWhite }}>
+      <Header title="HISAB" subtitle="হিসাব — বাকি খাতা" />
+
+      <ScreenContainer>
+        {/* Welcome card */}
+        <Card style={styles.welcomeCard} elevation="md">
+          <BengaliTitle style={{ color: Palette.dark }}>
+            আজকের হিসাব
+          </BengaliTitle>
+          <BengaliBody style={{ color: Palette.grey600, marginTop: 4 }}>
+            আপনার দোকানের সব তথ্য এখানে
+          </BengaliBody>
+        </Card>
+
+        {/* Quick-action grid */}
+        <TitleMedium style={styles.sectionTitle}>Quick Actions</TitleMedium>
+
+        <View style={styles.grid}>
+          {MENU_ITEMS.map((item) => (
+            <TouchableOpacity
+              key={item.route}
+              style={styles.gridCell}
+              activeOpacity={0.8}
+              onPress={() => router.push(item.route)}
+              accessibilityRole="button"
+              accessibilityLabel={item.label}
+            >
+              <Card
+                style={[styles.menuCard, { borderTopColor: item.color }]}
+                elevation="sm"
+              >
+                <BodyText style={[styles.menuLabel, { color: item.color }]}>
+                  {item.label}
+                </BodyText>
+                <Caption style={{ color: Palette.grey600 }}>
+                  {item.bengali}
+                </Caption>
+              </Card>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* DEV-only DB inspector shortcut */}
+        {__DEV__ && (
+          <TouchableOpacity
+            style={styles.devBtn}
+            onPress={() => router.push("/dev-db")}
+            activeOpacity={0.7}
+          >
+            <Caption style={styles.devBtnText}>DEV: DB Inspector</Caption>
+          </TouchableOpacity>
+        )}
+      </ScreenContainer>
+    </View>
   );
 }
 
+// ── Styles ───────────────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  welcomeCard: {
+    marginBottom: Spacing.lg,
+    borderLeftWidth: 4,
+    borderLeftColor: Palette.primary,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  sectionTitle: {
+    marginBottom: Spacing.sm,
+    color: Palette.dark,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  grid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: Spacing.sm,
+  },
+  gridCell: {
+    width: "47%",
+  },
+  menuCard: {
+    borderTopWidth: 3,
+    gap: Spacing.xs,
+    minHeight: 80,
+    justifyContent: "center",
+  },
+  menuLabel: {
+    fontWeight: "700",
+    fontSize: 15,
+  },
+  devBtn: {
+    marginTop: Spacing.xl,
+    alignSelf: "center",
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
+    borderRadius: BorderRadius.full,
+    borderWidth: 1,
+    borderColor: Palette.grey200,
+    borderStyle: "dashed",
+  },
+  devBtnText: {
+    color: Palette.grey400,
   },
 });

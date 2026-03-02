@@ -9,6 +9,12 @@ dist/
 web-build/
 expo-env.d.ts
 
+# Dev exports (pulled from device by scripts/pull-db.js)
+dev/
+
+# Generated web asset — recreated by `npm run copy-wasm` (postinstall)
+public/sql-wasm.wasm
+
 # Native
 .kotlin/
 *.orig.*

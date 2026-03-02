@@ -1,0 +1,28 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Download NotoSansBengali Font",
+			"type": "shell",
+			"command": "curl -L \"https://github.com/google/fonts/raw/main/ofl/notosansbengali/static/NotoSansBengali-Regular.ttf\" -o \"assets/fonts/NotoSansBengali-subset.ttf\" && echo Font downloaded successfully"
+		},
+		{
+			"label": "Install Jest",
+			"type": "shell",
+			"command": "npx expo install jest-expo jest @types/jest && echo DONE",
+			"isBackground": false
+		},
+		{
+			"label": "Install @types/sql.js",
+			"type": "shell",
+			"command": "npm install @types/sql.js",
+			"group": "build"
+		},
+		{
+			"label": "Copy sql-wasm.wasm to public/",
+			"type": "shell",
+			"command": "node -e \"const fs=require('fs');const path=require('path');const src=path.join('node_modules','sql.js','dist','sql-wasm.wasm');const dst=path.join('public','sql-wasm.wasm');fs.mkdirSync('public',{recursive:true});fs.copyFileSync(src,dst);console.log('Copied sql-wasm.wasm to public/')\"",
+			"group": "build"
+		}
+	]
+}
