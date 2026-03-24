@@ -1,531 +1,249 @@
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { registerRootComponent } from 'expo';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  ScrollView,
-  SafeAreaView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { ActivityIndicator, SafeAreaView, StyleSheet, Text, View } from 'react-native';
 
+import { AppDataContext } from './context/AppDataContext';
 import {
-  addBaki,
-  addCustomer,
+  addBaki as dbAddBaki,
+  addCustomer as dbAddCustomer,
   createTables,
   fetchBakiWithCustomer,
   fetchCustomers,
   fetchProducts,
   insertProduct,
 } from './database/db';
+import AddBakiScreen from './screens/AddBakiScreen';
+import AddCustomerScreen from './screens/AddCustomerScreen';
+import AddProductScreen from './screens/AddProductScreen';
+import { UI_COLORS } from './constants/ui-theme';
+
+const Tab = createBottomTabNavigator();
+
+const AppTheme = {
+  ...DefaultTheme,
+  colors: {
+    ...DefaultTheme.colors,
+    background: UI_COLORS.background,
+    card: UI_COLORS.surface,
+    text: UI_COLORS.textPrimary,
+    border: UI_COLORS.border,
+    primary: UI_COLORS.primary,
+  },
+};
+
+function BootLoading() {
+  return (
+    <SafeAreaView style={styles.loadingSafeArea}>
+      <View style={styles.loadingCard}>
+        <ActivityIndicator size="large" color={UI_COLORS.primary} />
+        <Text style={styles.loadingTitle}>Preparing Hisab</Text>
+        <Text style={styles.loadingSubtitle}>Loading products, customers, and baki data...</Text>
+      </View>
+    </SafeAreaView>
+  );
+}
 
 export default function App() {
+  const [booting, setBooting] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [products, setProducts] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [bakiRows, setBakiRows] = useState([]);
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [activeSection, setActiveSection] = useState('products');
 
-  const [productName, setProductName] = useState('');
-  const [productQuantity, setProductQuantity] = useState('');
-  const [productPrice, setProductPrice] = useState('');
+  const loadAllData = useCallback(async () => {
+    const [productRows, customerRows, bakiHistoryRows] = await Promise.all([
+      fetchProducts(),
+      fetchCustomers(),
+      fetchBakiWithCustomer(),
+    ]);
 
-  const [customerName, setCustomerName] = useState('');
-  const [customerPhone, setCustomerPhone] = useState('');
-  const [customerAddress, setCustomerAddress] = useState('');
-
-  const [selectedCustomerId, setSelectedCustomerId] = useState(null);
-  const [bakiAmount, setBakiAmount] = useState('');
-  const [bakiNote, setBakiNote] = useState('');
-  const [bakiStatus, setBakiStatus] = useState('unpaid');
-
-  const selectedCustomer = useMemo(
-    () => customers.find((customer) => customer.id === selectedCustomerId) || null,
-    [customers, selectedCustomerId]
-  );
-
-  const loadData = useCallback(async () => {
-    try {
-      const [customerRows, bakiHistoryRows, productRows] = await Promise.all([
-        fetchCustomers(),
-        fetchBakiWithCustomer(),
-        fetchProducts(),
-      ]);
-
-      setCustomers(customerRows);
-      setBakiRows(bakiHistoryRows);
-      setProducts(productRows);
-      if (!selectedCustomerId && customerRows.length > 0) {
-        setSelectedCustomerId(customerRows[0].id);
-      }
-
-      console.log('[APP] customers loaded:', customerRows);
-      console.log('[APP] baki history loaded:', bakiHistoryRows);
-      console.log('[APP] products loaded:', productRows);
-    } catch (error) {
-      console.error('[APP] load data failed:', error);
-    }
-  }, [selectedCustomerId]);
+    setProducts(productRows);
+    setCustomers(customerRows);
+    setBakiRows(bakiHistoryRows);
+  }, []);
 
   useEffect(() => {
-    const init = async () => {
+    const boot = async () => {
       try {
         await createTables();
-        await loadData();
+        await loadAllData();
+      } catch (error) {
+        console.error('[APP] boot failed:', error);
       } finally {
-        setLoading(false);
+        setBooting(false);
       }
     };
 
-    init();
-  }, [loadData]);
+    boot();
+  }, [loadAllData]);
 
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    await loadData();
-    setRefreshing(false);
-  };
-
-  const handleAddProduct = async () => {
+  const refreshAll = useCallback(async () => {
     try {
-      await insertProduct({
-        name: productName,
-        quantity: Number(productQuantity),
-        price: Number(productPrice),
-      });
-      setProductName('');
-      setProductQuantity('');
-      setProductPrice('');
-      await loadData();
-      Alert.alert('Success', 'Product added successfully.');
-    } catch (error) {
-      Alert.alert('Add Product Failed', error?.message || 'Unable to add product.');
+      setRefreshing(true);
+      await loadAllData();
+    } finally {
+      setRefreshing(false);
     }
-  };
+  }, [loadAllData]);
 
-  const handleAddCustomer = async () => {
-    try {
-      const saved = await addCustomer({
-        name: customerName,
-        phone: customerPhone,
-        address: customerAddress,
-      });
-      setCustomerName('');
-      setCustomerPhone('');
-      setCustomerAddress('');
-      setSelectedCustomerId(saved.id);
-      await loadData();
-      Alert.alert('Success', 'Customer added successfully.');
-    } catch (error) {
-      Alert.alert('Add Customer Failed', error?.message || 'Unable to add customer.');
-    }
-  };
+  const addProduct = useCallback(
+    async ({ name, quantity, price }) => {
+      const saved = await insertProduct({ name, quantity, price });
+      await refreshAll();
+      return saved;
+    },
+    [refreshAll]
+  );
 
-  const handleAddBaki = async () => {
-    try {
-      await addBaki({
-        customerId: selectedCustomerId,
-        amount: Number(bakiAmount),
-        note: bakiNote,
-        status: bakiStatus,
-      });
-      setBakiAmount('');
-      setBakiNote('');
-      setBakiStatus('unpaid');
-      await loadData();
-      Alert.alert('Success', 'Baki added successfully.');
-    } catch (error) {
-      Alert.alert('Add Baki Failed', error?.message || 'Unable to add baki.');
-    }
-  };
+  const addCustomer = useCallback(
+    async ({ name, phone, address }) => {
+      const saved = await dbAddCustomer({ name, phone, address });
+      await refreshAll();
+      return saved;
+    },
+    [refreshAll]
+  );
 
-  if (loading) {
-    return (
-      <SafeAreaView style={styles.centered}>
-        <ActivityIndicator size="large" />
-        <Text style={styles.loadingText}>Loading customers and baki history...</Text>
-      </SafeAreaView>
-    );
+  const addBaki = useCallback(
+    async ({ customerId, amount, note, status }) => {
+      const saved = await dbAddBaki({ customerId, amount, note, status });
+      await refreshAll();
+      return saved;
+    },
+    [refreshAll]
+  );
+
+  const contextValue = useMemo(
+    () => ({
+      booting,
+      refreshing,
+      products,
+      customers,
+      bakiRows,
+      refreshAll,
+      addProduct,
+      addCustomer,
+      addBaki,
+    }),
+    [booting, refreshing, products, customers, bakiRows, refreshAll, addProduct, addCustomer, addBaki]
+  );
+
+  if (booting) {
+    return <BootLoading />;
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <ScrollView
-        contentContainerStyle={styles.container}
-        refreshControl={null}
-        keyboardShouldPersistTaps="handled">
-        <Text style={styles.title}>Hisab Dashboard</Text>
-        <Text style={styles.subtitle}>Manage Products, Customers, and Baki from one screen</Text>
+    <AppDataContext.Provider value={contextValue}>
+      <NavigationContainer theme={AppTheme}>
+        <Tab.Navigator
+          initialRouteName="Products"
+          screenOptions={({ route }) => ({
+            headerStyle: {
+              backgroundColor: UI_COLORS.textPrimary,
+            },
+            headerTintColor: UI_COLORS.surface,
+            headerTitleStyle: {
+              fontWeight: '700',
+              letterSpacing: 0.2,
+            },
+            tabBarStyle: {
+              height: 64,
+              borderTopWidth: 0,
+              elevation: 12,
+              shadowColor: UI_COLORS.textPrimary,
+              shadowOpacity: 0.08,
+              shadowRadius: 10,
+              shadowOffset: { width: 0, height: -3 },
+              paddingBottom: 8,
+              paddingTop: 8,
+              backgroundColor: UI_COLORS.surface,
+            },
+            tabBarActiveTintColor: UI_COLORS.primary,
+            tabBarInactiveTintColor: '#94A3B8',
+            tabBarLabelStyle: {
+              fontSize: 12,
+              fontWeight: '700',
+            },
+            tabBarIcon: ({ color, size }) => {
+              if (route.name === 'Products') {
+                return <MaterialIcons name="inventory-2" size={size} color={color} />;
+              }
 
-        <View style={styles.sectionHeaderRow}>
-          <View style={styles.segmentWrap}>
-            {['products', 'customers', 'baki'].map((section) => {
-              const selected = activeSection === section;
-              return (
-                <TouchableOpacity
-                  key={section}
-                  onPress={() => setActiveSection(section)}
-                  style={[styles.segmentButton, selected && styles.segmentButtonSelected]}>
-                  <Text style={[styles.segmentText, selected && styles.segmentTextSelected]}>
-                    {section.charAt(0).toUpperCase() + section.slice(1)}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-          <TouchableOpacity style={styles.refreshButton} onPress={handleRefresh}>
-            <Text style={styles.refreshButtonText}>{refreshing ? 'Refreshing...' : 'Refresh'}</Text>
-          </TouchableOpacity>
-        </View>
+              if (route.name === 'Customers') {
+                return <MaterialIcons name="groups" size={size} color={color} />;
+              }
 
-        {activeSection === 'products' && (
-          <View>
-            <Text style={styles.sectionTitle}>Add Product</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Product name"
-              value={productName}
-              onChangeText={setProductName}
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Quantity"
-              value={productQuantity}
-              onChangeText={setProductQuantity}
-              keyboardType="numeric"
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Price"
-              value={productPrice}
-              onChangeText={setProductPrice}
-              keyboardType="decimal-pad"
-            />
-            <TouchableOpacity style={styles.primaryButton} onPress={handleAddProduct}>
-              <Text style={styles.primaryButtonText}>Add Product</Text>
-            </TouchableOpacity>
-
-            <Text style={styles.sectionTitle}>Product List ({products.length})</Text>
-            {products.length === 0 ? <Text style={styles.emptyText}>No products found.</Text> : null}
-            {products.map((product) => (
-              <View key={`product-${product.id}`} style={styles.card}>
-                <Text style={styles.cardTitle}>{product.name}</Text>
-                <Text style={styles.meta}>Quantity: {product.quantity}</Text>
-                <Text style={styles.meta}>Price: ৳{Number(product.price).toFixed(2)}</Text>
-              </View>
-            ))}
-          </View>
-        )}
-
-        {activeSection === 'customers' && (
-          <View>
-            <Text style={styles.sectionTitle}>Add Customer</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Customer name"
-              value={customerName}
-              onChangeText={setCustomerName}
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Phone"
-              value={customerPhone}
-              onChangeText={setCustomerPhone}
-              keyboardType="phone-pad"
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Address"
-              value={customerAddress}
-              onChangeText={setCustomerAddress}
-            />
-            <TouchableOpacity style={styles.primaryButton} onPress={handleAddCustomer}>
-              <Text style={styles.primaryButtonText}>Add Customer</Text>
-            </TouchableOpacity>
-
-            <Text style={styles.sectionTitle}>Customer List ({customers.length})</Text>
-            {customers.length === 0 ? <Text style={styles.emptyText}>No customers found.</Text> : null}
-            {customers.map((customer) => (
-              <View key={`customer-${customer.id}`} style={styles.card}>
-                <Text style={styles.cardTitle}>{customer.name}</Text>
-                <Text style={styles.meta}>Phone: {customer.phone || 'N/A'}</Text>
-                <Text style={styles.meta}>Address: {customer.address || 'N/A'}</Text>
-                <Text style={styles.due}>Total Due: ৳{Number(customer.total_due || 0).toFixed(2)}</Text>
-              </View>
-            ))}
-          </View>
-        )}
-
-        {activeSection === 'baki' && (
-          <View>
-            <Text style={styles.sectionTitle}>Add Baki</Text>
-            <Text style={styles.meta}>Select Customer</Text>
-            <View style={styles.chipWrap}>
-              {customers.map((customer) => {
-                const selected = selectedCustomerId === customer.id;
-                return (
-                  <TouchableOpacity
-                    key={`chip-${customer.id}`}
-                    style={[styles.chip, selected && styles.chipSelected]}
-                    onPress={() => setSelectedCustomerId(customer.id)}>
-                    <Text style={[styles.chipText, selected && styles.chipTextSelected]}>
-                      {customer.name}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-
-            <TextInput
-              style={styles.input}
-              placeholder="Amount"
-              value={bakiAmount}
-              onChangeText={setBakiAmount}
-              keyboardType="numeric"
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Note (optional)"
-              value={bakiNote}
-              onChangeText={setBakiNote}
-            />
-
-            <View style={styles.chipWrap}>
-              {['unpaid', 'partial', 'paid'].map((status) => {
-                const selected = bakiStatus === status;
-                return (
-                  <TouchableOpacity
-                    key={`status-${status}`}
-                    style={[styles.chip, selected && styles.chipSelected]}
-                    onPress={() => setBakiStatus(status)}>
-                    <Text style={[styles.chipText, selected && styles.chipTextSelected]}>{status}</Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-
-            <TouchableOpacity
-              style={[styles.primaryButton, !selectedCustomer && styles.buttonDisabled]}
-              disabled={!selectedCustomer}
-              onPress={handleAddBaki}>
-              <Text style={styles.primaryButtonText}>Add Baki</Text>
-            </TouchableOpacity>
-
-            <Text style={styles.sectionTitle}>Baki History ({bakiRows.length})</Text>
-            {bakiRows.length === 0 ? <Text style={styles.emptyText}>No baki entries found.</Text> : null}
-            {bakiRows.map((item) => (
-              <View key={`baki-${item.id}`} style={styles.card}>
-                <Text style={styles.cardTitle}>{item.customer_name}</Text>
-                <Text style={styles.meta}>Status: {item.status}</Text>
-                <Text style={styles.meta}>Amount: ৳{Number(item.amount).toFixed(2)}</Text>
-                <Text style={styles.meta}>Due: ৳{Number(item.due_amount).toFixed(2)}</Text>
-                <Text style={styles.meta}>Note: {item.note || 'N/A'}</Text>
-                <Text style={styles.date}>Created: {item.created_at}</Text>
-              </View>
-            ))}
-          </View>
-        )}
-      </ScrollView>
-    </SafeAreaView>
+              return <MaterialIcons name="account-balance-wallet" size={size} color={color} />;
+            },
+          })}>
+          <Tab.Screen
+            name="Products"
+            component={AddProductScreen}
+            options={{
+              title: 'Products',
+              headerTitle: 'Product Manager',
+            }}
+          />
+          <Tab.Screen
+            name="Customers"
+            component={AddCustomerScreen}
+            options={{
+              title: 'Customers',
+              headerTitle: 'Customer Manager',
+            }}
+          />
+          <Tab.Screen
+            name="Baki"
+            component={AddBakiScreen}
+            options={{
+              title: 'Baki',
+              headerTitle: 'Baki Manager',
+            }}
+          />
+        </Tab.Navigator>
+      </NavigationContainer>
+    </AppDataContext.Provider>
   );
 }
 
 registerRootComponent(App);
 
 const styles = StyleSheet.create({
-  safeArea: {
+  loadingSafeArea: {
     flex: 1,
-    backgroundColor: '#f9fafb',
-  },
-  centered: {
-    flex: 1,
-    alignItems: 'center',
+    backgroundColor: UI_COLORS.background,
     justifyContent: 'center',
-    backgroundColor: '#fff',
-  },
-  loadingText: {
-    marginTop: 10,
-    fontSize: 14,
-    color: '#4b5563',
-  },
-  container: {
-    padding: 16,
-    paddingBottom: 40,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 10,
-    backgroundColor: '#fff',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    marginBottom: 10,
-    color: '#111827',
-  },
-  primaryButton: {
-    backgroundColor: '#2563eb',
-    borderRadius: 10,
     alignItems: 'center',
-    paddingVertical: 12,
-    marginBottom: 14,
+    padding: 20,
   },
-  primaryButtonText: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 15,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  subtitle: {
-    marginTop: 4,
-    marginBottom: 10,
-    fontSize: 14,
-    color: '#6b7280',
-  },
-  sectionHeaderRow: {
-    marginTop: 14,
-    marginBottom: 8,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  loadingCard: {
+    width: '100%',
+    maxWidth: 360,
+    borderRadius: 18,
+    backgroundColor: UI_COLORS.surface,
+    borderWidth: 1,
+    borderColor: UI_COLORS.border,
+    padding: 20,
     alignItems: 'center',
+    shadowColor: UI_COLORS.textPrimary,
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
   },
-  segmentWrap: {
-    flexDirection: 'row',
-    gap: 8,
-    flexWrap: 'wrap',
-  },
-  segmentButton: {
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 999,
-    backgroundColor: '#fff',
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-  },
-  segmentButtonSelected: {
-    backgroundColor: '#111827',
-    borderColor: '#111827',
-  },
-  segmentText: {
-    color: '#111827',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  segmentTextSelected: {
-    color: '#fff',
-  },
-  sectionTitle: {
-    fontSize: 20,
+  loadingTitle: {
+    marginTop: 12,
+    fontSize: 18,
     fontWeight: '700',
-    color: '#111827',
+    color: UI_COLORS.textPrimary,
+  },
+  loadingSubtitle: {
     marginTop: 6,
-    marginBottom: 8,
-  },
-  refreshButton: {
-    backgroundColor: '#e5e7eb',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  refreshButtonText: {
-    color: '#111827',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  emptyText: {
-    color: '#6b7280',
     fontSize: 13,
-    marginBottom: 8,
-  },
-  customerCard: {
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 10,
-  },
-  card: {
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 10,
-  },
-  customerName: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  cardTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  due: {
-    marginTop: 6,
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#b91c1c',
-  },
-  bakiCard: {
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 10,
-  },
-  bakiName: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  meta: {
-    marginTop: 3,
-    fontSize: 13,
-    color: '#4b5563',
-  },
-  date: {
-    marginTop: 6,
-    fontSize: 12,
-    color: '#6b7280',
-  },
-  chipWrap: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 10,
-  },
-  chip: {
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 999,
-    backgroundColor: '#fff',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  chipSelected: {
-    backgroundColor: '#111827',
-    borderColor: '#111827',
-  },
-  chipText: {
-    color: '#111827',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  chipTextSelected: {
-    color: '#fff',
-  },
-  buttonDisabled: {
-    opacity: 0.6,
+    color: UI_COLORS.textMuted,
+    textAlign: 'center',
   },
 });

@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { Picker } from '@react-native-picker/picker';
 import {
   Alert,
   FlatList,
@@ -12,63 +13,41 @@ import {
   View,
 } from 'react-native';
 
-import { addBaki, createTables, fetchBakiWithCustomer, fetchCustomers } from '../database/db';
+import { UI_COLORS } from '../constants/ui-theme';
+import { useAppData } from '../context/AppDataContext';
 
 const STATUS_OPTIONS = ['unpaid', 'partial', 'paid'];
 
 export default function AddBakiScreen() {
-  const [customers, setCustomers] = useState([]);
+  const { customers, bakiRows, addBaki, refreshAll, refreshing } = useAppData();
   const [selectedCustomerId, setSelectedCustomerId] = useState(null);
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
   const [status, setStatus] = useState('unpaid');
-  const [bakiRows, setBakiRows] = useState([]);
   const [saving, setSaving] = useState(false);
 
   const selectedCustomer = useMemo(
-    () => customers.find((customer) => customer.id === selectedCustomerId) || null,
+    () => customers.find((customer) => Number(customer.id) === Number(selectedCustomerId)) || null,
     [customers, selectedCustomerId]
   );
 
-  const loadCustomers = useCallback(async () => {
-    try {
-      const rows = await fetchCustomers();
-      setCustomers(rows);
-      if (!selectedCustomerId && rows.length > 0) {
-        setSelectedCustomerId(rows[0].id);
-      }
-      console.log('[DB] customers for baki:', rows);
-    } catch (error) {
-      console.error('[DB] customers load failed:', error);
+  const filteredBakiRows = useMemo(() => {
+    if (!selectedCustomerId) {
+      return bakiRows;
     }
-  }, [selectedCustomerId]);
 
-  const loadBakiHistory = useCallback(async (customerId = selectedCustomerId) => {
-    try {
-      const rows = await fetchBakiWithCustomer({ customerId: customerId || null });
-      setBakiRows(rows);
-      console.log('[DB] baki history fetched:', rows);
-    } catch (error) {
-      console.error('[DB] baki history load failed:', error);
-    }
-  }, [selectedCustomerId]);
+    return bakiRows.filter((row) => Number(row.customer_id) === Number(selectedCustomerId));
+  }, [bakiRows, selectedCustomerId]);
 
   useEffect(() => {
-    const init = async () => {
-      try {
-        await createTables();
-        await loadCustomers();
-      } catch (error) {
-        console.error('[DB] baki init failed:', error);
-      }
-    };
-
-    init();
-  }, [loadCustomers]);
+    refreshAll();
+  }, [refreshAll]);
 
   useEffect(() => {
-    loadBakiHistory(selectedCustomerId);
-  }, [selectedCustomerId, loadBakiHistory]);
+    if (!selectedCustomerId && customers.length > 0) {
+      setSelectedCustomerId(Number(customers[0].id));
+    }
+  }, [customers, selectedCustomerId]);
 
   const handleSaveBaki = async () => {
     if (saving) {
@@ -88,8 +67,7 @@ export default function AddBakiScreen() {
       setAmount('');
       setNote('');
       setStatus('unpaid');
-      await loadCustomers();
-      await loadBakiHistory(selectedCustomerId);
+      await refreshAll();
 
       Alert.alert('Success', 'Baki saved successfully.');
     } catch (error) {
@@ -107,7 +85,7 @@ export default function AddBakiScreen() {
         style={styles.flex}
       >
         <FlatList
-          data={bakiRows}
+          data={filteredBakiRows}
           keyExtractor={(item) => String(item.id)}
           contentContainerStyle={styles.container}
           keyboardShouldPersistTaps="handled"
@@ -117,21 +95,27 @@ export default function AddBakiScreen() {
               <Text style={styles.subtitle}>Select customer, add due amount, and view history.</Text>
 
               <Text style={styles.label}>Select Customer *</Text>
-              <View style={styles.customerListWrap}>
-                {customers.map((customer) => {
-                  const selected = selectedCustomerId === customer.id;
-                  return (
-                    <TouchableOpacity
+              <View style={styles.pickerContainer}>
+                <Picker
+                  selectedValue={selectedCustomerId ?? ''}
+                  onValueChange={(itemValue) => {
+                    if (itemValue === '') {
+                      setSelectedCustomerId(null);
+                      return;
+                    }
+                    setSelectedCustomerId(Number(itemValue));
+                  }}
+                  style={styles.picker}
+                >
+                  <Picker.Item label="Choose a customer" value="" />
+                  {customers.map((customer) => (
+                    <Picker.Item
                       key={customer.id}
-                      style={[styles.customerChip, selected && styles.customerChipSelected]}
-                      onPress={() => setSelectedCustomerId(customer.id)}
-                    >
-                      <Text style={[styles.customerChipText, selected && styles.customerChipTextSelected]}>
-                        {customer.name}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
+                      label={`${customer.name}${customer.phone ? ` (${customer.phone})` : ''}`}
+                      value={Number(customer.id)}
+                    />
+                  ))}
+                </Picker>
               </View>
 
               {selectedCustomer ? (
@@ -184,17 +168,17 @@ export default function AddBakiScreen() {
               </View>
 
               <TouchableOpacity
-                style={[styles.button, saving && styles.buttonDisabled]}
+                  style={[styles.button, (saving || refreshing) && styles.buttonDisabled]}
                 onPress={handleSaveBaki}
-                disabled={saving || !selectedCustomerId}
+                  disabled={saving || refreshing || !selectedCustomerId}
               >
                 <Text style={styles.buttonText}>{saving ? 'Saving...' : 'Save Baki'}</Text>
               </TouchableOpacity>
 
               <View style={styles.headerRow}>
                 <Text style={styles.sectionTitle}>Baki History</Text>
-                <TouchableOpacity style={styles.refreshButton} onPress={() => loadBakiHistory(selectedCustomerId)}>
-                  <Text style={styles.refreshText}>Refresh</Text>
+                  <TouchableOpacity style={styles.refreshButton} onPress={refreshAll}>
+                    <Text style={styles.refreshText}>{refreshing ? 'Refreshing...' : 'Refresh'}</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -217,58 +201,50 @@ export default function AddBakiScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#fff' },
+  safeArea: { flex: 1, backgroundColor: UI_COLORS.background },
   flex: { flex: 1 },
   container: { padding: 20, gap: 12 },
-  title: { fontSize: 28, fontWeight: '700', color: '#111827' },
-  subtitle: { fontSize: 14, color: '#4b5563', marginBottom: 8 },
+  title: { fontSize: 28, fontWeight: '700', color: UI_COLORS.textPrimary },
+  subtitle: { fontSize: 14, color: UI_COLORS.textSecondary, marginBottom: 8 },
   formGroup: { gap: 6, marginTop: 10 },
-  label: { fontSize: 14, fontWeight: '600', color: '#111827' },
+  label: { fontSize: 14, fontWeight: '600', color: UI_COLORS.textPrimary },
   input: {
     borderWidth: 1,
-    borderColor: '#d1d5db',
+    borderColor: UI_COLORS.border,
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 16,
-    color: '#111827',
-    backgroundColor: '#fff',
+    color: UI_COLORS.textPrimary,
+    backgroundColor: UI_COLORS.surface,
   },
-  customerListWrap: {
+  pickerContainer: {
     marginTop: 8,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  customerChip: {
     borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    backgroundColor: '#fff',
+    borderColor: UI_COLORS.border,
+    borderRadius: 10,
+    backgroundColor: UI_COLORS.surface,
+    overflow: 'hidden',
   },
-  customerChipSelected: {
-    backgroundColor: '#2563eb',
-    borderColor: '#2563eb',
+  picker: {
+    height: 52,
+    color: UI_COLORS.textPrimary,
   },
-  customerChipText: { color: '#1f2937', fontWeight: '600' },
-  customerChipTextSelected: { color: '#fff' },
-  selectedMeta: { marginTop: 8, fontSize: 13, color: '#4b5563' },
+  selectedMeta: { marginTop: 8, fontSize: 13, color: UI_COLORS.textSecondary },
   statusWrap: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
   statusChip: {
     borderWidth: 1,
-    borderColor: '#d1d5db',
+    borderColor: UI_COLORS.border,
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 6,
   },
-  statusChipSelected: { backgroundColor: '#111827', borderColor: '#111827' },
-  statusChipText: { color: '#111827', fontSize: 13, fontWeight: '600' },
-  statusChipTextSelected: { color: '#fff' },
+  statusChipSelected: { backgroundColor: UI_COLORS.textPrimary, borderColor: UI_COLORS.textPrimary },
+  statusChipText: { color: UI_COLORS.textPrimary, fontSize: 13, fontWeight: '600' },
+  statusChipTextSelected: { color: UI_COLORS.surface },
   button: {
     marginTop: 12,
-    backgroundColor: '#2563eb',
+    backgroundColor: UI_COLORS.primary,
     borderRadius: 10,
     paddingVertical: 12,
     alignItems: 'center',
@@ -282,24 +258,24 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  sectionTitle: { fontSize: 20, fontWeight: '700', color: '#111827' },
+  sectionTitle: { fontSize: 20, fontWeight: '700', color: UI_COLORS.textPrimary },
   refreshButton: {
-    backgroundColor: '#e5e7eb',
+    backgroundColor: '#E7EEFF',
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 6,
   },
-  refreshText: { color: '#111827', fontSize: 12, fontWeight: '600' },
-  emptyText: { fontSize: 14, color: '#6b7280' },
+  refreshText: { color: UI_COLORS.primary, fontSize: 12, fontWeight: '600' },
+  emptyText: { fontSize: 14, color: UI_COLORS.textMuted },
   card: {
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: UI_COLORS.border,
     borderRadius: 10,
     padding: 12,
-    backgroundColor: '#fff',
+    backgroundColor: UI_COLORS.surface,
     marginBottom: 10,
   },
-  rowTitle: { fontSize: 16, fontWeight: '700', color: '#111827' },
-  meta: { marginTop: 3, fontSize: 13, color: '#4b5563' },
-  date: { marginTop: 6, fontSize: 12, color: '#6b7280' },
+  rowTitle: { fontSize: 16, fontWeight: '700', color: UI_COLORS.textPrimary },
+  meta: { marginTop: 3, fontSize: 13, color: UI_COLORS.textSecondary },
+  date: { marginTop: 6, fontSize: 12, color: UI_COLORS.textMuted },
 });

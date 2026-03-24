@@ -26,7 +26,6 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
-      "expo-router",
       [
         "expo-splash-screen",
         {
@@ -42,7 +41,6 @@
       "expo-sqlite"
     ],
     "experiments": {
-      "typedRoutes": true,
       "reactCompiler": true
     }
   }

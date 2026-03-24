@@ -12,38 +12,19 @@ import {
   View,
 } from 'react-native';
 
-import { createTables, fetchProducts, insertProduct } from '../database/db';
+import { UI_COLORS } from '../constants/ui-theme';
+import { useAppData } from '../context/AppDataContext';
 
 export default function AddProductScreen() {
+  const { products, addProduct, refreshAll, refreshing } = useAppData();
   const [name, setName] = useState('');
   const [quantity, setQuantity] = useState('');
   const [price, setPrice] = useState('');
   const [saving, setSaving] = useState(false);
-  const [products, setProducts] = useState([]);
-
-  const loadProducts = async () => {
-    try {
-      const items = await fetchProducts();
-      setProducts(items);
-      console.log('[DB] fetched products:', items);
-    } catch (error) {
-      console.error('[DB] fetch failed:', error);
-    }
-  };
 
   useEffect(() => {
-    const init = async () => {
-      try {
-        await createTables();
-        console.log('[DB] products table ready');
-        await loadProducts();
-      } catch (error) {
-        console.error('[DB] table initialization failed:', error);
-      }
-    };
-
-    init();
-  }, []);
+    refreshAll();
+  }, [refreshAll]);
 
   const handleSave = async () => {
     if (saving) {
@@ -53,14 +34,13 @@ export default function AddProductScreen() {
     try {
       setSaving(true);
 
-      const savedProduct = await insertProduct({
+      const savedProduct = await addProduct({
         name,
         quantity: Number(quantity),
         price: Number(price),
       });
 
       console.log('[DB] product saved:', savedProduct);
-      await loadProducts();
 
       setName('');
       setQuantity('');
@@ -134,8 +114,8 @@ export default function AddProductScreen() {
 
           <View style={styles.listHeaderRow}>
             <Text style={styles.listTitle}>Product List</Text>
-            <TouchableOpacity onPress={loadProducts} style={styles.refreshButton}>
-              <Text style={styles.refreshText}>Refresh</Text>
+            <TouchableOpacity onPress={refreshAll} style={styles.refreshButton}>
+              <Text style={styles.refreshText}>{refreshing ? 'Refreshing...' : 'Refresh'}</Text>
             </TouchableOpacity>
           </View>
           <Text style={styles.helpText}>Products are loaded from SQLite and shown below.</Text>
@@ -160,7 +140,7 @@ export default function AddProductScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: UI_COLORS.background,
   },
   flex: {
     flex: 1,
@@ -172,11 +152,11 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#111827',
+    color: UI_COLORS.textPrimary,
   },
   subtitle: {
     fontSize: 14,
-    color: '#4b5563',
+    color: UI_COLORS.textSecondary,
     marginBottom: 8,
   },
   formGroup: {
@@ -185,21 +165,21 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#111827',
+    color: UI_COLORS.textPrimary,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#d1d5db',
+    borderColor: UI_COLORS.border,
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 16,
-    color: '#111827',
-    backgroundColor: '#fff',
+    color: UI_COLORS.textPrimary,
+    backgroundColor: UI_COLORS.surface,
   },
   button: {
     marginTop: 10,
-    backgroundColor: '#2563eb',
+    backgroundColor: UI_COLORS.primary,
     borderRadius: 10,
     paddingVertical: 12,
     alignItems: 'center',
@@ -216,7 +196,7 @@ const styles = StyleSheet.create({
     marginTop: 6,
     marginBottom: 10,
     fontSize: 12,
-    color: '#6b7280',
+    color: UI_COLORS.textMuted,
   },
   listHeaderRow: {
     marginTop: 16,
@@ -228,36 +208,36 @@ const styles = StyleSheet.create({
   listTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#111827',
+    color: UI_COLORS.textPrimary,
   },
   refreshButton: {
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 8,
-    backgroundColor: '#e5e7eb',
+    backgroundColor: '#E7EEFF',
   },
   refreshText: {
-    color: '#111827',
+    color: UI_COLORS.primary,
     fontWeight: '600',
     fontSize: 12,
   },
   emptyText: {
     fontSize: 14,
-    color: '#6b7280',
+    color: UI_COLORS.textMuted,
     marginTop: 8,
   },
   productCard: {
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: UI_COLORS.border,
     borderRadius: 10,
     padding: 12,
     marginBottom: 10,
-    backgroundColor: '#fff',
+    backgroundColor: UI_COLORS.surface,
   },
   productName: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#111827',
+    color: UI_COLORS.textPrimary,
   },
   productMetaRow: {
     marginTop: 6,
@@ -266,6 +246,6 @@ const styles = StyleSheet.create({
   },
   productMeta: {
     fontSize: 13,
-    color: '#4b5563',
+    color: UI_COLORS.textSecondary,
   },
 });

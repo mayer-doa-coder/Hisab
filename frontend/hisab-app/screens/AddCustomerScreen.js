@@ -12,37 +12,19 @@ import {
   View,
 } from 'react-native';
 
-import { addCustomer, createTables, fetchCustomers } from '../database/db';
+import { UI_COLORS } from '../constants/ui-theme';
+import { useAppData } from '../context/AppDataContext';
 
 export default function AddCustomerScreen() {
+  const { customers, addCustomer, refreshAll, refreshing } = useAppData();
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
-  const [customers, setCustomers] = useState([]);
   const [saving, setSaving] = useState(false);
 
-  const loadCustomers = async () => {
-    try {
-      const rows = await fetchCustomers();
-      setCustomers(rows);
-      console.log('[DB] customers fetched:', rows);
-    } catch (error) {
-      console.error('[DB] customer fetch failed:', error);
-    }
-  };
-
   useEffect(() => {
-    const init = async () => {
-      try {
-        await createTables();
-        await loadCustomers();
-      } catch (error) {
-        console.error('[DB] customer init failed:', error);
-      }
-    };
-
-    init();
-  }, []);
+    refreshAll();
+  }, [refreshAll]);
 
   const handleAddCustomer = async () => {
     if (saving) {
@@ -57,7 +39,7 @@ export default function AddCustomerScreen() {
       setName('');
       setPhone('');
       setAddress('');
-      await loadCustomers();
+      await refreshAll();
 
       Alert.alert('Success', 'Customer saved successfully.');
     } catch (error) {
@@ -126,8 +108,8 @@ export default function AddCustomerScreen() {
 
               <View style={styles.headerRow}>
                 <Text style={styles.sectionTitle}>Customer List</Text>
-                <TouchableOpacity style={styles.refreshButton} onPress={loadCustomers}>
-                  <Text style={styles.refreshText}>Refresh</Text>
+                <TouchableOpacity style={styles.refreshButton} onPress={refreshAll}>
+                  <Text style={styles.refreshText}>{refreshing ? 'Refreshing...' : 'Refresh'}</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -148,26 +130,26 @@ export default function AddCustomerScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#fff' },
+  safeArea: { flex: 1, backgroundColor: UI_COLORS.background },
   flex: { flex: 1 },
   container: { padding: 20, gap: 12 },
-  title: { fontSize: 28, fontWeight: '700', color: '#111827' },
-  subtitle: { fontSize: 14, color: '#4b5563', marginBottom: 8 },
+  title: { fontSize: 28, fontWeight: '700', color: UI_COLORS.textPrimary },
+  subtitle: { fontSize: 14, color: UI_COLORS.textSecondary, marginBottom: 8 },
   formGroup: { gap: 6 },
-  label: { fontSize: 14, fontWeight: '600', color: '#111827' },
+  label: { fontSize: 14, fontWeight: '600', color: UI_COLORS.textPrimary },
   input: {
     borderWidth: 1,
-    borderColor: '#d1d5db',
+    borderColor: UI_COLORS.border,
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 16,
-    color: '#111827',
-    backgroundColor: '#fff',
+    color: UI_COLORS.textPrimary,
+    backgroundColor: UI_COLORS.surface,
   },
   button: {
     marginTop: 8,
-    backgroundColor: '#2563eb',
+    backgroundColor: UI_COLORS.primary,
     borderRadius: 10,
     paddingVertical: 12,
     alignItems: 'center',
@@ -181,24 +163,24 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  sectionTitle: { fontSize: 20, fontWeight: '700', color: '#111827' },
+  sectionTitle: { fontSize: 20, fontWeight: '700', color: UI_COLORS.textPrimary },
   refreshButton: {
-    backgroundColor: '#e5e7eb',
+    backgroundColor: '#E7EEFF',
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 6,
   },
-  refreshText: { color: '#111827', fontSize: 12, fontWeight: '600' },
-  emptyText: { fontSize: 14, color: '#6b7280' },
+  refreshText: { color: UI_COLORS.primary, fontSize: 12, fontWeight: '600' },
+  emptyText: { fontSize: 14, color: UI_COLORS.textMuted },
   card: {
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: UI_COLORS.border,
     borderRadius: 10,
     padding: 12,
-    backgroundColor: '#fff',
+    backgroundColor: UI_COLORS.surface,
     marginBottom: 10,
   },
-  customerName: { fontSize: 16, fontWeight: '700', color: '#111827' },
-  meta: { marginTop: 3, fontSize: 13, color: '#4b5563' },
-  due: { marginTop: 6, fontSize: 14, fontWeight: '700', color: '#b91c1c' },
+  customerName: { fontSize: 16, fontWeight: '700', color: UI_COLORS.textPrimary },
+  meta: { marginTop: 3, fontSize: 13, color: UI_COLORS.textSecondary },
+  due: { marginTop: 6, fontSize: 14, fontWeight: '700', color: UI_COLORS.danger },
 });
