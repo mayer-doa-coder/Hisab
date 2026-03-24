@@ -1,3 +1,3 @@
-const HomeScreen = require('../../screens/HomeScreen').default;
+import AddProductScreen from '../../screens/AddProductScreen';
 
-export default HomeScreen;
+export default AddProductScreen;
