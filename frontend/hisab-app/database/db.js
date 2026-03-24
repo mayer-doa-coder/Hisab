@@ -2,6 +2,17 @@ import * as SQLite from 'expo-sqlite';
 
 const db = SQLite.openDatabaseSync('hisab.db');
 
+db.execSync('PRAGMA foreign_keys = ON;');
+
+const ensureColumn = async (tableName, columnName, alterSql) => {
+	const tableInfo = await db.getAllAsync(`PRAGMA table_info(${tableName});`);
+	const existingColumns = new Set(tableInfo.map((column) => column.name));
+
+	if (!existingColumns.has(columnName)) {
+		await db.execAsync(alterSql);
+	}
+};
+
 export const createTables = async () => {
 	await db.execAsync(`CREATE TABLE IF NOT EXISTS products (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -11,24 +22,240 @@ export const createTables = async () => {
 		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 	);`);
 
-	const columns = await db.getAllAsync(`PRAGMA table_info(products);`);
-	const columnNames = new Set(columns.map((column) => column.name));
+	await db.execAsync(`CREATE TABLE IF NOT EXISTS customers (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		name TEXT NOT NULL CHECK (length(trim(name)) > 0),
+		phone TEXT,
+		address TEXT,
+		created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+	);`);
 
-	if (!columnNames.has('quantity')) {
-		await db.execAsync(`ALTER TABLE products ADD COLUMN quantity INTEGER NOT NULL DEFAULT 0;`);
-	}
+	await db.execAsync(`CREATE TABLE IF NOT EXISTS baki_entries (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		customer_id INTEGER NOT NULL,
+		amount REAL NOT NULL CHECK (amount > 0),
+		paid_amount REAL NOT NULL DEFAULT 0 CHECK (paid_amount >= 0),
+		status TEXT NOT NULL DEFAULT 'unpaid' CHECK (status IN ('unpaid', 'partial', 'paid')),
+		note TEXT,
+		created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE,
+		CHECK (paid_amount <= amount)
+	);`);
 
-	if (!columnNames.has('price')) {
-		await db.execAsync(`ALTER TABLE products ADD COLUMN price REAL NOT NULL DEFAULT 0;`);
-	}
+	await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_baki_customer_id ON baki_entries(customer_id);`);
+	await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_baki_created_at ON baki_entries(created_at DESC);`);
 
-	if (!columnNames.has('created_at')) {
-		await db.execAsync(`ALTER TABLE products ADD COLUMN created_at DATETIME;`);
-	}
+	await ensureColumn(
+		'products',
+		'quantity',
+		`ALTER TABLE products ADD COLUMN quantity INTEGER NOT NULL DEFAULT 0;`
+	);
+	await ensureColumn(
+		'products',
+		'price',
+		`ALTER TABLE products ADD COLUMN price REAL NOT NULL DEFAULT 0;`
+	);
+	await ensureColumn('products', 'created_at', `ALTER TABLE products ADD COLUMN created_at DATETIME;`);
+
+	await ensureColumn('customers', 'phone', `ALTER TABLE customers ADD COLUMN phone TEXT;`);
+	await ensureColumn('customers', 'address', `ALTER TABLE customers ADD COLUMN address TEXT;`);
+	await ensureColumn(
+		'customers',
+		'created_at',
+		`ALTER TABLE customers ADD COLUMN created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP;`
+	);
+	await ensureColumn(
+		'customers',
+		'updated_at',
+		`ALTER TABLE customers ADD COLUMN updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP;`
+	);
+
+	await ensureColumn('baki_entries', 'paid_amount', `ALTER TABLE baki_entries ADD COLUMN paid_amount REAL NOT NULL DEFAULT 0;`);
+	await ensureColumn('baki_entries', 'status', `ALTER TABLE baki_entries ADD COLUMN status TEXT NOT NULL DEFAULT 'unpaid';`);
+	await ensureColumn('baki_entries', 'note', `ALTER TABLE baki_entries ADD COLUMN note TEXT;`);
+	await ensureColumn('baki_entries', 'created_at', `ALTER TABLE baki_entries ADD COLUMN created_at DATETIME;`);
+	await ensureColumn('baki_entries', 'updated_at', `ALTER TABLE baki_entries ADD COLUMN updated_at DATETIME;`);
 
 	await db.execAsync(`UPDATE products
 		SET created_at = COALESCE(created_at, datetime('now'))
 		WHERE created_at IS NULL;`);
+
+	await db.execAsync(`UPDATE customers
+		SET created_at = COALESCE(created_at, datetime('now')),
+			updated_at = COALESCE(updated_at, datetime('now'))
+		WHERE created_at IS NULL OR updated_at IS NULL;`);
+
+	await db.execAsync(`UPDATE baki_entries
+		SET created_at = COALESCE(created_at, datetime('now')),
+			updated_at = COALESCE(updated_at, datetime('now')),
+			status = COALESCE(status, 'unpaid'),
+			paid_amount = COALESCE(paid_amount, 0)
+		WHERE created_at IS NULL
+			OR updated_at IS NULL
+			OR status IS NULL
+			OR paid_amount IS NULL;`);
+};
+
+export const insertCustomer = ({ name, phone = null, address = null }) => {
+	const normalizedName = typeof name === 'string' ? name.trim() : '';
+	const normalizedPhone = typeof phone === 'string' ? phone.trim() : null;
+	const normalizedAddress = typeof address === 'string' ? address.trim() : null;
+
+	if (!normalizedName) {
+		return Promise.reject(new Error('Customer name is required.'));
+	}
+
+	return db
+		.runAsync(
+			`INSERT INTO customers (name, phone, address)
+			 VALUES (?, ?, ?);`,
+			normalizedName,
+			normalizedPhone || null,
+			normalizedAddress || null
+		)
+		.then((result) => ({
+			id: result.lastInsertRowId,
+			name: normalizedName,
+			phone: normalizedPhone || null,
+			address: normalizedAddress || null,
+		}));
+};
+
+export const addCustomer = (payload) => insertCustomer(payload);
+
+export const getCustomers = () =>
+	db.getAllAsync(
+		`SELECT c.id,
+				c.name,
+				c.phone,
+				c.address,
+				c.created_at,
+				c.updated_at,
+				COALESCE(SUM(b.amount - b.paid_amount), 0) AS total_due
+		 FROM customers c
+		 LEFT JOIN baki_entries b ON b.customer_id = c.id
+		 GROUP BY c.id
+		 ORDER BY c.id DESC;`
+	);
+
+export const fetchCustomers = () => getCustomers();
+
+export const insertBakiEntry = ({ customerId, amount, note = null, status = 'unpaid' }) => {
+	const normalizedCustomerId = Number(customerId);
+	const normalizedAmount = Number(amount);
+	const normalizedNote = typeof note === 'string' ? note.trim() : null;
+	const allowedStatuses = new Set(['unpaid', 'partial', 'paid']);
+	const normalizedStatus = typeof status === 'string' ? status.trim().toLowerCase() : 'unpaid';
+
+	if (!Number.isInteger(normalizedCustomerId) || normalizedCustomerId <= 0) {
+		return Promise.reject(new Error('Valid customerId is required.'));
+	}
+
+	if (!Number.isFinite(normalizedAmount) || normalizedAmount <= 0) {
+		return Promise.reject(new Error('Amount must be a positive number.'));
+	}
+
+	if (!allowedStatuses.has(normalizedStatus)) {
+		return Promise.reject(new Error("Status must be one of: unpaid, partial, paid."));
+	}
+
+	return db
+		.runAsync(
+			`INSERT INTO baki_entries (customer_id, amount, status, note)
+			 VALUES (?, ?, ?, ?);`,
+			normalizedCustomerId,
+			normalizedAmount,
+			normalizedStatus,
+			normalizedNote || null
+		)
+		.then((result) => ({
+			id: result.lastInsertRowId,
+			customer_id: normalizedCustomerId,
+			amount: normalizedAmount,
+			status: normalizedStatus,
+			note: normalizedNote || null,
+		}));
+};
+
+export const addBaki = (payload) => insertBakiEntry(payload);
+
+export const getBakiHistory = ({ customerId = null } = {}) => {
+	if (customerId === null || customerId === undefined) {
+		return db.getAllAsync(
+			`SELECT b.id,
+					b.customer_id,
+					c.name AS customer_name,
+					c.phone AS customer_phone,
+					b.amount,
+					b.paid_amount,
+					(b.amount - b.paid_amount) AS due_amount,
+					b.status,
+					b.note,
+					b.created_at,
+					b.updated_at
+			 FROM baki_entries b
+			 JOIN customers c ON c.id = b.customer_id
+			 ORDER BY b.created_at DESC, b.id DESC;`
+		);
+	}
+
+	const normalizedCustomerId = Number(customerId);
+
+	if (!Number.isInteger(normalizedCustomerId) || normalizedCustomerId <= 0) {
+		return Promise.reject(new Error('Valid customerId is required.'));
+	}
+
+	return db.getAllAsync(
+		`SELECT b.id,
+				b.customer_id,
+				c.name AS customer_name,
+				c.phone AS customer_phone,
+				b.amount,
+				b.paid_amount,
+				(b.amount - b.paid_amount) AS due_amount,
+				b.status,
+				b.note,
+				b.created_at,
+				b.updated_at
+		 FROM baki_entries b
+		 JOIN customers c ON c.id = b.customer_id
+		 WHERE b.customer_id = ?
+		 ORDER BY b.created_at DESC, b.id DESC;`,
+		normalizedCustomerId
+	);
+};
+
+export const fetchBakiWithCustomer = (options = {}) => getBakiHistory(options);
+
+export const getBakiHistoryByCustomer = (customerId) => {
+	const normalizedCustomerId = Number(customerId);
+
+	if (!Number.isInteger(normalizedCustomerId) || normalizedCustomerId <= 0) {
+		return Promise.reject(new Error('Valid customerId is required.'));
+	}
+
+	return db.getAllAsync(
+		`SELECT * FROM (
+			SELECT b.id,
+					b.customer_id,
+					c.name AS customer_name,
+					c.phone AS customer_phone,
+					b.amount,
+					b.paid_amount,
+					(b.amount - b.paid_amount) AS due_amount,
+					b.status,
+					b.note,
+					b.created_at,
+					b.updated_at
+			FROM baki_entries b
+			JOIN customers c ON c.id = b.customer_id
+			WHERE b.customer_id = ?
+		)
+		ORDER BY created_at DESC, id DESC;`,
+		normalizedCustomerId
+	);
 };
 
 export const insertProduct = ({ name, quantity, price }) => {
