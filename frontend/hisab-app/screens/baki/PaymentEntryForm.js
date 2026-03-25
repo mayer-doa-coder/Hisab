@@ -3,21 +3,31 @@ import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-nativ
 
 import { UI_COLORS } from '../../constants/ui-theme';
 
-export default function BakiEntryForm({
+const PAYMENT_METHODS = [
+  { label: 'Cash', value: 'cash' },
+  { label: 'bKash', value: 'bkash' },
+  { label: 'Nagad', value: 'nagad' },
+  { label: 'Bank', value: 'bank' },
+];
+
+export default function PaymentEntryForm({
   customers,
   customerId,
   setCustomerId,
-  amount,
-  setAmount,
-  note,
-  setNote,
+  paymentAmount,
+  setPaymentAmount,
+  paymentNote,
+  setPaymentNote,
+  paymentMethod,
+  setPaymentMethod,
+  currentDue,
   onSave,
   saving,
   refreshing,
 }) {
   return (
     <View style={styles.formWrap}>
-      <Text style={styles.formTitle}>Add Credit</Text>
+      <Text style={styles.formTitle}>Record Repayment</Text>
 
       <Text style={styles.label}>Customer *</Text>
       <View style={styles.pickerContainer}>
@@ -25,7 +35,7 @@ export default function BakiEntryForm({
           <Picker.Item label="Choose customer" value="" />
           {customers.map((customer) => (
             <Picker.Item
-              key={customer.id}
+              key={`payment-customer-${customer.id}`}
               label={`${customer.name}${customer.phone ? ` (${customer.phone})` : ''}`}
               value={String(customer.id)}
             />
@@ -33,19 +43,32 @@ export default function BakiEntryForm({
         </Picker>
       </View>
 
-      <Text style={styles.label}>Credit Amount *</Text>
+      <View style={styles.dueHintCard}>
+        <Text style={styles.dueHintText}>Current Due: ৳{Number(currentDue || 0).toFixed(2)}</Text>
+      </View>
+
+      <Text style={styles.label}>Paid Amount *</Text>
       <TextInput
-        value={amount}
-        onChangeText={setAmount}
-        placeholder="Enter credit amount"
+        value={paymentAmount}
+        onChangeText={setPaymentAmount}
+        placeholder="Enter paid amount"
         style={styles.input}
         keyboardType="decimal-pad"
       />
 
+      <Text style={styles.label}>Payment Method</Text>
+      <View style={styles.pickerContainer}>
+        <Picker selectedValue={paymentMethod} onValueChange={setPaymentMethod} style={styles.picker}>
+          {PAYMENT_METHODS.map((method) => (
+            <Picker.Item key={method.value} label={method.label} value={method.value} />
+          ))}
+        </Picker>
+      </View>
+
       <Text style={styles.label}>Note</Text>
       <TextInput
-        value={note}
-        onChangeText={setNote}
+        value={paymentNote}
+        onChangeText={setPaymentNote}
         placeholder="Optional note"
         style={styles.input}
       />
@@ -55,7 +78,7 @@ export default function BakiEntryForm({
         onPress={onSave}
         disabled={saving || refreshing || !customerId}
       >
-        <Text style={styles.buttonText}>{saving ? 'Saving...' : 'Add Credit'}</Text>
+        <Text style={styles.buttonText}>{saving ? 'Saving...' : 'Save Payment'}</Text>
       </TouchableOpacity>
     </View>
   );
@@ -94,9 +117,22 @@ const styles = StyleSheet.create({
     height: 50,
     color: UI_COLORS.textPrimary,
   },
+  dueHintCard: {
+    borderWidth: 1,
+    borderColor: '#C7D7FF',
+    borderRadius: 8,
+    backgroundColor: '#EEF3FF',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  dueHintText: {
+    color: UI_COLORS.primary,
+    fontSize: 12,
+    fontWeight: '700',
+  },
   button: {
     marginTop: 8,
-    backgroundColor: UI_COLORS.primary,
+    backgroundColor: '#166534',
     borderRadius: 10,
     paddingVertical: 12,
     alignItems: 'center',

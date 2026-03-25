@@ -31,7 +31,6 @@ npm start
 
 ## Notes
 
-- The `app/` directory still exists from the Expo template; runtime currently uses `App.js`.
 - Run lint before push:
 
 ```bash

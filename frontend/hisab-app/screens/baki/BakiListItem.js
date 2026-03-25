@@ -2,46 +2,31 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import { UI_COLORS } from '../../constants/ui-theme';
 
-export default function BakiListItem({ item, onUpdateStatus, onDelete }) {
+export default function BakiListItem({ item, onStartPayment }) {
+  const dueAmount = Math.max(0, Number(item.due_amount || 0));
+  const hasDue = dueAmount > 0;
+
   return (
     <View style={styles.card}>
       <View style={styles.cardTopRow}>
         <Text style={styles.rowTitle}>{item.customer_name}</Text>
-        <Text
-          style={[
-            styles.statusBadge,
-            item.status === 'paid' ? styles.paidBadge : item.status === 'partial' ? styles.partialBadge : styles.unpaidBadge,
-          ]}
-        >
-          {item.status}
+        <Text style={[styles.statusBadge, hasDue ? styles.unpaidBadge : styles.paidBadge]}>
+          {hasDue ? 'Due' : 'Clear'}
         </Text>
       </View>
 
-      <Text style={styles.meta}>Amount: ৳{Number(item.amount).toFixed(2)}</Text>
-      <Text style={styles.meta}>Paid: ৳{Number(item.paid_amount).toFixed(2)}</Text>
-      <Text style={styles.meta}>Due: ৳{Number(item.due_amount).toFixed(2)}</Text>
-      <Text style={styles.meta}>Note: {item.note || 'N/A'}</Text>
-      <Text style={styles.date}>{item.created_at}</Text>
+      <Text style={styles.meta}>Current Due: ৳{dueAmount.toFixed(2)}</Text>
+      <Text style={styles.meta}>Credits: {Number(item.credit_count || 0)}</Text>
+      <Text style={styles.meta}>Payments: {Number(item.payment_count || 0)}</Text>
+      <Text style={styles.date}>Last Activity: {item.last_activity_at || 'N/A'}</Text>
 
       <View style={styles.actionRow}>
-        {item.status !== 'paid' ? (
-          <TouchableOpacity style={styles.paidButton} onPress={() => onUpdateStatus(item, 'paid')}>
-            <Text style={styles.paidButtonText}>Mark Paid</Text>
-          </TouchableOpacity>
-        ) : (
-          <TouchableOpacity style={styles.unpaidButton} onPress={() => onUpdateStatus(item, 'unpaid')}>
-            <Text style={styles.unpaidButtonText}>Mark Unpaid</Text>
-          </TouchableOpacity>
-        )}
-
-        {item.status !== 'partial' ? (
-          <TouchableOpacity style={styles.partialButton} onPress={() => onUpdateStatus(item, 'partial')}>
-            <Text style={styles.partialButtonText}>Mark Partial</Text>
-          </TouchableOpacity>
-        ) : null}
-
-        <TouchableOpacity style={styles.deleteButton} onPress={() => onDelete(item)}>
-          <Text style={styles.deleteButtonText}>Delete</Text>
+        <TouchableOpacity
+          style={[styles.paidButton, !hasDue && styles.disabledButton]}
+          onPress={() => onStartPayment(item)}
+          disabled={!hasDue}
+        >
+          <Text style={styles.paidButtonText}>{hasDue ? 'Record Payment' : 'No Payment Needed'}</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -68,7 +53,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   paidBadge: { backgroundColor: '#E8F8EF', color: '#166534' },
-  partialBadge: { backgroundColor: '#FEF3C7', color: '#92400E' },
   unpaidBadge: { backgroundColor: '#FDECEC', color: UI_COLORS.danger },
   meta: { marginTop: 4, fontSize: 13, color: UI_COLORS.textSecondary },
   date: { marginTop: 5, fontSize: 12, color: UI_COLORS.textMuted },
@@ -80,25 +64,5 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   paidButtonText: { color: '#166534', fontSize: 12, fontWeight: '700' },
-  unpaidButton: {
-    backgroundColor: '#FEF3C7',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  unpaidButtonText: { color: '#92400E', fontSize: 12, fontWeight: '700' },
-  partialButton: {
-    backgroundColor: '#FFF3E0',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  partialButtonText: { color: '#B45309', fontSize: 12, fontWeight: '700' },
-  deleteButton: {
-    backgroundColor: '#FDECEC',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  deleteButtonText: { color: UI_COLORS.danger, fontSize: 12, fontWeight: '700' },
+  disabledButton: { opacity: 0.5 },
 });

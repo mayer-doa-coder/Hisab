@@ -66,7 +66,7 @@ export default function ProductForm({
         <TextInput
           value={name}
           onChangeText={setName}
-          placeholder="e.g. Rice"
+          placeholder="Enter product name"
           style={styles.input}
           autoCapitalize="words"
         />
@@ -79,7 +79,7 @@ export default function ProductForm({
             <TextInput
               value={quantity}
               onChangeText={setQuantity}
-              placeholder="e.g. 10"
+              placeholder="Enter quantity"
               style={styles.input}
               keyboardType="numeric"
             />
@@ -91,7 +91,7 @@ export default function ProductForm({
           <TextInput
             value={price}
             onChangeText={setPrice}
-            placeholder="e.g. 55"
+            placeholder="Enter price"
             style={styles.input}
             keyboardType="decimal-pad"
           />
@@ -107,7 +107,7 @@ export default function ProductForm({
         <TextInput
           value={lowStockThreshold}
           onChangeText={setLowStockThreshold}
-          placeholder="e.g. 5"
+          placeholder="Enter low-stock threshold"
           style={styles.input}
           keyboardType="numeric"
         />

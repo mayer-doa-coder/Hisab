@@ -8,10 +8,9 @@ export default function BakiFilters({
   setSearch,
   selectedCustomerId,
   setSelectedCustomerId,
-  statusFilter,
-  setStatusFilter,
+  dueFilter,
+  setDueFilter,
   customers,
-  statusOptions,
 }) {
   return (
     <View style={styles.filterWrap}>
@@ -36,13 +35,12 @@ export default function BakiFilters({
         </View>
 
         <View style={styles.col}>
-          <Text style={styles.label}>Filter by Status</Text>
+          <Text style={styles.label}>Filter by Due</Text>
           <View style={styles.pickerContainer}>
-            <Picker selectedValue={statusFilter} onValueChange={setStatusFilter} style={styles.picker}>
-              <Picker.Item label="All status" value="all" />
-              {statusOptions.map((option) => (
-                <Picker.Item key={option} label={option} value={option} />
-              ))}
+            <Picker selectedValue={dueFilter} onValueChange={setDueFilter} style={styles.picker}>
+              <Picker.Item label="All" value="all" />
+              <Picker.Item label="Due > 0" value="with-due" />
+              <Picker.Item label="No Due" value="no-due" />
             </Picker>
           </View>
         </View>

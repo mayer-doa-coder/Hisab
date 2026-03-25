@@ -21,7 +21,7 @@ export default function CustomerForm({
         <TextInput
           value={name}
           onChangeText={setName}
-          placeholder="e.g. Rahim"
+          placeholder="Enter customer name"
           style={styles.input}
           autoCapitalize="words"
         />
@@ -32,7 +32,7 @@ export default function CustomerForm({
         <TextInput
           value={phone}
           onChangeText={setPhone}
-          placeholder="e.g. 01XXXXXXXXX"
+          placeholder="Enter phone number"
           style={styles.input}
           keyboardType="phone-pad"
         />

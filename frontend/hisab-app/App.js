@@ -3,36 +3,41 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { registerRootComponent } from 'expo';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Platform, SafeAreaView, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ActivityIndicator, Platform, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppDataContext } from './context/AppDataContext';
 import {
   addBaki as dbAddBaki,
+  addPayment as dbAddPayment,
   addCustomer as dbAddCustomer,
   createTables,
-  deleteBaki as dbDeleteBaki,
   deleteCustomer as dbDeleteCustomer,
   deleteProduct as dbDeleteProduct,
   fetchBakiWithCustomer,
   fetchCustomers,
+  fetchCustomersBasic,
   fetchProducts,
+  getCustomerRiskMetrics as dbGetCustomerRiskMetrics,
   getExpiredProducts as dbGetExpiredProducts,
   getExpiringSoonProducts as dbGetExpiringSoonProducts,
   getLowStockProducts as dbGetLowStockProducts,
+  getCustomerLedger as dbGetCustomerLedger,
+  getBakiKpiSummary as dbGetBakiKpiSummary,
   getProductSalesDailyAggregation as dbGetProductSalesDailyAggregation,
   getStockMovements as dbGetStockMovements,
   insertProduct,
   addStockMovement as dbAddStockMovement,
-  updateBakiStatus as dbUpdateBakiStatus,
   updateCustomer as dbUpdateCustomer,
   updateProduct as dbUpdateProduct,
 } from './database/db';
 import BakiListScreen from './screens/BakiListScreen';
+import CustomerLedgerScreen from './screens/CustomerLedgerScreen';
 import CustomerListScreen from './screens/CustomerListScreen';
 import ProductDetailsScreen from './screens/ProductDetailsScreen.js';
 import ProductListScreen from './screens/ProductListScreen';
 import StockMovementScreen from './screens/StockMovementScreen.js';
+import { applyCustomerRiskClassification, createCustomerRiskModel } from './services/customers/customerRiskEngine';
 import { createReorderPredictor } from './services/reorder/reorderSuggestionEngine.js';
 import { UI_COLORS } from './constants/ui-theme';
 
@@ -63,6 +68,7 @@ function BootLoading() {
 }
 
 function AppContent() {
+  const customerRiskModel = useMemo(() => createCustomerRiskModel('rule-based'), []);
   const reorderPredictor = useMemo(() => createReorderPredictor('rule-based'), []);
   const reorderRuleConfig = useMemo(
     () => ({
@@ -86,35 +92,72 @@ function AppContent() {
   const [reorderSuggestions, setReorderSuggestions] = useState([]);
 
   const loadAllData = useCallback(async () => {
-    const [productRows, customerRows, bakiHistoryRows, expiringSoonRows, expiredRows, lowStockRows, salesRows] = await Promise.all([
+    const [coreProductsResult, coreCustomersResult, coreBakiResult] = await Promise.allSettled([
       fetchProducts(),
       fetchCustomers(),
       fetchBakiWithCustomer(),
+    ]);
+
+    const productRows = coreProductsResult.status === 'fulfilled' ? coreProductsResult.value : [];
+    let customerRows = coreCustomersResult.status === 'fulfilled' ? coreCustomersResult.value : [];
+
+    if (coreCustomersResult.status !== 'fulfilled') {
+      try {
+        customerRows = await fetchCustomersBasic();
+        console.warn('[APP] using fallback customer query due to primary query failure.');
+      } catch (fallbackError) {
+        console.error('[APP] fallback customer query failed:', fallbackError);
+      }
+    }
+
+    const bakiHistoryRows = coreBakiResult.status === 'fulfilled' ? coreBakiResult.value : [];
+
+    const [expiringSoonResult, expiredResult, lowStockResult, salesResult, customerRiskResult] = await Promise.allSettled([
       dbGetExpiringSoonProducts(7),
       dbGetExpiredProducts(),
       dbGetLowStockProducts(),
       dbGetProductSalesDailyAggregation({ days: reorderRuleConfig.windowDays }),
+      dbGetCustomerRiskMetrics(),
     ]);
 
-    const nextSuggestions = reorderPredictor.predict({
-      products: productRows,
-      salesRows,
-      config: reorderRuleConfig,
-    });
+    const expiringSoonRows = expiringSoonResult.status === 'fulfilled' ? expiringSoonResult.value : [];
+    const expiredRows = expiredResult.status === 'fulfilled' ? expiredResult.value : [];
+    const lowStockRows = lowStockResult.status === 'fulfilled' ? lowStockResult.value : [];
+    const salesRows = salesResult.status === 'fulfilled' ? salesResult.value : [];
+    const customerRiskRows = customerRiskResult.status === 'fulfilled' ? customerRiskResult.value : [];
+
+    let enrichedCustomers = customerRows;
+    try {
+      enrichedCustomers = applyCustomerRiskClassification(customerRows, customerRiskRows, customerRiskModel);
+    } catch (error) {
+      console.error('[APP] customer risk classification failed:', error);
+    }
+
+    let nextSuggestions = [];
+    try {
+      nextSuggestions = reorderPredictor.predict({
+        products: productRows,
+        salesRows,
+        config: reorderRuleConfig,
+      });
+    } catch (error) {
+      console.error('[APP] reorder suggestion calculation failed:', error);
+    }
 
     setProducts(productRows);
     setExpiringSoonProducts(expiringSoonRows);
     setExpiredProducts(expiredRows);
     setLowStockProducts(lowStockRows);
-    setCustomers(customerRows);
+    setCustomers(enrichedCustomers);
     setBakiRows(bakiHistoryRows);
     setReorderSuggestions(nextSuggestions);
-  }, [reorderPredictor, reorderRuleConfig]);
+  }, [customerRiskModel, reorderPredictor, reorderRuleConfig]);
 
   useEffect(() => {
     const boot = async () => {
       try {
         await createTables();
+
         await loadAllData();
       } catch (error) {
         console.error('[APP] boot failed:', error);
@@ -203,31 +246,30 @@ function AppContent() {
   );
 
   const addBaki = useCallback(
-    async ({ customerId, amount, note, status }) => {
-      const saved = await dbAddBaki({ customerId, amount, note, status });
+    async ({ customerId, amount, note }) => {
+      const saved = await dbAddBaki({ customerId, amount, note });
       await refreshAll();
       return saved;
     },
     [refreshAll]
   );
 
-  const updateBakiStatus = useCallback(
-    async ({ id, status, paidAmount }) => {
-      const updated = await dbUpdateBakiStatus({ id, status, paidAmount });
+  const addBakiPayment = useCallback(
+    async ({ customerId, amount, note, paymentMethod }) => {
+      const saved = await dbAddPayment({ customerId, amount, note, paymentMethod });
       await refreshAll();
-      return updated;
+      return saved;
     },
     [refreshAll]
   );
 
-  const deleteBaki = useCallback(
-    async (id) => {
-      const deleted = await dbDeleteBaki(id);
-      await refreshAll();
-      return deleted;
-    },
-    [refreshAll]
-  );
+  const getCustomerLedger = useCallback(async (customerId) => {
+    return dbGetCustomerLedger(customerId);
+  }, []);
+
+  const getBakiKpiSummary = useCallback(async ({ startDateIso, endDateIso, rangeDays }) => {
+    return dbGetBakiKpiSummary({ startDateIso, endDateIso, rangeDays });
+  }, []);
 
   const contextValue = useMemo(
     () => ({
@@ -251,8 +293,9 @@ function AppContent() {
       updateCustomer,
       deleteCustomer,
       addBaki,
-      updateBakiStatus,
-      deleteBaki,
+      addBakiPayment,
+      getCustomerLedger,
+      getBakiKpiSummary,
     }),
     [
       booting,
@@ -275,8 +318,9 @@ function AppContent() {
       updateCustomer,
       deleteCustomer,
       addBaki,
-      updateBakiStatus,
-      deleteBaki,
+      addBakiPayment,
+      getCustomerLedger,
+      getBakiKpiSummary,
     ]
   );
 
@@ -326,6 +370,10 @@ function AppContent() {
                 return <MaterialIcons name="groups" size={size} color={color} />;
               }
 
+              if (route.name === 'Ledger') {
+                return <MaterialIcons name="receipt-long" size={size} color={color} />;
+              }
+
               if (route.name === 'Movement') {
                 return <MaterialIcons name="swap-horiz" size={size} color={color} />;
               }
@@ -351,6 +399,14 @@ function AppContent() {
             options={{
               title: 'Customers',
               headerTitle: 'Customer Manager',
+            }}
+          />
+          <Tab.Screen
+            name="Ledger"
+            component={CustomerLedgerScreen}
+            options={{
+              title: 'Ledger',
+              headerTitle: 'Customer Ledger',
             }}
           />
           <Tab.Screen

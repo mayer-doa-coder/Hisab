@@ -5,13 +5,13 @@ import {
   FlatList,
   KeyboardAvoidingView,
   Platform,
-  SafeAreaView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { UI_COLORS } from '../constants/ui-theme';
 import { useAppData } from '../context/AppDataContext';
@@ -161,7 +161,7 @@ export default function StockMovementScreen() {
                   <TextInput
                     value={quantity}
                     onChangeText={setQuantity}
-                    placeholder="e.g. 3"
+                    placeholder="Enter quantity"
                     style={styles.input}
                     keyboardType="numeric"
                   />

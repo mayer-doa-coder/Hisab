@@ -2,11 +2,11 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { UI_COLORS } from '../../constants/ui-theme';
 
-export default function BakiSummaryCards({ totalRows, totalDue, paidCount, unpaidCount }) {
+export default function BakiSummaryCards({ totalRows, totalDue, creditCount, paymentCount }) {
   return (
     <View style={styles.summaryRow}>
       <View style={styles.summaryCard}>
-        <Text style={styles.summaryLabel}>Entries</Text>
+        <Text style={styles.summaryLabel}>Customers</Text>
         <Text style={styles.summaryValue}>{totalRows}</Text>
       </View>
       <View style={styles.summaryCard}>
@@ -14,8 +14,8 @@ export default function BakiSummaryCards({ totalRows, totalDue, paidCount, unpai
         <Text style={styles.summaryValue}>৳{Number(totalDue || 0).toFixed(2)}</Text>
       </View>
       <View style={styles.summaryCard}>
-        <Text style={styles.summaryLabel}>Paid / Unpaid</Text>
-        <Text style={styles.summaryValue}>{paidCount} / {unpaidCount}</Text>
+        <Text style={styles.summaryLabel}>Credit / Payment Txn</Text>
+        <Text style={styles.summaryValue}>{creditCount} / {paymentCount}</Text>
       </View>
     </View>
   );
