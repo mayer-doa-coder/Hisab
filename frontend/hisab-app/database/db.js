@@ -291,6 +291,68 @@ export const insertProduct = ({ name, quantity, price }) => {
 		}));
 };
 
+export const updateProduct = ({ id, name, quantity, price }) => {
+	const normalizedId = Number(id);
+	const normalizedName = typeof name === 'string' ? name.trim() : '';
+	const normalizedQuantity = Number(quantity);
+	const normalizedPrice = Number(price);
+
+	if (!Number.isInteger(normalizedId) || normalizedId <= 0) {
+		return Promise.reject(new Error('Valid product id is required.'));
+	}
+
+	if (!normalizedName) {
+		return Promise.reject(new Error('Product name is required.'));
+	}
+
+	if (!Number.isInteger(normalizedQuantity) || normalizedQuantity < 0) {
+		return Promise.reject(new Error('Quantity must be a non-negative integer.'));
+	}
+
+	if (!Number.isFinite(normalizedPrice) || normalizedPrice < 0) {
+		return Promise.reject(new Error('Price must be a non-negative number.'));
+	}
+
+	return db
+		.runAsync(
+			`UPDATE products
+			 SET name = ?, quantity = ?, price = ?
+			 WHERE id = ?;`,
+			normalizedName,
+			normalizedQuantity,
+			normalizedPrice,
+			normalizedId
+		)
+		.then((result) => {
+			if (!result.changes) {
+				throw new Error('Product not found.');
+			}
+
+			return {
+				id: normalizedId,
+				name: normalizedName,
+				quantity: normalizedQuantity,
+				price: normalizedPrice,
+			};
+		});
+};
+
+export const deleteProduct = (id) => {
+	const normalizedId = Number(id);
+
+	if (!Number.isInteger(normalizedId) || normalizedId <= 0) {
+		return Promise.reject(new Error('Valid product id is required.'));
+	}
+
+	return db.runAsync(`DELETE FROM products WHERE id = ?;`, normalizedId).then((result) => {
+		if (!result.changes) {
+			throw new Error('Product not found.');
+		}
+
+		return { id: normalizedId };
+	});
+};
+
 export const getProducts = () =>
 	db.getAllAsync(
 		`SELECT id, name, quantity, price, created_at
@@ -299,5 +361,128 @@ export const getProducts = () =>
 	);
 
 export const fetchProducts = () => getProducts();
+
+export const updateCustomer = ({ id, name, phone = null, address = null }) => {
+	const normalizedId = Number(id);
+	const normalizedName = typeof name === 'string' ? name.trim() : '';
+	const normalizedPhone = typeof phone === 'string' ? phone.trim() : null;
+	const normalizedAddress = typeof address === 'string' ? address.trim() : null;
+
+	if (!Number.isInteger(normalizedId) || normalizedId <= 0) {
+		return Promise.reject(new Error('Valid customer id is required.'));
+	}
+
+	if (!normalizedName) {
+		return Promise.reject(new Error('Customer name is required.'));
+	}
+
+	return db
+		.runAsync(
+			`UPDATE customers
+			 SET name = ?, phone = ?, address = ?, updated_at = datetime('now')
+			 WHERE id = ?;`,
+			normalizedName,
+			normalizedPhone || null,
+			normalizedAddress || null,
+			normalizedId
+		)
+		.then((result) => {
+			if (!result.changes) {
+				throw new Error('Customer not found.');
+			}
+
+			return {
+				id: normalizedId,
+				name: normalizedName,
+				phone: normalizedPhone || null,
+				address: normalizedAddress || null,
+			};
+		});
+};
+
+export const deleteCustomer = (id) => {
+	const normalizedId = Number(id);
+
+	if (!Number.isInteger(normalizedId) || normalizedId <= 0) {
+		return Promise.reject(new Error('Valid customer id is required.'));
+	}
+
+	return db.runAsync(`DELETE FROM customers WHERE id = ?;`, normalizedId).then((result) => {
+		if (!result.changes) {
+			throw new Error('Customer not found.');
+		}
+
+		return { id: normalizedId };
+	});
+};
+
+export const updateBakiStatus = ({ id, status, paidAmount }) => {
+	const normalizedId = Number(id);
+	const allowedStatuses = new Set(['unpaid', 'partial', 'paid']);
+	const normalizedStatus = typeof status === 'string' ? status.trim().toLowerCase() : '';
+
+	if (!Number.isInteger(normalizedId) || normalizedId <= 0) {
+		return Promise.reject(new Error('Valid baki id is required.'));
+	}
+
+	if (!allowedStatuses.has(normalizedStatus)) {
+		return Promise.reject(new Error("Status must be one of: unpaid, partial, paid."));
+	}
+
+	return db
+		.getFirstAsync(`SELECT id, amount, paid_amount FROM baki_entries WHERE id = ?;`, normalizedId)
+		.then((existing) => {
+			if (!existing) {
+				throw new Error('Baki entry not found.');
+			}
+
+			const amount = Number(existing.amount);
+			let nextPaidAmount = Number(existing.paid_amount);
+
+			if (normalizedStatus === 'paid') {
+				nextPaidAmount = amount;
+			} else if (normalizedStatus === 'unpaid') {
+				nextPaidAmount = 0;
+			} else if (paidAmount !== undefined && paidAmount !== null) {
+				const normalizedPaidAmount = Number(paidAmount);
+				if (!Number.isFinite(normalizedPaidAmount) || normalizedPaidAmount < 0 || normalizedPaidAmount > amount) {
+					throw new Error('Paid amount must be between 0 and total amount.');
+				}
+				nextPaidAmount = normalizedPaidAmount;
+			}
+
+			return db.runAsync(
+				`UPDATE baki_entries
+				 SET status = ?, paid_amount = ?, updated_at = datetime('now')
+				 WHERE id = ?;`,
+				normalizedStatus,
+				nextPaidAmount,
+				normalizedId
+			);
+		})
+		.then((result) => {
+			if (!result.changes) {
+				throw new Error('Baki entry not found.');
+			}
+
+			return { id: normalizedId, status: normalizedStatus };
+		});
+};
+
+export const deleteBaki = (id) => {
+	const normalizedId = Number(id);
+
+	if (!Number.isInteger(normalizedId) || normalizedId <= 0) {
+		return Promise.reject(new Error('Valid baki id is required.'));
+	}
+
+	return db.runAsync(`DELETE FROM baki_entries WHERE id = ?;`, normalizedId).then((result) => {
+		if (!result.changes) {
+			throw new Error('Baki entry not found.');
+		}
+
+		return { id: normalizedId };
+	});
+};
 
 export default db;

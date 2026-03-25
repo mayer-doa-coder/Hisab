@@ -1,3 +1,3 @@
-import AddBakiScreen from '../../screens/AddBakiScreen';
+import BakiListScreen from '../../screens/BakiListScreen';
 
-export default AddBakiScreen;
+export default BakiListScreen;

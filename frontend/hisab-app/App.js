@@ -3,21 +3,28 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { registerRootComponent } from 'expo';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, SafeAreaView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Platform, SafeAreaView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppDataContext } from './context/AppDataContext';
 import {
   addBaki as dbAddBaki,
   addCustomer as dbAddCustomer,
   createTables,
+  deleteBaki as dbDeleteBaki,
+  deleteCustomer as dbDeleteCustomer,
+  deleteProduct as dbDeleteProduct,
   fetchBakiWithCustomer,
   fetchCustomers,
   fetchProducts,
   insertProduct,
+  updateBakiStatus as dbUpdateBakiStatus,
+  updateCustomer as dbUpdateCustomer,
+  updateProduct as dbUpdateProduct,
 } from './database/db';
-import AddBakiScreen from './screens/AddBakiScreen';
-import AddCustomerScreen from './screens/AddCustomerScreen';
-import AddProductScreen from './screens/AddProductScreen';
+import BakiListScreen from './screens/BakiListScreen';
+import CustomerListScreen from './screens/CustomerListScreen';
+import ProductListScreen from './screens/ProductListScreen';
 import { UI_COLORS } from './constants/ui-theme';
 
 const Tab = createBottomTabNavigator();
@@ -46,7 +53,8 @@ function BootLoading() {
   );
 }
 
-export default function App() {
+function AppContent() {
+  const insets = useSafeAreaInsets();
   const [booting, setBooting] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [products, setProducts] = useState([]);
@@ -98,11 +106,47 @@ export default function App() {
     [refreshAll]
   );
 
+  const updateProduct = useCallback(
+    async ({ id, name, quantity, price }) => {
+      const updated = await dbUpdateProduct({ id, name, quantity, price });
+      await refreshAll();
+      return updated;
+    },
+    [refreshAll]
+  );
+
+  const deleteProduct = useCallback(
+    async (id) => {
+      const deleted = await dbDeleteProduct(id);
+      await refreshAll();
+      return deleted;
+    },
+    [refreshAll]
+  );
+
   const addCustomer = useCallback(
     async ({ name, phone, address }) => {
       const saved = await dbAddCustomer({ name, phone, address });
       await refreshAll();
       return saved;
+    },
+    [refreshAll]
+  );
+
+  const updateCustomer = useCallback(
+    async ({ id, name, phone, address }) => {
+      const updated = await dbUpdateCustomer({ id, name, phone, address });
+      await refreshAll();
+      return updated;
+    },
+    [refreshAll]
+  );
+
+  const deleteCustomer = useCallback(
+    async (id) => {
+      const deleted = await dbDeleteCustomer(id);
+      await refreshAll();
+      return deleted;
     },
     [refreshAll]
   );
@@ -116,6 +160,24 @@ export default function App() {
     [refreshAll]
   );
 
+  const updateBakiStatus = useCallback(
+    async ({ id, status, paidAmount }) => {
+      const updated = await dbUpdateBakiStatus({ id, status, paidAmount });
+      await refreshAll();
+      return updated;
+    },
+    [refreshAll]
+  );
+
+  const deleteBaki = useCallback(
+    async (id) => {
+      const deleted = await dbDeleteBaki(id);
+      await refreshAll();
+      return deleted;
+    },
+    [refreshAll]
+  );
+
   const contextValue = useMemo(
     () => ({
       booting,
@@ -125,10 +187,32 @@ export default function App() {
       bakiRows,
       refreshAll,
       addProduct,
+      updateProduct,
+      deleteProduct,
       addCustomer,
+      updateCustomer,
+      deleteCustomer,
       addBaki,
+      updateBakiStatus,
+      deleteBaki,
     }),
-    [booting, refreshing, products, customers, bakiRows, refreshAll, addProduct, addCustomer, addBaki]
+    [
+      booting,
+      refreshing,
+      products,
+      customers,
+      bakiRows,
+      refreshAll,
+      addProduct,
+      updateProduct,
+      deleteProduct,
+      addCustomer,
+      updateCustomer,
+      deleteCustomer,
+      addBaki,
+      updateBakiStatus,
+      deleteBaki,
+    ]
   );
 
   if (booting) {
@@ -150,15 +234,16 @@ export default function App() {
               letterSpacing: 0.2,
             },
             tabBarStyle: {
-              height: 64,
+              height: 64 + Math.max(insets.bottom, 8),
               borderTopWidth: 0,
               elevation: 12,
               shadowColor: UI_COLORS.textPrimary,
               shadowOpacity: 0.08,
               shadowRadius: 10,
               shadowOffset: { width: 0, height: -3 },
-              paddingBottom: 8,
+              paddingBottom: Math.max(insets.bottom, 8),
               paddingTop: 8,
+              marginBottom: Platform.OS === 'android' ? 6 : 0,
               backgroundColor: UI_COLORS.surface,
             },
             tabBarActiveTintColor: UI_COLORS.primary,
@@ -181,15 +266,15 @@ export default function App() {
           })}>
           <Tab.Screen
             name="Products"
-            component={AddProductScreen}
+            component={ProductListScreen}
             options={{
               title: 'Products',
-              headerTitle: 'Product Manager',
+              headerTitle: 'Inventory Manager',
             }}
           />
           <Tab.Screen
             name="Customers"
-            component={AddCustomerScreen}
+            component={CustomerListScreen}
             options={{
               title: 'Customers',
               headerTitle: 'Customer Manager',
@@ -197,15 +282,23 @@ export default function App() {
           />
           <Tab.Screen
             name="Baki"
-            component={AddBakiScreen}
+            component={BakiListScreen}
             options={{
               title: 'Baki',
-              headerTitle: 'Baki Manager',
+              headerTitle: 'Baki List Manager',
             }}
           />
         </Tab.Navigator>
       </NavigationContainer>
     </AppDataContext.Provider>
+  );
+}
+
+export default function App() {
+  return (
+    <SafeAreaProvider>
+      <AppContent />
+    </SafeAreaProvider>
   );
 }
 

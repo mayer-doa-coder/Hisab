@@ -1,3 +1,3 @@
-import AddProductScreen from '../../screens/AddProductScreen';
+import ProductListScreen from '../../screens/ProductListScreen';
 
-export default AddProductScreen;
+export default ProductListScreen;

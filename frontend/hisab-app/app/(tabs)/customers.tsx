@@ -1,3 +1,3 @@
-import AddCustomerScreen from '../../screens/AddCustomerScreen';
+import CustomerListScreen from '../../screens/CustomerListScreen';
 
-export default AddCustomerScreen;
+export default CustomerListScreen;
