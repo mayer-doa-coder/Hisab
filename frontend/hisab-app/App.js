@@ -1,5 +1,6 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { registerRootComponent } from 'expo';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -7,6 +8,7 @@ import { ActivityIndicator, Platform, StyleSheet, Text, View } from 'react-nativ
 import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppDataContext } from './context/AppDataContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import {
   addBaki as dbAddBaki,
   addPayment as dbAddPayment,
@@ -41,11 +43,16 @@ import ProductDetailsScreen from './screens/ProductDetailsScreen.js';
 import ProductListScreen from './screens/ProductListScreen';
 import StockMovementScreen from './screens/StockMovementScreen.js';
 import DashboardScreen from './screens/DashboardScreen';
+import LoginScreen from './screens/auth/LoginScreen';
+import SignupScreen from './screens/auth/SignupScreen';
 import { applyCustomerRiskClassification, createCustomerRiskModel } from './services/customers/customerRiskEngine';
 import { createReorderPredictor } from './services/reorder/reorderSuggestionEngine.js';
 import { UI_COLORS } from './constants/ui-theme';
 
 const Tab = createBottomTabNavigator();
+const RootStack = createNativeStackNavigator();
+const AuthStack = createNativeStackNavigator();
+const MainStack = createNativeStackNavigator();
 
 const AppTheme = {
   ...DefaultTheme,
@@ -59,19 +66,165 @@ const AppTheme = {
   },
 };
 
-function BootLoading() {
+function BootLoading({ title = 'Preparing Hisab', subtitle = 'Loading products, customers, and baki data...' }) {
   return (
     <SafeAreaView style={styles.loadingSafeArea}>
       <View style={styles.loadingCard}>
         <ActivityIndicator size="large" color={UI_COLORS.primary} />
-        <Text style={styles.loadingTitle}>Preparing Hisab</Text>
-        <Text style={styles.loadingSubtitle}>Loading products, customers, and baki data...</Text>
+        <Text style={styles.loadingTitle}>{title}</Text>
+        <Text style={styles.loadingSubtitle}>{subtitle}</Text>
       </View>
     </SafeAreaView>
   );
 }
 
-function AppContent() {
+function MainTabs() {
+  const insets = useSafeAreaInsets();
+
+  return (
+    <Tab.Navigator
+      initialRouteName="Dashboard"
+      screenOptions={({ route }) => ({
+        headerStyle: {
+          backgroundColor: UI_COLORS.textPrimary,
+        },
+        headerTintColor: UI_COLORS.surface,
+        headerTitleStyle: {
+          fontWeight: '700',
+          letterSpacing: 0.2,
+        },
+        tabBarStyle: {
+          height: 64 + Math.max(insets.bottom, 8),
+          borderTopWidth: 0,
+          elevation: 12,
+          shadowColor: UI_COLORS.textPrimary,
+          shadowOpacity: 0.08,
+          shadowRadius: 10,
+          shadowOffset: { width: 0, height: -3 },
+          paddingBottom: Math.max(insets.bottom, 8),
+          paddingTop: 8,
+          marginBottom: Platform.OS === 'android' ? 6 : 0,
+          backgroundColor: UI_COLORS.surface,
+        },
+        tabBarActiveTintColor: UI_COLORS.primary,
+        tabBarInactiveTintColor: '#94A3B8',
+        tabBarLabelStyle: {
+          fontSize: 12,
+          fontWeight: '700',
+        },
+        tabBarIcon: ({ color, size }) => {
+          if (route.name === 'Products') {
+            return <MaterialIcons name="inventory-2" size={size} color={color} />;
+          }
+
+          if (route.name === 'Customers') {
+            return <MaterialIcons name="groups" size={size} color={color} />;
+          }
+
+          if (route.name === 'Ledger') {
+            return <MaterialIcons name="receipt-long" size={size} color={color} />;
+          }
+
+          if (route.name === 'Movement') {
+            return <MaterialIcons name="swap-horiz" size={size} color={color} />;
+          }
+
+          if (route.name === 'Details') {
+            return <MaterialIcons name="info-outline" size={size} color={color} />;
+          }
+
+          if (route.name === 'Dashboard') {
+            return <MaterialIcons name="dashboard" size={size} color={color} />;
+          }
+
+          return <MaterialIcons name="account-balance-wallet" size={size} color={color} />;
+        },
+      })}>
+      <Tab.Screen
+        name="Dashboard"
+        component={DashboardScreen}
+        options={{
+          title: 'Dashboard',
+          headerTitle: 'Business Dashboard',
+        }}
+      />
+      <Tab.Screen
+        name="Products"
+        component={ProductListScreen}
+        options={{
+          title: 'Products',
+          headerTitle: 'Inventory Manager',
+        }}
+      />
+      <Tab.Screen
+        name="Customers"
+        component={CustomerListScreen}
+        options={{
+          title: 'Customers',
+          headerTitle: 'Customer Manager',
+        }}
+      />
+      <Tab.Screen
+        name="Ledger"
+        component={CustomerLedgerScreen}
+        options={{
+          title: 'Ledger',
+          headerTitle: 'Customer Ledger',
+        }}
+      />
+      <Tab.Screen
+        name="Baki"
+        component={BakiListScreen}
+        options={{
+          title: 'Baki',
+          headerTitle: 'Baki List Manager',
+        }}
+      />
+      <Tab.Screen
+        name="Movement"
+        component={StockMovementScreen}
+        options={{
+          title: 'Movement',
+          headerTitle: 'Stock Movement',
+        }}
+      />
+      <Tab.Screen
+        name="Details"
+        component={ProductDetailsScreen}
+        options={{
+          title: 'Details',
+          headerTitle: 'Product Details',
+        }}
+      />
+    </Tab.Navigator>
+  );
+}
+
+function MainStackNavigator() {
+  return (
+    <MainStack.Navigator screenOptions={{ headerShown: false }}>
+      <MainStack.Screen name="MainTabs" component={MainTabs} />
+    </MainStack.Navigator>
+  );
+}
+
+function AuthStackNavigator() {
+  return (
+    <AuthStack.Navigator
+      initialRouteName="Login"
+      screenOptions={{
+        headerStyle: { backgroundColor: UI_COLORS.textPrimary },
+        headerTintColor: UI_COLORS.surface,
+        headerTitleStyle: { fontWeight: '700' },
+        contentStyle: { backgroundColor: UI_COLORS.background },
+      }}>
+      <AuthStack.Screen name="Login" component={LoginScreen} options={{ title: 'Login' }} />
+      <AuthStack.Screen name="Signup" component={SignupScreen} options={{ title: 'Signup' }} />
+    </AuthStack.Navigator>
+  );
+}
+
+function MainDataShell() {
   const customerRiskModel = useMemo(() => createCustomerRiskModel('rule-based'), []);
   const reorderPredictor = useMemo(() => createReorderPredictor('rule-based'), []);
   const reorderRuleConfig = useMemo(
@@ -84,7 +237,6 @@ function AppContent() {
     }),
     []
   );
-  const insets = useSafeAreaInsets();
   const [booting, setBooting] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [products, setProducts] = useState([]);
@@ -347,136 +499,42 @@ function AppContent() {
   );
 
   if (booting) {
-    return <BootLoading />;
+    return <BootLoading title="Preparing Hisab" subtitle="Loading products, customers, and baki data..." />;
   }
 
   return (
     <AppDataContext.Provider value={contextValue}>
-      <NavigationContainer theme={AppTheme}>
-        <Tab.Navigator
-          initialRouteName="Products"
-          screenOptions={({ route }) => ({
-            headerStyle: {
-              backgroundColor: UI_COLORS.textPrimary,
-            },
-            headerTintColor: UI_COLORS.surface,
-            headerTitleStyle: {
-              fontWeight: '700',
-              letterSpacing: 0.2,
-            },
-            tabBarStyle: {
-              height: 64 + Math.max(insets.bottom, 8),
-              borderTopWidth: 0,
-              elevation: 12,
-              shadowColor: UI_COLORS.textPrimary,
-              shadowOpacity: 0.08,
-              shadowRadius: 10,
-              shadowOffset: { width: 0, height: -3 },
-              paddingBottom: Math.max(insets.bottom, 8),
-              paddingTop: 8,
-              marginBottom: Platform.OS === 'android' ? 6 : 0,
-              backgroundColor: UI_COLORS.surface,
-            },
-            tabBarActiveTintColor: UI_COLORS.primary,
-            tabBarInactiveTintColor: '#94A3B8',
-            tabBarLabelStyle: {
-              fontSize: 12,
-              fontWeight: '700',
-            },
-            tabBarIcon: ({ color, size }) => {
-              if (route.name === 'Products') {
-                return <MaterialIcons name="inventory-2" size={size} color={color} />;
-              }
-
-              if (route.name === 'Customers') {
-                return <MaterialIcons name="groups" size={size} color={color} />;
-              }
-
-              if (route.name === 'Ledger') {
-                return <MaterialIcons name="receipt-long" size={size} color={color} />;
-              }
-
-              if (route.name === 'Movement') {
-                return <MaterialIcons name="swap-horiz" size={size} color={color} />;
-              }
-
-              if (route.name === 'Details') {
-                return <MaterialIcons name="info-outline" size={size} color={color} />;
-              }
-
-              if (route.name === 'Dashboard') {
-                return <MaterialIcons name="dashboard" size={size} color={color} />;
-              }
-
-              return <MaterialIcons name="account-balance-wallet" size={size} color={color} />;
-            },
-          })}>
-          <Tab.Screen
-            name="Dashboard"
-            component={DashboardScreen}
-            options={{
-              title: 'Dashboard',
-              headerTitle: 'Business Dashboard',
-            }}
-          />
-          <Tab.Screen
-            name="Products"
-            component={ProductListScreen}
-            options={{
-              title: 'Products',
-              headerTitle: 'Inventory Manager',
-            }}
-          />
-          <Tab.Screen
-            name="Customers"
-            component={CustomerListScreen}
-            options={{
-              title: 'Customers',
-              headerTitle: 'Customer Manager',
-            }}
-          />
-          <Tab.Screen
-            name="Ledger"
-            component={CustomerLedgerScreen}
-            options={{
-              title: 'Ledger',
-              headerTitle: 'Customer Ledger',
-            }}
-          />
-          <Tab.Screen
-            name="Baki"
-            component={BakiListScreen}
-            options={{
-              title: 'Baki',
-              headerTitle: 'Baki List Manager',
-            }}
-          />
-          <Tab.Screen
-            name="Movement"
-            component={StockMovementScreen}
-            options={{
-              title: 'Movement',
-              headerTitle: 'Stock Movement',
-            }}
-          />
-          <Tab.Screen
-            name="Details"
-            component={ProductDetailsScreen}
-            options={{
-              title: 'Details',
-              headerTitle: 'Product Details',
-            }}
-          />
-        </Tab.Navigator>
-      </NavigationContainer>
+      <MainStackNavigator />
     </AppDataContext.Provider>
+  );
+}
+
+function RootNavigator() {
+  const { authBooting, isAuthenticated } = useAuth();
+
+  if (authBooting) {
+    return <BootLoading title="Checking Session" subtitle="Restoring saved login state..." />;
+  }
+
+  return (
+    <NavigationContainer theme={AppTheme}>
+      <RootStack.Navigator screenOptions={{ headerShown: false }}>
+        {isAuthenticated ? (
+          <RootStack.Screen name="MainStack" component={MainDataShell} />
+        ) : (
+          <RootStack.Screen name="AuthStack" component={AuthStackNavigator} />
+        )}
+      </RootStack.Navigator>
+    </NavigationContainer>
   );
 }
 
 export default function App() {
   return (
     <SafeAreaProvider>
-      <AppContent />
+      <AuthProvider>
+        <RootNavigator />
+      </AuthProvider>
     </SafeAreaProvider>
   );
 }

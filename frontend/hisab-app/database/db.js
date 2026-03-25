@@ -47,6 +47,100 @@ const toUtcStartOfDay = (dateInput) => {
 const MOVEMENT_TYPES = new Set(['in', 'out', 'adjust']);
 const BAKI_TRANSACTION_TYPES = new Set(['credit', 'payment']);
 
+const AUTH_MIN_PASSWORD_LENGTH = 6;
+const AUTH_DEFAULT_SESSION_HOURS = 24;
+const AUTH_REMEMBER_SESSION_DAYS = 30;
+const AUTH_HASH_PEPPER = 'hisab-local-auth-v1';
+
+const normalizeAuthEmail = (email) => String(email || '').trim().toLowerCase();
+
+const normalizePasswordInput = (password) => String(password || '').trim();
+
+const hashString = (input) => {
+	let hash = 2166136261;
+	const text = String(input || '');
+
+	for (let i = 0; i < text.length; i += 1) {
+		hash ^= text.charCodeAt(i);
+		hash = (hash * 16777619) >>> 0;
+	}
+
+	return hash.toString(16).padStart(8, '0');
+};
+
+const derivePasswordHash = ({ password, salt }) => {
+	let current = `${String(password || '')}:${String(salt || '')}:${AUTH_HASH_PEPPER}`;
+
+	for (let i = 0; i < 4096; i += 1) {
+		current = hashString(`${current}:${i}`);
+	}
+
+	return current;
+};
+
+const generateSalt = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
+
+const generateSessionToken = ({ userId, email }) => {
+	const seed = `${Date.now()}:${Math.random()}:${String(userId || '')}:${String(email || '')}`;
+	return `sess_${hashString(seed)}_${hashString(`${seed}:${Math.random()}`)}`;
+};
+
+const getSessionExpiryIso = (rememberMe = false) => {
+	const now = Date.now();
+	const ttlMs = rememberMe
+		? AUTH_REMEMBER_SESSION_DAYS * 24 * 60 * 60 * 1000
+		: AUTH_DEFAULT_SESSION_HOURS * 60 * 60 * 1000;
+
+	return new Date(now + ttlMs).toISOString();
+};
+
+const sanitizeAuthUser = (row) => {
+	if (!row) {
+		return null;
+	}
+
+	return {
+		id: Number(row.id),
+		email: String(row.email || ''),
+		created_at: row.created_at || null,
+		updated_at: row.updated_at || null,
+		last_login_at: row.last_login_at || null,
+	};
+};
+
+const cleanupExpiredSessions = async () => {
+	await db.runAsync(
+		`DELETE FROM auth_sessions
+		 WHERE datetime(expires_at) <= datetime('now')
+			OR revoked_at IS NOT NULL;`
+	);
+};
+
+const createSessionForUser = async ({ userId, email, rememberMe = false }) => {
+	const normalizedUserId = Number(userId);
+	if (!Number.isInteger(normalizedUserId) || normalizedUserId <= 0) {
+		throw new Error('Invalid user for session creation.');
+	}
+
+	const token = generateSessionToken({ userId: normalizedUserId, email });
+	const expiresAtIso = getSessionExpiryIso(rememberMe);
+
+	await db.runAsync(
+		`INSERT INTO auth_sessions (user_id, token, remember_me, expires_at)
+		 VALUES (?, ?, ?, ?);`,
+		normalizedUserId,
+		token,
+		rememberMe ? 1 : 0,
+		expiresAtIso
+	);
+
+	return {
+		token,
+		expires_at: expiresAtIso,
+		remember_me: Boolean(rememberMe),
+	};
+};
+
 const toMoneyCents = (value) => {
 	const numeric = Number(value);
 	if (!Number.isFinite(numeric)) {
@@ -111,6 +205,27 @@ export const createTables = async () => {
 		updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 	);`);
 
+	await db.execAsync(`CREATE TABLE IF NOT EXISTS users (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		email TEXT NOT NULL UNIQUE,
+		password_hash TEXT NOT NULL,
+		password_salt TEXT NOT NULL,
+		created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		last_login_at DATETIME
+	);`);
+
+	await db.execAsync(`CREATE TABLE IF NOT EXISTS auth_sessions (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		user_id INTEGER NOT NULL,
+		token TEXT NOT NULL UNIQUE,
+		remember_me INTEGER NOT NULL DEFAULT 0 CHECK (remember_me IN (0, 1)),
+		expires_at DATETIME NOT NULL,
+		created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		revoked_at DATETIME,
+		FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+	);`);
+
 	await db.execAsync(`CREATE TABLE IF NOT EXISTS baki_entries (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		customer_id INTEGER NOT NULL,
@@ -156,6 +271,9 @@ export const createTables = async () => {
 	await db.execAsync(`CREATE UNIQUE INDEX IF NOT EXISTS uq_baki_transactions_legacy ON baki_transactions(legacy_entry_id, legacy_kind);`);
 	await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_stock_movements_product_id ON stock_movements(product_id);`);
 	await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_stock_movements_created_at ON stock_movements(created_at DESC);`);
+	await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);`);
+	await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_auth_sessions_user_id ON auth_sessions(user_id);`);
+	await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_auth_sessions_expires_at ON auth_sessions(expires_at DESC);`);
 
 	await ensureColumn(
 		'products',
@@ -187,6 +305,8 @@ export const createTables = async () => {
 		'updated_at',
 		`ALTER TABLE customers ADD COLUMN updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP;`
 	);
+
+	await ensureColumn('users', 'last_login_at', `ALTER TABLE users ADD COLUMN last_login_at DATETIME;`);
 
 	await ensureColumn('baki_entries', 'paid_amount', `ALTER TABLE baki_entries ADD COLUMN paid_amount REAL NOT NULL DEFAULT 0;`);
 	await ensureColumn('baki_entries', 'status', `ALTER TABLE baki_entries ADD COLUMN status TEXT NOT NULL DEFAULT 'unpaid';`);
@@ -274,6 +394,8 @@ export const createTables = async () => {
 				WHERE t.legacy_entry_id = b.id
 					AND t.legacy_kind = 'payment'
 			);`);
+
+	await cleanupExpiredSessions();
 };
 
 export const insertCustomer = ({ name, phone = null, address = null }) => {
@@ -1020,6 +1142,175 @@ export const getDashboardTopActiveCustomers = ({ startDateIso, endDateIso, trans
 		effectiveType,
 		effectiveLimit
 	);
+};
+
+export const signupUser = async ({ email, password, rememberMe = false } = {}) => {
+	const normalizedEmail = normalizeAuthEmail(email);
+	const normalizedPassword = normalizePasswordInput(password);
+
+	if (!normalizedEmail) {
+		throw new Error('Email is required.');
+	}
+
+	if (normalizedPassword.length < AUTH_MIN_PASSWORD_LENGTH) {
+		throw new Error(`Password must be at least ${AUTH_MIN_PASSWORD_LENGTH} characters.`);
+	}
+
+	const existing = await db.getFirstAsync(`SELECT id FROM users WHERE email = ? LIMIT 1;`, normalizedEmail);
+	if (existing?.id) {
+		throw new Error('Email already exists. Please login instead.');
+	}
+
+	const salt = generateSalt();
+	const passwordHash = derivePasswordHash({ password: normalizedPassword, salt });
+
+	let inserted;
+	try {
+		inserted = await db.runAsync(
+			`INSERT INTO users (email, password_hash, password_salt)
+			 VALUES (?, ?, ?);`,
+			normalizedEmail,
+			passwordHash,
+			salt
+		);
+	} catch (error) {
+		if (String(error?.message || '').toLowerCase().includes('unique')) {
+			throw new Error('Email already exists. Please login instead.');
+		}
+
+		throw error;
+	}
+
+	const userId = Number(inserted?.lastInsertRowId);
+	if (!Number.isInteger(userId) || userId <= 0) {
+		throw new Error('Unable to create user account.');
+	}
+
+	await db.runAsync(
+		`UPDATE users SET updated_at = datetime('now'), last_login_at = datetime('now') WHERE id = ?;`,
+		userId
+	);
+
+	const userRow = await db.getFirstAsync(
+		`SELECT id, email, created_at, updated_at, last_login_at FROM users WHERE id = ? LIMIT 1;`,
+		userId
+	);
+
+	const session = await createSessionForUser({ userId, email: normalizedEmail, rememberMe });
+
+	return {
+		user: sanitizeAuthUser(userRow),
+		session,
+	};
+};
+
+export const loginUser = async ({ email, password, rememberMe = false } = {}) => {
+	const normalizedEmail = normalizeAuthEmail(email);
+	const normalizedPassword = normalizePasswordInput(password);
+
+	if (!normalizedEmail || !normalizedPassword) {
+		throw new Error('Email and password are required.');
+	}
+
+	const userRow = await db.getFirstAsync(
+		`SELECT id, email, password_hash, password_salt, created_at, updated_at, last_login_at
+		 FROM users
+		 WHERE email = ?
+		 LIMIT 1;`,
+		normalizedEmail
+	);
+
+	if (!userRow) {
+		throw new Error('Invalid email or password.');
+	}
+
+	const computedHash = derivePasswordHash({
+		password: normalizedPassword,
+		salt: String(userRow.password_salt || ''),
+	});
+
+	if (computedHash !== String(userRow.password_hash || '')) {
+		throw new Error('Invalid email or password.');
+	}
+
+	await db.runAsync(
+		`UPDATE users SET updated_at = datetime('now'), last_login_at = datetime('now') WHERE id = ?;`,
+		Number(userRow.id)
+	);
+
+	const refreshedUserRow = await db.getFirstAsync(
+		`SELECT id, email, created_at, updated_at, last_login_at FROM users WHERE id = ? LIMIT 1;`,
+		Number(userRow.id)
+	);
+
+	const session = await createSessionForUser({
+		userId: Number(userRow.id),
+		email: normalizedEmail,
+		rememberMe,
+	});
+
+	return {
+		user: sanitizeAuthUser(refreshedUserRow),
+		session,
+	};
+};
+
+export const getCurrentUser = async () => {
+	await cleanupExpiredSessions();
+
+	const row = await db.getFirstAsync(
+		`SELECT
+			u.id,
+			u.email,
+			u.created_at,
+			u.updated_at,
+			u.last_login_at,
+			s.token,
+			s.expires_at,
+			s.remember_me
+		 FROM auth_sessions s
+		 JOIN users u ON u.id = s.user_id
+		 WHERE s.revoked_at IS NULL
+			AND datetime(s.expires_at) > datetime('now')
+		 ORDER BY datetime(s.created_at) DESC, s.id DESC
+		 LIMIT 1;`
+	);
+
+	if (!row) {
+		return null;
+	}
+
+	return {
+		user: sanitizeAuthUser(row),
+		session: {
+			token: String(row.token || ''),
+			expires_at: row.expires_at || null,
+			remember_me: Boolean(Number(row.remember_me || 0)),
+		},
+	};
+};
+
+export const logoutCurrentUser = async () => {
+	await cleanupExpiredSessions();
+
+	const latest = await db.getFirstAsync(
+		`SELECT id
+		 FROM auth_sessions
+		 WHERE revoked_at IS NULL
+		 ORDER BY datetime(created_at) DESC, id DESC
+		 LIMIT 1;`
+	);
+
+	if (!latest?.id) {
+		return { success: true, cleared: 0 };
+	}
+
+	const result = await db.runAsync(`DELETE FROM auth_sessions WHERE id = ?;`, Number(latest.id));
+
+	return {
+		success: true,
+		cleared: Number(result?.changes || 0),
+	};
 };
 
 export const insertProduct = ({ name, quantity, price, expiryDate = null, lowStockThreshold = 5 }) => {

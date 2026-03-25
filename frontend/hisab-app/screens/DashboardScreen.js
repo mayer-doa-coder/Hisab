@@ -14,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { UI_COLORS } from '../constants/ui-theme';
 import { useAppData } from '../context/AppDataContext';
+import { useAuth } from '../context/AuthContext';
 import { fetchBackendHealth } from '../services/backend/backendHealth';
 import CustomerRiskBadge from './customers/CustomerRiskBadge';
 import { CUSTOMER_RISK_LEVELS } from '../services/customers/customerRiskEngine';
@@ -117,6 +118,7 @@ function LoadingPlaceholder() {
 
 export default function DashboardScreen() {
   const navigation = useNavigation();
+  const { user, logout } = useAuth();
   const {
     products,
     customers,
@@ -354,8 +356,15 @@ export default function DashboardScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={UI_COLORS.primary} />}
       >
         <View style={styles.headerWrap}>
-          <Text style={styles.title}>Dashboard</Text>
+          <View style={styles.headerTopRow}>
+            <Text style={styles.title}>Dashboard</Text>
+            <TouchableOpacity style={styles.logoutButton} onPress={logout}>
+              <MaterialIcons name="logout" size={15} color="#fff" />
+              <Text style={styles.logoutButtonText}>Logout</Text>
+            </TouchableOpacity>
+          </View>
           <Text style={styles.subtitle}>Dynamic business overview from app database + backend health.</Text>
+          <Text style={styles.rangeLabel}>Signed in: {String(user?.email || 'N/A')}</Text>
           <Text style={styles.rangeLabel}>{rangeLabel}</Text>
           <Text style={styles.rangeLabel}>Last refresh: {formatLocalDateTime(lastRefreshAt)}</Text>
         </View>
@@ -645,6 +654,26 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: '800',
     color: UI_COLORS.textPrimary,
+  },
+  headerTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 8,
+  },
+  logoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    borderRadius: 999,
+    backgroundColor: UI_COLORS.textPrimary,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  logoutButtonText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 12,
   },
   subtitle: {
     fontSize: 13,
