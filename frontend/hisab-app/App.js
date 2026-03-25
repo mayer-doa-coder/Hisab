@@ -24,8 +24,11 @@ import {
   getLowStockProducts as dbGetLowStockProducts,
   getCustomerLedger as dbGetCustomerLedger,
   getBakiKpiSummary as dbGetBakiKpiSummary,
+  getDashboardKpiSummary as dbGetDashboardKpiSummary,
+  getDashboardTopActiveCustomers as dbGetDashboardTopActiveCustomers,
   getProductSalesDailyAggregation as dbGetProductSalesDailyAggregation,
   getStockMovements as dbGetStockMovements,
+  getStockMovementCountInRange as dbGetStockMovementCountInRange,
   insertProduct,
   addStockMovement as dbAddStockMovement,
   updateCustomer as dbUpdateCustomer,
@@ -37,6 +40,7 @@ import CustomerListScreen from './screens/CustomerListScreen';
 import ProductDetailsScreen from './screens/ProductDetailsScreen.js';
 import ProductListScreen from './screens/ProductListScreen';
 import StockMovementScreen from './screens/StockMovementScreen.js';
+import DashboardScreen from './screens/DashboardScreen';
 import { applyCustomerRiskClassification, createCustomerRiskModel } from './services/customers/customerRiskEngine';
 import { createReorderPredictor } from './services/reorder/reorderSuggestionEngine.js';
 import { UI_COLORS } from './constants/ui-theme';
@@ -271,6 +275,18 @@ function AppContent() {
     return dbGetBakiKpiSummary({ startDateIso, endDateIso, rangeDays });
   }, []);
 
+  const getDashboardKpiSummary = useCallback(async ({ startDateIso, endDateIso, transactionType }) => {
+    return dbGetDashboardKpiSummary({ startDateIso, endDateIso, transactionType });
+  }, []);
+
+  const getDashboardTopActiveCustomers = useCallback(async ({ startDateIso, endDateIso, transactionType, limit }) => {
+    return dbGetDashboardTopActiveCustomers({ startDateIso, endDateIso, transactionType, limit });
+  }, []);
+
+  const getStockMovementCountInRange = useCallback(async ({ startDateIso, endDateIso }) => {
+    return dbGetStockMovementCountInRange({ startDateIso, endDateIso });
+  }, []);
+
   const contextValue = useMemo(
     () => ({
       booting,
@@ -296,6 +312,9 @@ function AppContent() {
       addBakiPayment,
       getCustomerLedger,
       getBakiKpiSummary,
+      getDashboardKpiSummary,
+      getDashboardTopActiveCustomers,
+      getStockMovementCountInRange,
     }),
     [
       booting,
@@ -321,6 +340,9 @@ function AppContent() {
       addBakiPayment,
       getCustomerLedger,
       getBakiKpiSummary,
+      getDashboardKpiSummary,
+      getDashboardTopActiveCustomers,
+      getStockMovementCountInRange,
     ]
   );
 
@@ -382,9 +404,21 @@ function AppContent() {
                 return <MaterialIcons name="info-outline" size={size} color={color} />;
               }
 
+              if (route.name === 'Dashboard') {
+                return <MaterialIcons name="dashboard" size={size} color={color} />;
+              }
+
               return <MaterialIcons name="account-balance-wallet" size={size} color={color} />;
             },
           })}>
+          <Tab.Screen
+            name="Dashboard"
+            component={DashboardScreen}
+            options={{
+              title: 'Dashboard',
+              headerTitle: 'Business Dashboard',
+            }}
+          />
           <Tab.Screen
             name="Products"
             component={ProductListScreen}

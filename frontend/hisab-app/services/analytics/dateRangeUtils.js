@@ -71,6 +71,35 @@ export const getRangeBounds = (rangeType = DATE_RANGE_TYPES.TODAY, inputDate = n
   };
 };
 
+export const buildKpiDateFilter = (rangeType = DATE_RANGE_TYPES.TODAY, inputDate = new Date()) => {
+  const bounds = getRangeBounds(rangeType, inputDate);
+
+  return {
+    startDateIso: bounds.startDateIso,
+    endDateIso: bounds.endDateIso,
+    rangeDays: bounds.rangeDays,
+    rangeType: bounds.rangeType,
+  };
+};
+
+export const formatRangeLabel = ({ startDateIso, endDateIso } = {}) => {
+  const start = new Date(startDateIso);
+  const end = new Date(endDateIso);
+
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+    return 'Date range unavailable';
+  }
+
+  const formatDate = (value) =>
+    value.toLocaleDateString(undefined, {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+
+  return `${formatDate(start)} - ${formatDate(end)}`;
+};
+
 export const DATE_RANGE_OPTIONS = [
   { value: DATE_RANGE_TYPES.TODAY, label: 'Today' },
   { value: DATE_RANGE_TYPES.WEEK, label: 'This Week' },

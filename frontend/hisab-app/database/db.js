@@ -860,6 +860,168 @@ export const getBakiKpiSummary = ({ startDateIso, endDateIso, rangeDays = 1 } = 
 	}));
 };
 
+export const getDashboardKpiSummary = ({ startDateIso, endDateIso, transactionType = 'all' } = {}) => {
+	const start = new Date(startDateIso);
+	const end = new Date(endDateIso);
+	const normalizedType = typeof transactionType === 'string' ? transactionType.trim().toLowerCase() : 'all';
+	const effectiveType = BAKI_TRANSACTION_TYPES.has(normalizedType) ? normalizedType : 'all';
+
+	if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+		return Promise.reject(new Error('Valid startDateIso and endDateIso are required.'));
+	}
+
+	if (start.getTime() > end.getTime()) {
+		return Promise.reject(new Error('startDateIso cannot be after endDateIso.'));
+	}
+
+	return db
+		.getFirstAsync(
+			`WITH filtered AS (
+				SELECT id, customer_id, type, amount_cents
+				FROM baki_transactions
+				WHERE datetime(created_at) >= datetime(?)
+					AND datetime(created_at) <= datetime(?)
+					AND (? = 'all' OR type = ?)
+			),
+			customer_due AS (
+				SELECT
+					c.id AS customer_id,
+					c.name AS customer_name,
+					COALESCE(SUM(CASE WHEN t.type = 'credit' THEN t.amount_cents WHEN t.type = 'payment' THEN -t.amount_cents ELSE 0 END), 0) AS due_cents
+				FROM customers c
+				LEFT JOIN baki_transactions t ON t.customer_id = c.id
+				GROUP BY c.id
+			),
+			top_debtor AS (
+				SELECT customer_id, customer_name, due_cents
+				FROM customer_due
+				WHERE due_cents > 0
+				ORDER BY due_cents DESC, customer_id ASC
+				LIMIT 1
+			),
+			most_active AS (
+				SELECT
+					f.customer_id,
+					c.name AS customer_name,
+					COUNT(f.id) AS tx_count
+				FROM filtered f
+				JOIN customers c ON c.id = f.customer_id
+				GROUP BY f.customer_id
+				ORDER BY tx_count DESC, f.customer_id ASC
+				LIMIT 1
+			)
+			SELECT
+				ROUND(COALESCE(SUM(CASE WHEN type = 'credit' THEN amount_cents ELSE 0 END), 0) / 100.0, 2) AS total_credit,
+				ROUND(COALESCE(SUM(CASE WHEN type = 'payment' THEN amount_cents ELSE 0 END), 0) / 100.0, 2) AS total_payment,
+				ROUND(COALESCE(SUM(CASE WHEN type = 'credit' THEN amount_cents WHEN type = 'payment' THEN -amount_cents ELSE 0 END), 0) / 100.0, 2) AS net,
+				COUNT(id) AS transactions_count,
+				COUNT(DISTINCT customer_id) AS active_customers,
+				ROUND(
+					CASE
+						WHEN COALESCE(SUM(CASE WHEN type = 'credit' THEN amount_cents ELSE 0 END), 0) > 0
+						THEN (
+							COALESCE(SUM(CASE WHEN type = 'payment' THEN amount_cents ELSE 0 END), 0) * 100.0 /
+							COALESCE(SUM(CASE WHEN type = 'credit' THEN amount_cents ELSE 0 END), 1)
+						)
+						ELSE 0
+					END,
+					2
+				) AS collection_rate,
+				ROUND(
+					COALESCE(SUM(amount_cents), 0) /
+					CASE WHEN COUNT(id) > 0 THEN COUNT(id) ELSE 1 END /
+					100.0,
+					2
+				) AS average_transaction,
+				COALESCE((SELECT td.customer_name FROM top_debtor td LIMIT 1), NULL) AS top_debtor_name,
+				ROUND(COALESCE((SELECT td.due_cents FROM top_debtor td LIMIT 1), 0) / 100.0, 2) AS top_debtor_due,
+				COALESCE((SELECT ma.customer_name FROM most_active ma LIMIT 1), NULL) AS most_active_customer_name,
+				COALESCE((SELECT ma.tx_count FROM most_active ma LIMIT 1), 0) AS most_active_customer_tx_count
+			FROM filtered;`,
+			start.toISOString(),
+			end.toISOString(),
+			effectiveType,
+			effectiveType
+		)
+		.then((row) => ({
+			total_credit: Number(row?.total_credit || 0),
+			total_payment: Number(row?.total_payment || 0),
+			net: Number(row?.net || 0),
+			transactions_count: Number(row?.transactions_count || 0),
+			active_customers: Number(row?.active_customers || 0),
+			collection_rate: Number(row?.collection_rate || 0),
+			average_transaction: Number(row?.average_transaction || 0),
+			top_debtor_name: row?.top_debtor_name || null,
+			top_debtor_due: Number(row?.top_debtor_due || 0),
+			most_active_customer_name: row?.most_active_customer_name || null,
+			most_active_customer_tx_count: Number(row?.most_active_customer_tx_count || 0),
+			transaction_type: effectiveType,
+		}));
+};
+
+export const getStockMovementCountInRange = ({ startDateIso, endDateIso } = {}) => {
+	const start = new Date(startDateIso);
+	const end = new Date(endDateIso);
+
+	if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+		return Promise.reject(new Error('Valid startDateIso and endDateIso are required.'));
+	}
+
+	if (start.getTime() > end.getTime()) {
+		return Promise.reject(new Error('startDateIso cannot be after endDateIso.'));
+	}
+
+	return db
+		.getFirstAsync(
+			`SELECT COUNT(id) AS movement_count
+			FROM stock_movements
+			WHERE datetime(created_at) >= datetime(?)
+				AND datetime(created_at) <= datetime(?);`,
+			start.toISOString(),
+			end.toISOString()
+		)
+		.then((row) => Number(row?.movement_count || 0));
+};
+
+export const getDashboardTopActiveCustomers = ({ startDateIso, endDateIso, transactionType = 'all', limit = 5 } = {}) => {
+	const start = new Date(startDateIso);
+	const end = new Date(endDateIso);
+	const normalizedType = typeof transactionType === 'string' ? transactionType.trim().toLowerCase() : 'all';
+	const effectiveType = BAKI_TRANSACTION_TYPES.has(normalizedType) ? normalizedType : 'all';
+	const normalizedLimit = Number(limit);
+	const effectiveLimit = Number.isInteger(normalizedLimit) && normalizedLimit > 0 ? normalizedLimit : 5;
+
+	if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+		return Promise.reject(new Error('Valid startDateIso and endDateIso are required.'));
+	}
+
+	if (start.getTime() > end.getTime()) {
+		return Promise.reject(new Error('startDateIso cannot be after endDateIso.'));
+	}
+
+	return db.getAllAsync(
+		`SELECT
+			t.customer_id,
+			c.name AS customer_name,
+			COUNT(t.id) AS tx_count,
+			ROUND(COALESCE(SUM(CASE WHEN t.type = 'credit' THEN t.amount_cents ELSE 0 END), 0) / 100.0, 2) AS credit_total,
+			ROUND(COALESCE(SUM(CASE WHEN t.type = 'payment' THEN t.amount_cents ELSE 0 END), 0) / 100.0, 2) AS payment_total
+		FROM baki_transactions t
+		JOIN customers c ON c.id = t.customer_id
+		WHERE datetime(t.created_at) >= datetime(?)
+			AND datetime(t.created_at) <= datetime(?)
+			AND (? = 'all' OR t.type = ?)
+		GROUP BY t.customer_id
+		ORDER BY tx_count DESC, t.customer_id ASC
+		LIMIT ?;`,
+		start.toISOString(),
+		end.toISOString(),
+		effectiveType,
+		effectiveType,
+		effectiveLimit
+	);
+};
+
 export const insertProduct = ({ name, quantity, price, expiryDate = null, lowStockThreshold = 5 }) => {
 	const normalizedName = typeof name === 'string' ? name.trim() : '';
 	const normalizedQuantity = Number(quantity);
