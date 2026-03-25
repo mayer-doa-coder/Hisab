@@ -17,14 +17,23 @@ import {
   fetchBakiWithCustomer,
   fetchCustomers,
   fetchProducts,
+  getExpiredProducts as dbGetExpiredProducts,
+  getExpiringSoonProducts as dbGetExpiringSoonProducts,
+  getLowStockProducts as dbGetLowStockProducts,
+  getProductSalesDailyAggregation as dbGetProductSalesDailyAggregation,
+  getStockMovements as dbGetStockMovements,
   insertProduct,
+  addStockMovement as dbAddStockMovement,
   updateBakiStatus as dbUpdateBakiStatus,
   updateCustomer as dbUpdateCustomer,
   updateProduct as dbUpdateProduct,
 } from './database/db';
 import BakiListScreen from './screens/BakiListScreen';
 import CustomerListScreen from './screens/CustomerListScreen';
+import ProductDetailsScreen from './screens/ProductDetailsScreen.js';
 import ProductListScreen from './screens/ProductListScreen';
+import StockMovementScreen from './screens/StockMovementScreen.js';
+import { createReorderPredictor } from './services/reorder/reorderSuggestionEngine.js';
 import { UI_COLORS } from './constants/ui-theme';
 
 const Tab = createBottomTabNavigator();
@@ -54,24 +63,53 @@ function BootLoading() {
 }
 
 function AppContent() {
+  const reorderPredictor = useMemo(() => createReorderPredictor('rule-based'), []);
+  const reorderRuleConfig = useMemo(
+    () => ({
+      windowDays: 30,
+      leadTimeDays: 3,
+      reviewPeriodDays: 7,
+      safetyDays: 2,
+      minOrderQuantity: 1,
+    }),
+    []
+  );
   const insets = useSafeAreaInsets();
   const [booting, setBooting] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [products, setProducts] = useState([]);
+  const [expiringSoonProducts, setExpiringSoonProducts] = useState([]);
+  const [expiredProducts, setExpiredProducts] = useState([]);
+  const [lowStockProducts, setLowStockProducts] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [bakiRows, setBakiRows] = useState([]);
+  const [reorderSuggestions, setReorderSuggestions] = useState([]);
 
   const loadAllData = useCallback(async () => {
-    const [productRows, customerRows, bakiHistoryRows] = await Promise.all([
+    const [productRows, customerRows, bakiHistoryRows, expiringSoonRows, expiredRows, lowStockRows, salesRows] = await Promise.all([
       fetchProducts(),
       fetchCustomers(),
       fetchBakiWithCustomer(),
+      dbGetExpiringSoonProducts(7),
+      dbGetExpiredProducts(),
+      dbGetLowStockProducts(),
+      dbGetProductSalesDailyAggregation({ days: reorderRuleConfig.windowDays }),
     ]);
 
+    const nextSuggestions = reorderPredictor.predict({
+      products: productRows,
+      salesRows,
+      config: reorderRuleConfig,
+    });
+
     setProducts(productRows);
+    setExpiringSoonProducts(expiringSoonRows);
+    setExpiredProducts(expiredRows);
+    setLowStockProducts(lowStockRows);
     setCustomers(customerRows);
     setBakiRows(bakiHistoryRows);
-  }, []);
+    setReorderSuggestions(nextSuggestions);
+  }, [reorderPredictor, reorderRuleConfig]);
 
   useEffect(() => {
     const boot = async () => {
@@ -98,8 +136,8 @@ function AppContent() {
   }, [loadAllData]);
 
   const addProduct = useCallback(
-    async ({ name, quantity, price }) => {
-      const saved = await insertProduct({ name, quantity, price });
+    async ({ name, quantity, price, expiryDate, lowStockThreshold }) => {
+      const saved = await insertProduct({ name, quantity, price, expiryDate, lowStockThreshold });
       await refreshAll();
       return saved;
     },
@@ -107,8 +145,8 @@ function AppContent() {
   );
 
   const updateProduct = useCallback(
-    async ({ id, name, quantity, price }) => {
-      const updated = await dbUpdateProduct({ id, name, quantity, price });
+    async ({ id, name, quantity, price, expiryDate, lowStockThreshold }) => {
+      const updated = await dbUpdateProduct({ id, name, quantity, price, expiryDate, lowStockThreshold });
       await refreshAll();
       return updated;
     },
@@ -123,6 +161,19 @@ function AppContent() {
     },
     [refreshAll]
   );
+
+  const addStockMovement = useCallback(
+    async ({ productId, movementType, quantity, note }) => {
+      const saved = await dbAddStockMovement({ productId, movementType, quantity, note });
+      await refreshAll();
+      return saved;
+    },
+    [refreshAll]
+  );
+
+  const getStockMovementHistory = useCallback(async ({ productId = null, limit = 100 } = {}) => {
+    return dbGetStockMovements({ productId, limit });
+  }, []);
 
   const addCustomer = useCallback(
     async ({ name, phone, address }) => {
@@ -183,12 +234,19 @@ function AppContent() {
       booting,
       refreshing,
       products,
+      expiringSoonProducts,
+      expiredProducts,
+      lowStockProducts,
+      reorderSuggestions,
+      reorderRuleConfig,
       customers,
       bakiRows,
       refreshAll,
       addProduct,
       updateProduct,
       deleteProduct,
+      addStockMovement,
+      getStockMovementHistory,
       addCustomer,
       updateCustomer,
       deleteCustomer,
@@ -200,12 +258,19 @@ function AppContent() {
       booting,
       refreshing,
       products,
+      expiringSoonProducts,
+      expiredProducts,
+      lowStockProducts,
+      reorderSuggestions,
+      reorderRuleConfig,
       customers,
       bakiRows,
       refreshAll,
       addProduct,
       updateProduct,
       deleteProduct,
+      addStockMovement,
+      getStockMovementHistory,
       addCustomer,
       updateCustomer,
       deleteCustomer,
@@ -261,6 +326,14 @@ function AppContent() {
                 return <MaterialIcons name="groups" size={size} color={color} />;
               }
 
+              if (route.name === 'Movement') {
+                return <MaterialIcons name="swap-horiz" size={size} color={color} />;
+              }
+
+              if (route.name === 'Details') {
+                return <MaterialIcons name="info-outline" size={size} color={color} />;
+              }
+
               return <MaterialIcons name="account-balance-wallet" size={size} color={color} />;
             },
           })}>
@@ -286,6 +359,22 @@ function AppContent() {
             options={{
               title: 'Baki',
               headerTitle: 'Baki List Manager',
+            }}
+          />
+          <Tab.Screen
+            name="Movement"
+            component={StockMovementScreen}
+            options={{
+              title: 'Movement',
+              headerTitle: 'Stock Movement',
+            }}
+          />
+          <Tab.Screen
+            name="Details"
+            component={ProductDetailsScreen}
+            options={{
+              title: 'Details',
+              headerTitle: 'Product Details',
             }}
           />
         </Tab.Navigator>

@@ -15,16 +15,33 @@ import {
 import { UI_COLORS } from '../constants/ui-theme';
 import { useAppData } from '../context/AppDataContext';
 import ProductForm from './products/ProductForm';
+import ProductExpiryAlerts from './products/ProductExpiryAlerts';
 import ProductListItem from './products/ProductListItem';
+import ProductLowStockAlerts from './products/ProductLowStockAlerts';
+import ProductReorderSuggestions from './products/ProductReorderSuggestions';
 import ProductSummaryCards from './products/ProductSummaryCards';
 
 export default function ProductListScreen() {
-  const { products, addProduct, updateProduct, deleteProduct, refreshAll, refreshing } = useAppData();
+  const {
+    products,
+    expiringSoonProducts,
+    expiredProducts,
+    lowStockProducts,
+    reorderSuggestions,
+    addProduct,
+    updateProduct,
+    deleteProduct,
+    refreshAll,
+    refreshing,
+  } = useAppData();
 
   const [name, setName] = useState('');
   const [quantity, setQuantity] = useState('');
   const [price, setPrice] = useState('');
+  const [lowStockThreshold, setLowStockThreshold] = useState('5');
+  const [expiryDate, setExpiryDate] = useState('');
   const [search, setSearch] = useState('');
+  const [lowStockOnly, setLowStockOnly] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState(null);
 
@@ -46,21 +63,26 @@ export default function ProductListScreen() {
   const filteredProducts = useMemo(() => {
     const query = search.trim().toLowerCase();
 
-    if (!query) {
-      return products;
-    }
-
     return products.filter((product) => {
       const byName = String(product.name || '').toLowerCase().includes(query);
       const byId = String(product.id).includes(query);
-      return byName || byId;
+      const quantity = Number(product.quantity || 0);
+      const threshold = Number.isFinite(Number(product.low_stock_threshold))
+        ? Math.max(0, Math.trunc(Number(product.low_stock_threshold)))
+        : 5;
+      const byLowStock = !lowStockOnly || quantity <= threshold;
+      const byQuery = !query || byName || byId;
+
+      return byQuery && byLowStock;
     });
-  }, [products, search]);
+  }, [products, search, lowStockOnly]);
 
   const resetForm = () => {
     setName('');
     setQuantity('');
     setPrice('');
+    setLowStockThreshold('5');
+    setExpiryDate('');
     setEditingId(null);
   };
 
@@ -76,8 +98,9 @@ export default function ProductListScreen() {
         await updateProduct({
           id: editingId,
           name,
-          quantity: Number(quantity),
           price: Number(price),
+          lowStockThreshold: Number(lowStockThreshold),
+          expiryDate,
         });
         Alert.alert('Success', 'Product updated successfully.');
       } else {
@@ -85,6 +108,8 @@ export default function ProductListScreen() {
           name,
           quantity: Number(quantity),
           price: Number(price),
+          lowStockThreshold: Number(lowStockThreshold),
+          expiryDate,
         });
         Alert.alert('Success', 'Product saved successfully.');
       }
@@ -102,6 +127,8 @@ export default function ProductListScreen() {
     setName(String(product.name || ''));
     setQuantity(String(product.quantity ?? ''));
     setPrice(String(product.price ?? ''));
+    setLowStockThreshold(String(product.low_stock_threshold ?? 5));
+    setExpiryDate(String(product.expiry_date || ''));
   };
 
   const handleDelete = (product) => {
@@ -151,18 +178,40 @@ export default function ProductListScreen() {
                 style={styles.input}
               />
 
+              <TouchableOpacity
+                style={[styles.filterToggle, lowStockOnly && styles.filterToggleActive]}
+                onPress={() => setLowStockOnly((prev) => !prev)}
+              >
+                <Text style={[styles.filterToggleText, lowStockOnly && styles.filterToggleTextActive]}>
+                  {lowStockOnly ? 'Showing: Low Stock Only' : 'Show Low Stock Only'}
+                </Text>
+              </TouchableOpacity>
+
               <ProductForm
                 editingId={editingId}
                 name={name}
                 quantity={quantity}
                 price={price}
+                lowStockThreshold={lowStockThreshold}
+                expiryDate={expiryDate}
                 setName={setName}
                 setQuantity={setQuantity}
                 setPrice={setPrice}
+                setLowStockThreshold={setLowStockThreshold}
+                setExpiryDate={setExpiryDate}
                 onSave={handleSave}
                 onCancel={resetForm}
                 saving={saving}
                 refreshing={refreshing}
+              />
+
+              <ProductLowStockAlerts lowStockProducts={lowStockProducts} />
+
+              <ProductReorderSuggestions suggestions={reorderSuggestions} />
+
+              <ProductExpiryAlerts
+                expiringSoonProducts={expiringSoonProducts}
+                expiredProducts={expiredProducts}
               />
 
               <View style={styles.headerRow}>
@@ -196,6 +245,25 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: UI_COLORS.textPrimary,
     backgroundColor: UI_COLORS.surface,
+  },
+  filterToggle: {
+    marginTop: 8,
+    alignSelf: 'flex-start',
+    backgroundColor: '#F1F5F9',
+    borderRadius: 99,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+  },
+  filterToggleActive: {
+    backgroundColor: '#FFF4E5',
+  },
+  filterToggleText: {
+    color: UI_COLORS.textSecondary,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  filterToggleTextActive: {
+    color: '#B45309',
   },
   headerRow: {
     marginTop: 16,

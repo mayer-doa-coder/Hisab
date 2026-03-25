@@ -1,0 +1,23 @@
+# Root-level ignores for monorepo
+
+# Dependencies
+node_modules/
+backend/node_modules/
+frontend/hisab-app/node_modules/
+
+# Build and generated
+.expo/
+frontend/hisab-app/.expo/
+dist/
+coverage/
+
+# Env and local files
+.env
+.env.*
+!.env.example
+*.log
+
+# OS/Editor
+.DS_Store
+Thumbs.db
+.vscode/
