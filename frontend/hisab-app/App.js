@@ -28,6 +28,7 @@ import {
   getBakiKpiSummary as dbGetBakiKpiSummary,
   getDashboardKpiSummary as dbGetDashboardKpiSummary,
   getDashboardTopActiveCustomers as dbGetDashboardTopActiveCustomers,
+  getAuditLogs as dbGetAuditLogs,
   getProductSalesDailyAggregation as dbGetProductSalesDailyAggregation,
   getStockMovements as dbGetStockMovements,
   getStockMovementCountInRange as dbGetStockMovementCountInRange,
@@ -43,6 +44,7 @@ import ProductDetailsScreen from './screens/ProductDetailsScreen.js';
 import ProductListScreen from './screens/ProductListScreen';
 import StockMovementScreen from './screens/StockMovementScreen.js';
 import DashboardScreen from './screens/DashboardScreen';
+import AuditHistoryScreen from './screens/AuditHistoryScreen';
 import LoginScreen from './screens/auth/LoginScreen';
 import SignupScreen from './screens/auth/SignupScreen';
 import { applyCustomerRiskClassification, createCustomerRiskModel } from './services/customers/customerRiskEngine';
@@ -137,6 +139,10 @@ function MainTabs() {
             return <MaterialIcons name="dashboard" size={size} color={color} />;
           }
 
+          if (route.name === 'Audit') {
+            return <MaterialIcons name="history" size={size} color={color} />;
+          }
+
           return <MaterialIcons name="account-balance-wallet" size={size} color={color} />;
         },
       })}>
@@ -146,6 +152,14 @@ function MainTabs() {
         options={{
           title: 'Dashboard',
           headerTitle: 'Business Dashboard',
+        }}
+      />
+      <Tab.Screen
+        name="Audit"
+        component={AuditHistoryScreen}
+        options={{
+          title: 'Audit',
+          headerTitle: 'Audit History',
         }}
       />
       <Tab.Screen
@@ -439,6 +453,10 @@ function MainDataShell() {
     return dbGetStockMovementCountInRange({ startDateIso, endDateIso });
   }, []);
 
+  const getAuditLogs = useCallback(async ({ entityType, action, searchText, limit } = {}) => {
+    return dbGetAuditLogs({ entityType, action, searchText, limit });
+  }, []);
+
   const contextValue = useMemo(
     () => ({
       booting,
@@ -467,6 +485,7 @@ function MainDataShell() {
       getDashboardKpiSummary,
       getDashboardTopActiveCustomers,
       getStockMovementCountInRange,
+      getAuditLogs,
     }),
     [
       booting,
@@ -495,6 +514,7 @@ function MainDataShell() {
       getDashboardKpiSummary,
       getDashboardTopActiveCustomers,
       getStockMovementCountInRange,
+      getAuditLogs,
     ]
   );
 
