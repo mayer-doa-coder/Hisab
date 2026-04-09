@@ -325,6 +325,60 @@ const fromMoneyCents = (value) => {
 	return Math.round(cents) / 100;
 };
 
+const buildLocalClientRefId = ({ entityType, localId }) => `local:${String(entityType || '').trim()}:${String(localId || '').trim()}`;
+
+const buildEntitySyncIdempotencyKey = ({ entityType, operation, localId, updatedAt }) => {
+	const safeEntity = String(entityType || '').trim().toLowerCase() || 'entity';
+	const safeOperation = String(operation || '').trim().toLowerCase() || 'upsert';
+	const safeLocalId = String(localId || '').trim() || 'na';
+	const safeUpdatedAt = String(updatedAt || '').trim() || new Date().toISOString();
+	return `hsb_${safeEntity}_${safeOperation}_${safeLocalId}_${hashString(`${safeLocalId}:${safeUpdatedAt}`)}`;
+};
+
+const enqueueEntitySyncChange = async ({
+	entityType,
+	operation,
+	localId,
+	clientRefId,
+	serverId = null,
+	version = 1,
+	updatedAt,
+	data,
+}) => {
+	const normalizedEntityType = String(entityType || '').trim().toLowerCase();
+	const normalizedOperation = String(operation || '').trim().toLowerCase();
+	if (!normalizedEntityType || !normalizedOperation) {
+		return;
+	}
+
+	const effectiveUpdatedAt = updatedAt || new Date().toISOString();
+	const effectiveClientRefId = String(clientRefId || '').trim() || buildLocalClientRefId({
+		entityType: normalizedEntityType,
+		localId,
+	});
+	const idempotencyKey = buildEntitySyncIdempotencyKey({
+		entityType: normalizedEntityType,
+		operation: normalizedOperation,
+		localId,
+		updatedAt: effectiveUpdatedAt,
+	});
+
+	await enqueuePendingSyncItem({
+		entityType: normalizedEntityType,
+		operation: normalizedOperation,
+		payload: {
+			localId: Number(localId),
+			id: effectiveClientRefId,
+			clientRefId: effectiveClientRefId,
+			serverId: serverId ? String(serverId) : null,
+			version: Number.isInteger(Number(version)) ? Number(version) : 1,
+			updatedAt: effectiveUpdatedAt,
+			idempotencyKey,
+			data: data || {},
+		},
+	});
+};
+
 export const createTables = async () => {
 	await db.execAsync(`CREATE TABLE IF NOT EXISTS products (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -333,6 +387,11 @@ export const createTables = async () => {
 		quantity INTEGER NOT NULL DEFAULT 0 CHECK (quantity >= 0),
 		low_stock_threshold INTEGER NOT NULL DEFAULT 5 CHECK (low_stock_threshold >= 0),
 		price REAL NOT NULL DEFAULT 0 CHECK (price >= 0),
+		server_id TEXT,
+		client_ref_id TEXT,
+		sync_version INTEGER NOT NULL DEFAULT 1,
+		sync_updated_at DATETIME,
+		deleted_at DATETIME,
 		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 		FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 	);`);
@@ -343,6 +402,11 @@ export const createTables = async () => {
 		name TEXT NOT NULL CHECK (length(trim(name)) > 0),
 		phone TEXT,
 		address TEXT,
+		server_id TEXT,
+		client_ref_id TEXT,
+		sync_version INTEGER NOT NULL DEFAULT 1,
+		sync_updated_at DATETIME,
+		deleted_at DATETIME,
 		created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 		updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 		FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -379,13 +443,15 @@ export const createTables = async () => {
 
 	await db.execAsync(`CREATE TABLE IF NOT EXISTS pending_sync_queue (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		user_id INTEGER,
 		entity_type TEXT NOT NULL,
 		operation TEXT NOT NULL,
 		payload_json TEXT,
 		attempts INTEGER NOT NULL DEFAULT 0,
 		last_error TEXT,
 		created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-		updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+		updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 	);`);
 
 	await db.execAsync(`CREATE TABLE IF NOT EXISTS baki_entries (
@@ -413,6 +479,11 @@ export const createTables = async () => {
 		payment_method TEXT,
 		legacy_entry_id INTEGER,
 		legacy_kind TEXT CHECK (legacy_kind IN ('credit', 'payment')),
+		server_id TEXT,
+		client_ref_id TEXT,
+		sync_version INTEGER NOT NULL DEFAULT 1,
+		sync_updated_at DATETIME,
+		deleted_at DATETIME,
 		created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 		FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
 		FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
@@ -427,6 +498,11 @@ export const createTables = async () => {
 		quantity_before INTEGER NOT NULL,
 		quantity_after INTEGER NOT NULL CHECK (quantity_after >= 0),
 		note TEXT,
+		server_id TEXT,
+		client_ref_id TEXT,
+		sync_version INTEGER NOT NULL DEFAULT 1,
+		sync_updated_at DATETIME,
+		deleted_at DATETIME,
 		created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 		FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
 		FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
@@ -441,6 +517,14 @@ export const createTables = async () => {
 		metadata_json TEXT,
 		notes TEXT,
 		created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+	);`);
+
+	await db.execAsync(`CREATE TABLE IF NOT EXISTS sync_state (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		user_id INTEGER NOT NULL UNIQUE,
+		last_sync_at DATETIME,
+		updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 		FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 	);`);
 
@@ -475,6 +559,11 @@ export const createTables = async () => {
 	await ensureColumn('products', 'created_at', `ALTER TABLE products ADD COLUMN created_at DATETIME;`);
 	await ensureColumn('products', 'expiry_date', `ALTER TABLE products ADD COLUMN expiry_date TEXT;`);
 	await ensureColumn('products', 'user_id', `ALTER TABLE products ADD COLUMN user_id INTEGER;`);
+	await ensureColumn('products', 'server_id', `ALTER TABLE products ADD COLUMN server_id TEXT;`);
+	await ensureColumn('products', 'client_ref_id', `ALTER TABLE products ADD COLUMN client_ref_id TEXT;`);
+	await ensureColumn('products', 'sync_version', `ALTER TABLE products ADD COLUMN sync_version INTEGER NOT NULL DEFAULT 1;`);
+	await ensureColumn('products', 'sync_updated_at', `ALTER TABLE products ADD COLUMN sync_updated_at DATETIME;`);
+	await ensureColumn('products', 'deleted_at', `ALTER TABLE products ADD COLUMN deleted_at DATETIME;`);
 
 	await ensureColumn('customers', 'phone', `ALTER TABLE customers ADD COLUMN phone TEXT;`);
 	await ensureColumn('customers', 'address', `ALTER TABLE customers ADD COLUMN address TEXT;`);
@@ -489,6 +578,11 @@ export const createTables = async () => {
 		`ALTER TABLE customers ADD COLUMN updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP;`
 	);
 	await ensureColumn('customers', 'user_id', `ALTER TABLE customers ADD COLUMN user_id INTEGER;`);
+	await ensureColumn('customers', 'server_id', `ALTER TABLE customers ADD COLUMN server_id TEXT;`);
+	await ensureColumn('customers', 'client_ref_id', `ALTER TABLE customers ADD COLUMN client_ref_id TEXT;`);
+	await ensureColumn('customers', 'sync_version', `ALTER TABLE customers ADD COLUMN sync_version INTEGER NOT NULL DEFAULT 1;`);
+	await ensureColumn('customers', 'sync_updated_at', `ALTER TABLE customers ADD COLUMN sync_updated_at DATETIME;`);
+	await ensureColumn('customers', 'deleted_at', `ALTER TABLE customers ADD COLUMN deleted_at DATETIME;`);
 
 	await ensureColumn('users', 'last_login_at', `ALTER TABLE users ADD COLUMN last_login_at DATETIME;`);
 	await ensureColumn('auth_sessions', 'access_token', `ALTER TABLE auth_sessions ADD COLUMN access_token TEXT;`);
@@ -515,14 +609,35 @@ export const createTables = async () => {
 	await ensureColumn('baki_entries', 'updated_at', `ALTER TABLE baki_entries ADD COLUMN updated_at DATETIME;`);
 	await ensureColumn('baki_entries', 'user_id', `ALTER TABLE baki_entries ADD COLUMN user_id INTEGER;`);
 	await ensureColumn('baki_transactions', 'user_id', `ALTER TABLE baki_transactions ADD COLUMN user_id INTEGER;`);
+	await ensureColumn('baki_transactions', 'server_id', `ALTER TABLE baki_transactions ADD COLUMN server_id TEXT;`);
+	await ensureColumn('baki_transactions', 'client_ref_id', `ALTER TABLE baki_transactions ADD COLUMN client_ref_id TEXT;`);
+	await ensureColumn('baki_transactions', 'sync_version', `ALTER TABLE baki_transactions ADD COLUMN sync_version INTEGER NOT NULL DEFAULT 1;`);
+	await ensureColumn('baki_transactions', 'sync_updated_at', `ALTER TABLE baki_transactions ADD COLUMN sync_updated_at DATETIME;`);
+	await ensureColumn('baki_transactions', 'deleted_at', `ALTER TABLE baki_transactions ADD COLUMN deleted_at DATETIME;`);
 	await ensureColumn('stock_movements', 'user_id', `ALTER TABLE stock_movements ADD COLUMN user_id INTEGER;`);
+	await ensureColumn('stock_movements', 'server_id', `ALTER TABLE stock_movements ADD COLUMN server_id TEXT;`);
+	await ensureColumn('stock_movements', 'client_ref_id', `ALTER TABLE stock_movements ADD COLUMN client_ref_id TEXT;`);
+	await ensureColumn('stock_movements', 'sync_version', `ALTER TABLE stock_movements ADD COLUMN sync_version INTEGER NOT NULL DEFAULT 1;`);
+	await ensureColumn('stock_movements', 'sync_updated_at', `ALTER TABLE stock_movements ADD COLUMN sync_updated_at DATETIME;`);
+	await ensureColumn('stock_movements', 'deleted_at', `ALTER TABLE stock_movements ADD COLUMN deleted_at DATETIME;`);
+	await ensureColumn('pending_sync_queue', 'user_id', `ALTER TABLE pending_sync_queue ADD COLUMN user_id INTEGER;`);
 
 	await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_products_user_id ON products(user_id);`);
 	await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_customers_user_id ON customers(user_id);`);
+	await db.execAsync(`CREATE UNIQUE INDEX IF NOT EXISTS uq_products_user_client_ref_id ON products(user_id, client_ref_id);`);
+	await db.execAsync(`CREATE UNIQUE INDEX IF NOT EXISTS uq_customers_user_client_ref_id ON customers(user_id, client_ref_id);`);
+	await db.execAsync(`CREATE UNIQUE INDEX IF NOT EXISTS uq_baki_transactions_user_client_ref_id ON baki_transactions(user_id, client_ref_id);`);
+	await db.execAsync(`CREATE UNIQUE INDEX IF NOT EXISTS uq_stock_movements_user_client_ref_id ON stock_movements(user_id, client_ref_id);`);
+	await db.execAsync(`CREATE UNIQUE INDEX IF NOT EXISTS uq_products_user_server_id ON products(user_id, server_id);`);
+	await db.execAsync(`CREATE UNIQUE INDEX IF NOT EXISTS uq_customers_user_server_id ON customers(user_id, server_id);`);
+	await db.execAsync(`CREATE UNIQUE INDEX IF NOT EXISTS uq_baki_transactions_user_server_id ON baki_transactions(user_id, server_id);`);
+	await db.execAsync(`CREATE UNIQUE INDEX IF NOT EXISTS uq_stock_movements_user_server_id ON stock_movements(user_id, server_id);`);
 	await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_baki_entries_user_id ON baki_entries(user_id);`);
 	await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_baki_transactions_user_id ON baki_transactions(user_id);`);
 	await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_stock_movements_user_id ON stock_movements(user_id);`);
+	await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_pending_sync_queue_user_created_at ON pending_sync_queue(user_id, created_at ASC);`);
 	await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_audit_logs_user_created_at ON audit_logs(user_id, created_at DESC);`);
+	await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_sync_state_user_id ON sync_state(user_id);`);
 
 	await db.execAsync(`UPDATE products
 		SET created_at = COALESCE(created_at, datetime('now'))
@@ -652,6 +767,7 @@ export const insertCustomer = async ({ name, phone = null, address = null }) => 
 	const normalizedName = typeof name === 'string' ? name.trim() : '';
 	const normalizedPhone = typeof phone === 'string' ? phone.trim() : null;
 	const normalizedAddress = typeof address === 'string' ? address.trim() : null;
+	const syncUpdatedAt = new Date().toISOString();
 
 	if (!normalizedName) {
 		return Promise.reject(new Error('Customer name is required.'));
@@ -660,13 +776,44 @@ export const insertCustomer = async ({ name, phone = null, address = null }) => 
 	const userId = await getActiveScopedUserId();
 
 	const result = await db.runAsync(
-		`INSERT INTO customers (user_id, name, phone, address)
-		 VALUES (?, ?, ?, ?);`,
+		`INSERT INTO customers (
+			user_id,
+			name,
+			phone,
+			address,
+			client_ref_id,
+			sync_version,
+			sync_updated_at,
+			deleted_at
+		)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, NULL);`,
 		userId,
 		normalizedName,
 		normalizedPhone || null,
-		normalizedAddress || null
+		normalizedAddress || null,
+		null,
+		1,
+		syncUpdatedAt
 	);
+
+	const localId = Number(result.lastInsertRowId);
+	const clientRefId = buildLocalClientRefId({ entityType: 'customer', localId });
+	await db.runAsync(`UPDATE customers SET client_ref_id = ? WHERE id = ?;`, clientRefId, localId);
+
+	await enqueueEntitySyncChange({
+		entityType: 'customer',
+		operation: 'upsert',
+		localId,
+		clientRefId,
+		version: 1,
+		updatedAt: syncUpdatedAt,
+		data: {
+			name: normalizedName,
+			phone: normalizedPhone || null,
+			address: normalizedAddress || null,
+			deletedAt: null,
+		},
+	});
 
 	void logAudit({
 		userId,
@@ -684,7 +831,7 @@ export const insertCustomer = async ({ name, phone = null, address = null }) => 
 	});
 
 	return {
-		id: result.lastInsertRowId,
+		id: localId,
 		name: normalizedName,
 		phone: normalizedPhone || null,
 		address: normalizedAddress || null,
@@ -880,6 +1027,7 @@ export const getCustomerTotalDue = async (customerId) => {
 
 const insertBakiTransaction = async ({ customerId, type, amount, note = null, paymentMethod = null }) => {
 	const userId = await getActiveScopedUserId();
+	const syncUpdatedAt = new Date().toISOString();
 	const normalizedCustomerId = Number(customerId);
 	const normalizedType = typeof type === 'string' ? type.trim().toLowerCase() : '';
 	const normalizedNote = typeof note === 'string' ? note.trim() : null;
@@ -902,7 +1050,7 @@ const insertBakiTransaction = async ({ customerId, type, amount, note = null, pa
 
 	try {
 		const customer = await db.getFirstAsync(
-			`SELECT id FROM customers WHERE id = ? AND user_id = ?;`,
+			`SELECT id, server_id, client_ref_id FROM customers WHERE id = ? AND user_id = ?;`,
 			normalizedCustomerId,
 			userId
 		);
@@ -938,15 +1086,53 @@ const insertBakiTransaction = async ({ customerId, type, amount, note = null, pa
 		}
 
 		const result = await db.runAsync(
-			`INSERT INTO baki_transactions (user_id, customer_id, type, amount_cents, note, payment_method)
-			 VALUES (?, ?, ?, ?, ?, ?);`,
+			`INSERT INTO baki_transactions (
+				user_id,
+				customer_id,
+				type,
+				amount_cents,
+				note,
+				payment_method,
+				client_ref_id,
+				sync_version,
+				sync_updated_at,
+				deleted_at
+			)
+			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL);`,
 			userId,
 			normalizedCustomerId,
 			normalizedType,
 			amountCents,
 			normalizedNote || null,
-			normalizedType === 'payment' ? normalizedPaymentMethod || 'cash' : null
+			normalizedType === 'payment' ? normalizedPaymentMethod || 'cash' : null,
+			null,
+			1,
+			syncUpdatedAt
 		);
+
+		const localId = Number(result.lastInsertRowId);
+		const clientRefId = buildLocalClientRefId({ entityType: 'baki_entry', localId });
+		await db.runAsync(`UPDATE baki_transactions SET client_ref_id = ? WHERE id = ?;`, clientRefId, localId);
+
+		await enqueueEntitySyncChange({
+			entityType: 'baki_entry',
+			operation: 'upsert',
+			localId,
+			clientRefId,
+			version: 1,
+			updatedAt: syncUpdatedAt,
+			data: {
+				type: normalizedType,
+				amount: fromMoneyCents(amountCents),
+				note: normalizedNote || null,
+				paymentMethod: normalizedType === 'payment' ? normalizedPaymentMethod || 'cash' : null,
+				customerId: Number(customer.id),
+				customerServerId: customer.server_id || null,
+				customerClientRefId: customer.client_ref_id || buildLocalClientRefId({ entityType: 'customer', localId: Number(customer.id) }),
+				occurredAt: syncUpdatedAt,
+				deletedAt: null,
+			},
+		});
 
 		void logAudit({
 			userId,
@@ -968,7 +1154,7 @@ const insertBakiTransaction = async ({ customerId, type, amount, note = null, pa
 		await db.execAsync('COMMIT;');
 
 		return {
-			id: result.lastInsertRowId,
+			id: localId,
 			user_id: userId,
 			customer_id: normalizedCustomerId,
 			type: normalizedType,
@@ -1666,10 +1852,17 @@ export const enqueuePendingSyncItem = async ({ entityType, operation, payload = 
 	}
 
 	const payloadJson = payload === null || payload === undefined ? null : JSON.stringify(payload);
+	let scopedUserId = null;
+	try {
+		scopedUserId = await getActiveScopedUserId();
+	} catch {
+		scopedUserId = null;
+	}
 
 	const result = await db.runAsync(
-		`INSERT INTO pending_sync_queue (entity_type, operation, payload_json)
-		 VALUES (?, ?, ?);`,
+		`INSERT INTO pending_sync_queue (user_id, entity_type, operation, payload_json)
+		 VALUES (?, ?, ?, ?);`,
+		scopedUserId,
 		normalizedEntityType,
 		normalizedOperation,
 		payloadJson
@@ -1678,15 +1871,48 @@ export const enqueuePendingSyncItem = async ({ entityType, operation, payload = 
 	return Number(result?.lastInsertRowId || 0);
 };
 
-export const getPendingSyncItems = async ({ limit = 50 } = {}) => {
+export const getPendingSyncItems = async ({
+	limit = 50,
+	forCurrentUser = false,
+	entityTypes = null,
+	excludeEntityTypes = null,
+} = {}) => {
 	const normalizedLimit = Number(limit);
 	const effectiveLimit = Number.isInteger(normalizedLimit) && normalizedLimit > 0 ? normalizedLimit : 50;
+	const where = [];
+	const params = [];
+
+	if (forCurrentUser) {
+		const userId = await getActiveScopedUserId();
+		where.push(`(user_id IS NULL OR user_id = ?)`);
+		params.push(userId);
+	}
+
+	if (Array.isArray(entityTypes) && entityTypes.length) {
+		const normalizedEntityTypes = entityTypes.map((item) => String(item || '').trim()).filter(Boolean);
+		if (normalizedEntityTypes.length) {
+			where.push(`entity_type IN (${normalizedEntityTypes.map(() => '?').join(', ')})`);
+			params.push(...normalizedEntityTypes);
+		}
+	}
+
+	if (Array.isArray(excludeEntityTypes) && excludeEntityTypes.length) {
+		const normalizedExcluded = excludeEntityTypes.map((item) => String(item || '').trim()).filter(Boolean);
+		if (normalizedExcluded.length) {
+			where.push(`entity_type NOT IN (${normalizedExcluded.map(() => '?').join(', ')})`);
+			params.push(...normalizedExcluded);
+		}
+	}
+
+	const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
 
 	const rows = await db.getAllAsync(
-		`SELECT id, entity_type, operation, payload_json, attempts, last_error, created_at, updated_at
+		`SELECT id, user_id, entity_type, operation, payload_json, attempts, last_error, created_at, updated_at
 		 FROM pending_sync_queue
+		 ${whereSql}
 		 ORDER BY datetime(created_at) ASC, id ASC
 		 LIMIT ?;`,
+		...params,
 		effectiveLimit
 	);
 
@@ -1702,6 +1928,7 @@ export const getPendingSyncItems = async ({ limit = 50 } = {}) => {
 
 		return {
 			id: Number(row.id),
+			user_id: row.user_id === null || row.user_id === undefined ? null : Number(row.user_id),
 			entity_type: String(row.entity_type || ''),
 			operation: String(row.operation || ''),
 			payload,
@@ -1740,6 +1967,37 @@ export const markPendingSyncItemFailed = async ({ id, errorMessage = null } = {}
 	);
 
 	return Number(result?.changes || 0);
+};
+
+export const getLastSyncAt = async ({ userId = null } = {}) => {
+	const effectiveUserId = Number.isInteger(Number(userId)) && Number(userId) > 0 ? Number(userId) : await getActiveScopedUserId();
+	const row = await db.getFirstAsync(
+		`SELECT last_sync_at
+		 FROM sync_state
+		 WHERE user_id = ?
+		 LIMIT 1;`,
+		effectiveUserId
+	);
+
+	return row?.last_sync_at || null;
+};
+
+export const setLastSyncAt = async ({ userId = null, lastSyncAt = null } = {}) => {
+	const effectiveUserId = Number.isInteger(Number(userId)) && Number(userId) > 0 ? Number(userId) : await getActiveScopedUserId();
+	const normalizedLastSyncAt = lastSyncAt ? String(lastSyncAt) : null;
+
+	await db.runAsync(
+		`INSERT INTO sync_state (user_id, last_sync_at, updated_at)
+		 VALUES (?, ?, datetime('now'))
+		 ON CONFLICT(user_id)
+		 DO UPDATE SET
+			last_sync_at = excluded.last_sync_at,
+			updated_at = datetime('now');`,
+		effectiveUserId,
+		normalizedLastSyncAt
+	);
+
+	return normalizedLastSyncAt;
 };
 
 export const signupUser = async ({ email, password, rememberMe = false } = {}) => {
@@ -1946,6 +2204,7 @@ export const logoutCurrentUser = async ({ sessionToken } = {}) => {
 export const insertProduct = ({ name, quantity, price, expiryDate = null, lowStockThreshold = 5 }) => {
 	const run = async () => {
 		const userId = await getActiveScopedUserId();
+		const syncUpdatedAt = new Date().toISOString();
 	const normalizedName = typeof name === 'string' ? name.trim() : '';
 	const normalizedQuantity = Number(quantity);
 	const normalizedPrice = Number(price);
@@ -1969,15 +2228,50 @@ export const insertProduct = ({ name, quantity, price, expiryDate = null, lowSto
 	}
 
 		const result = await db.runAsync(
-			`INSERT INTO products (user_id, name, quantity, price, expiry_date, low_stock_threshold)
-			 VALUES (?, ?, ?, ?, ?, ?);`,
+			`INSERT INTO products (
+				user_id,
+				name,
+				quantity,
+				price,
+				expiry_date,
+				low_stock_threshold,
+				client_ref_id,
+				sync_version,
+				sync_updated_at,
+				deleted_at
+			)
+			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL);`,
 			userId,
 			normalizedName,
 			normalizedQuantity,
 			normalizedPrice,
 			normalizedExpiryDate,
-			normalizedLowStockThreshold
+			normalizedLowStockThreshold,
+			null,
+			1,
+			syncUpdatedAt
 		);
+
+		const localId = Number(result.lastInsertRowId);
+		const clientRefId = buildLocalClientRefId({ entityType: 'product', localId });
+		await db.runAsync(`UPDATE products SET client_ref_id = ? WHERE id = ?;`, clientRefId, localId);
+
+		await enqueueEntitySyncChange({
+			entityType: 'product',
+			operation: 'upsert',
+			localId,
+			clientRefId,
+			version: 1,
+			updatedAt: syncUpdatedAt,
+			data: {
+				name: normalizedName,
+				quantity: normalizedQuantity,
+				price: normalizedPrice,
+				lowStockThreshold: normalizedLowStockThreshold,
+				expiryDate: normalizedExpiryDate,
+				deletedAt: null,
+			},
+		});
 
 		void logAudit({
 			userId,
@@ -1997,7 +2291,7 @@ export const insertProduct = ({ name, quantity, price, expiryDate = null, lowSto
 		});
 
 		return {
-			id: result.lastInsertRowId,
+			id: localId,
 			name: normalizedName,
 			quantity: normalizedQuantity,
 			price: normalizedPrice,
@@ -2011,6 +2305,7 @@ export const insertProduct = ({ name, quantity, price, expiryDate = null, lowSto
 
 export const updateProduct = async ({ id, name, quantity, price, expiryDate = null, lowStockThreshold = 5 }) => {
 	const userId = await getActiveScopedUserId();
+	const syncUpdatedAt = new Date().toISOString();
 	const normalizedId = Number(id);
 	const normalizedName = typeof name === 'string' ? name.trim() : '';
 	const normalizedPrice = Number(price);
@@ -2034,7 +2329,9 @@ export const updateProduct = async ({ id, name, quantity, price, expiryDate = nu
 	}
 
 	const existing = await db.getFirstAsync(
-		`SELECT quantity, name, price, expiry_date, low_stock_threshold FROM products WHERE id = ? AND user_id = ?;`,
+		`SELECT quantity, name, price, expiry_date, low_stock_threshold, client_ref_id, server_id, sync_version
+		 FROM products
+		 WHERE id = ? AND user_id = ?;`,
 		normalizedId,
 		userId
 	);
@@ -2052,23 +2349,55 @@ export const updateProduct = async ({ id, name, quantity, price, expiryDate = nu
 		throw new Error('Quantity must be a non-negative integer.');
 	}
 
+	const nextSyncVersion = Number(existing.sync_version || 0) + 1;
+	const clientRefId = String(existing.client_ref_id || '').trim() || buildLocalClientRefId({ entityType: 'product', localId: normalizedId });
+
 	return db
 		.runAsync(
 			`UPDATE products
-			 SET name = ?, quantity = ?, price = ?, expiry_date = ?, low_stock_threshold = ?
+			 SET name = ?,
+				 quantity = ?,
+				 price = ?,
+				 expiry_date = ?,
+				 low_stock_threshold = ?,
+				 client_ref_id = ?,
+				 sync_version = ?,
+				 sync_updated_at = ?,
+				 deleted_at = NULL
 			 WHERE id = ? AND user_id = ?;`,
 			normalizedName,
 			normalizedQuantity,
 			normalizedPrice,
 			normalizedExpiryDate,
 			normalizedLowStockThreshold,
+			clientRefId,
+			nextSyncVersion,
+			syncUpdatedAt,
 			normalizedId,
 			userId
 		)
-		.then((result) => {
+		.then(async (result) => {
 			if (!result.changes) {
 				throw new Error('Product not found.');
 			}
+
+			await enqueueEntitySyncChange({
+				entityType: 'product',
+				operation: 'upsert',
+				localId: normalizedId,
+				clientRefId,
+				serverId: existing.server_id || null,
+				version: nextSyncVersion,
+				updatedAt: syncUpdatedAt,
+				data: {
+					name: normalizedName,
+					quantity: normalizedQuantity,
+					price: normalizedPrice,
+					lowStockThreshold: normalizedLowStockThreshold,
+					expiryDate: normalizedExpiryDate,
+					deletedAt: null,
+				},
+			});
 
 			return {
 				id: normalizedId,
@@ -2084,16 +2413,43 @@ export const updateProduct = async ({ id, name, quantity, price, expiryDate = nu
 export const deleteProduct = (id) => {
 	const run = async () => {
 		const userId = await getActiveScopedUserId();
+		const syncUpdatedAt = new Date().toISOString();
 	const normalizedId = Number(id);
 
 	if (!Number.isInteger(normalizedId) || normalizedId <= 0) {
 		return Promise.reject(new Error('Valid product id is required.'));
 	}
 
-		return db.runAsync(`DELETE FROM products WHERE id = ? AND user_id = ?;`, normalizedId, userId).then((result) => {
+		const existing = await db.getFirstAsync(
+			`SELECT id, server_id, client_ref_id, sync_version FROM products WHERE id = ? AND user_id = ?;`,
+			normalizedId,
+			userId
+		);
+
+		if (!existing) {
+			throw new Error('Product not found.');
+		}
+
+		const clientRefId = String(existing.client_ref_id || '').trim() || buildLocalClientRefId({ entityType: 'product', localId: normalizedId });
+		const nextSyncVersion = Number(existing.sync_version || 0) + 1;
+
+		return db.runAsync(`DELETE FROM products WHERE id = ? AND user_id = ?;`, normalizedId, userId).then(async (result) => {
 		if (!result.changes) {
 			throw new Error('Product not found.');
 		}
+
+		await enqueueEntitySyncChange({
+			entityType: 'product',
+			operation: 'delete',
+			localId: normalizedId,
+			clientRefId,
+			serverId: existing.server_id || null,
+			version: nextSyncVersion,
+			updatedAt: syncUpdatedAt,
+			data: {
+				deletedAt: syncUpdatedAt,
+			},
+		});
 
 		void logAudit({
 			userId,
@@ -2194,6 +2550,7 @@ export const getLowStockProducts = async () => {
 
 export const createStockMovement = async ({ productId, movementType, quantity, note = null }) => {
 	const userId = await getActiveScopedUserId();
+	const syncUpdatedAt = new Date().toISOString();
 	const normalizedProductId = Number(productId);
 	const normalizedMovementType = typeof movementType === 'string' ? movementType.trim().toLowerCase() : '';
 	const normalizedQuantity = Number(quantity);
@@ -2219,7 +2576,9 @@ export const createStockMovement = async ({ productId, movementType, quantity, n
 
 	try {
 		const existing = await db.getFirstAsync(
-			`SELECT id, quantity FROM products WHERE id = ? AND user_id = ?;`,
+			`SELECT id, name, quantity, price, expiry_date, low_stock_threshold, server_id, client_ref_id
+			 FROM products
+			 WHERE id = ? AND user_id = ?;`,
 			normalizedProductId,
 			userId
 		);
@@ -2248,19 +2607,87 @@ export const createStockMovement = async ({ productId, movementType, quantity, n
 				quantity_delta,
 				quantity_before,
 				quantity_after,
-				note
+				note,
+				client_ref_id,
+				sync_version,
+				sync_updated_at,
+				deleted_at
 			)
-			VALUES (?, ?, ?, ?, ?, ?, ?);`,
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL);`,
 			userId,
 			normalizedProductId,
 			normalizedMovementType,
 			quantityDelta,
 			currentQuantity,
 			nextQuantity,
-			normalizedNote || null
+			normalizedNote || null,
+			null,
+			1,
+			syncUpdatedAt
 		);
 
-		await db.runAsync(`UPDATE products SET quantity = ? WHERE id = ?;`, nextQuantity, normalizedProductId);
+		const movementLocalId = Number(insertResult.lastInsertRowId);
+		const movementClientRefId = buildLocalClientRefId({ entityType: 'inventory_movement', localId: movementLocalId });
+		await db.runAsync(`UPDATE stock_movements SET client_ref_id = ? WHERE id = ?;`, movementClientRefId, movementLocalId);
+
+		const productClientRefId = String(existing.client_ref_id || '').trim() || buildLocalClientRefId({ entityType: 'product', localId: normalizedProductId });
+		await db.runAsync(
+			`UPDATE products
+			 SET quantity = ?,
+				 client_ref_id = ?,
+				 sync_version = COALESCE(sync_version, 0) + 1,
+				 sync_updated_at = ?
+			 WHERE id = ? AND user_id = ?;`,
+			nextQuantity,
+			productClientRefId,
+			syncUpdatedAt,
+			normalizedProductId,
+			userId
+		);
+
+		const productRow = await db.getFirstAsync(
+			`SELECT server_id, sync_version FROM products WHERE id = ? AND user_id = ?;`,
+			normalizedProductId,
+			userId
+		);
+
+		await enqueueEntitySyncChange({
+			entityType: 'inventory_movement',
+			operation: 'upsert',
+			localId: movementLocalId,
+			clientRefId: movementClientRefId,
+			version: 1,
+			updatedAt: syncUpdatedAt,
+			data: {
+				movementType: normalizedMovementType,
+				quantityDelta,
+				quantityBefore: currentQuantity,
+				quantityAfter: nextQuantity,
+				note: normalizedNote || null,
+				productId: normalizedProductId,
+				productServerId: existing.server_id || null,
+				productClientRefId,
+				occurredAt: syncUpdatedAt,
+				deletedAt: null,
+			},
+		});
+
+		await enqueueEntitySyncChange({
+			entityType: 'product',
+			operation: 'upsert',
+			localId: normalizedProductId,
+			clientRefId: productClientRefId,
+			serverId: productRow?.server_id || existing.server_id || null,
+			version: Number(productRow?.sync_version || 1),
+			updatedAt: syncUpdatedAt,
+			data: {
+				name: String(existing.name || ''),
+				quantity: nextQuantity,
+				price: Number(existing.price || 0),
+				lowStockThreshold: Number(existing.low_stock_threshold || 5),
+				expiryDate: existing.expiry_date || null,
+			},
+		});
 
 		void logAudit({
 			userId,
@@ -2278,7 +2705,7 @@ export const createStockMovement = async ({ productId, movementType, quantity, n
 		await db.execAsync('COMMIT;');
 
 		return {
-			id: insertResult.lastInsertRowId,
+			id: movementLocalId,
 			user_id: userId,
 			product_id: normalizedProductId,
 			movement_type: normalizedMovementType,
@@ -2434,6 +2861,7 @@ export const getProductSalesSummaryAggregation = ({ days = 30 } = {}) => {
 export const updateCustomer = ({ id, name, phone = null, address = null }) => {
 	const run = async () => {
 		const userId = await getActiveScopedUserId();
+		const syncUpdatedAt = new Date().toISOString();
 	const normalizedId = Number(id);
 	const normalizedName = typeof name === 'string' ? name.trim() : '';
 	const normalizedPhone = typeof phone === 'string' ? phone.trim() : null;
@@ -2447,21 +2875,60 @@ export const updateCustomer = ({ id, name, phone = null, address = null }) => {
 		return Promise.reject(new Error('Customer name is required.'));
 	}
 
+		const existing = await db.getFirstAsync(
+			`SELECT server_id, client_ref_id, sync_version FROM customers WHERE id = ? AND user_id = ?;`,
+			normalizedId,
+			userId
+		);
+
+		if (!existing) {
+			throw new Error('Customer not found.');
+		}
+
+		const nextSyncVersion = Number(existing.sync_version || 0) + 1;
+		const clientRefId = String(existing.client_ref_id || '').trim() || buildLocalClientRefId({ entityType: 'customer', localId: normalizedId });
+
 		return db
 		.runAsync(
 			`UPDATE customers
-			 SET name = ?, phone = ?, address = ?, updated_at = datetime('now')
+			 SET name = ?,
+				 phone = ?,
+				 address = ?,
+				 updated_at = datetime('now'),
+				 client_ref_id = ?,
+				 sync_version = ?,
+				 sync_updated_at = ?,
+				 deleted_at = NULL
 			 WHERE id = ? AND user_id = ?;`,
 			normalizedName,
 			normalizedPhone || null,
 			normalizedAddress || null,
+			clientRefId,
+			nextSyncVersion,
+			syncUpdatedAt,
 			normalizedId,
 			userId
 		)
-		.then((result) => {
+		.then(async (result) => {
 			if (!result.changes) {
 				throw new Error('Customer not found.');
 			}
+
+			await enqueueEntitySyncChange({
+				entityType: 'customer',
+				operation: 'upsert',
+				localId: normalizedId,
+				clientRefId,
+				serverId: existing.server_id || null,
+				version: nextSyncVersion,
+				updatedAt: syncUpdatedAt,
+				data: {
+					name: normalizedName,
+					phone: normalizedPhone || null,
+					address: normalizedAddress || null,
+					deletedAt: null,
+				},
+			});
 
 			return {
 				id: normalizedId,
@@ -2478,16 +2945,43 @@ export const updateCustomer = ({ id, name, phone = null, address = null }) => {
 export const deleteCustomer = (id) => {
 	const run = async () => {
 		const userId = await getActiveScopedUserId();
+		const syncUpdatedAt = new Date().toISOString();
 	const normalizedId = Number(id);
 
 	if (!Number.isInteger(normalizedId) || normalizedId <= 0) {
 		return Promise.reject(new Error('Valid customer id is required.'));
 	}
 
-		return db.runAsync(`DELETE FROM customers WHERE id = ? AND user_id = ?;`, normalizedId, userId).then((result) => {
+		const existing = await db.getFirstAsync(
+			`SELECT id, server_id, client_ref_id, sync_version FROM customers WHERE id = ? AND user_id = ?;`,
+			normalizedId,
+			userId
+		);
+
+		if (!existing) {
+			throw new Error('Customer not found.');
+		}
+
+		const clientRefId = String(existing.client_ref_id || '').trim() || buildLocalClientRefId({ entityType: 'customer', localId: normalizedId });
+		const nextSyncVersion = Number(existing.sync_version || 0) + 1;
+
+		return db.runAsync(`DELETE FROM customers WHERE id = ? AND user_id = ?;`, normalizedId, userId).then(async (result) => {
 		if (!result.changes) {
 			throw new Error('Customer not found.');
 		}
+
+		await enqueueEntitySyncChange({
+			entityType: 'customer',
+			operation: 'delete',
+			localId: normalizedId,
+			clientRefId,
+			serverId: existing.server_id || null,
+			version: nextSyncVersion,
+			updatedAt: syncUpdatedAt,
+			data: {
+				deletedAt: syncUpdatedAt,
+			},
+		});
 
 		return { id: normalizedId };
 	});
@@ -2506,16 +3000,43 @@ export const updateBakiStatus = ({ id, status, paidAmount }) => {
 export const deleteBaki = (id) => {
 	const run = async () => {
 		const userId = await getActiveScopedUserId();
+		const syncUpdatedAt = new Date().toISOString();
 	const normalizedId = Number(id);
 
 	if (!Number.isInteger(normalizedId) || normalizedId <= 0) {
 		return Promise.reject(new Error('Valid baki id is required.'));
 	}
 
-		return db.runAsync(`DELETE FROM baki_transactions WHERE id = ? AND user_id = ?;`, normalizedId, userId).then((result) => {
+		const existing = await db.getFirstAsync(
+			`SELECT id, server_id, client_ref_id, sync_version FROM baki_transactions WHERE id = ? AND user_id = ?;`,
+			normalizedId,
+			userId
+		);
+
+		if (!existing) {
+			throw new Error('Baki transaction not found.');
+		}
+
+		const clientRefId = String(existing.client_ref_id || '').trim() || buildLocalClientRefId({ entityType: 'baki_entry', localId: normalizedId });
+		const nextSyncVersion = Number(existing.sync_version || 0) + 1;
+
+		return db.runAsync(`DELETE FROM baki_transactions WHERE id = ? AND user_id = ?;`, normalizedId, userId).then(async (result) => {
 		if (!result.changes) {
 			throw new Error('Baki transaction not found.');
 		}
+
+		await enqueueEntitySyncChange({
+			entityType: 'baki_entry',
+			operation: 'delete',
+			localId: normalizedId,
+			clientRefId,
+			serverId: existing.server_id || null,
+			version: nextSyncVersion,
+			updatedAt: syncUpdatedAt,
+			data: {
+				deletedAt: syncUpdatedAt,
+			},
+		});
 
 		void logAudit({
 			userId,

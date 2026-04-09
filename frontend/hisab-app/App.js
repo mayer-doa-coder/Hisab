@@ -3,7 +3,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { registerRootComponent } from 'expo';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Platform, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -49,6 +49,7 @@ import LoginScreen from './screens/auth/LoginScreen';
 import SignupScreen from './screens/auth/SignupScreen';
 import { applyCustomerRiskClassification, createCustomerRiskModel } from './services/customers/customerRiskEngine';
 import { createReorderPredictor } from './services/reorder/reorderSuggestionEngine.js';
+import { runDataSync } from './services/sync/dataSync';
 import { UI_COLORS } from './constants/ui-theme';
 
 const Tab = createBottomTabNavigator();
@@ -239,6 +240,7 @@ function AuthStackNavigator() {
 }
 
 function MainDataShell() {
+  const { user, session, isOnline } = useAuth();
   const customerRiskModel = useMemo(() => createCustomerRiskModel('rule-based'), []);
   const reorderPredictor = useMemo(() => createReorderPredictor('rule-based'), []);
   const reorderRuleConfig = useMemo(
@@ -253,6 +255,8 @@ function MainDataShell() {
   );
   const [booting, setBooting] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [syncingData, setSyncingData] = useState(false);
+  const syncInFlightRef = useRef(false);
   const [products, setProducts] = useState([]);
   const [expiringSoonProducts, setExpiringSoonProducts] = useState([]);
   const [expiredProducts, setExpiredProducts] = useState([]);
@@ -347,6 +351,61 @@ function MainDataShell() {
       setRefreshing(false);
     }
   }, [loadAllData]);
+
+  const runOnlineSync = useCallback(async () => {
+    if (!isOnline || !session?.access_token || !user?.id) {
+      return { synced: 0, appliedServerChanges: 0, skipped: true };
+    }
+
+    if (syncInFlightRef.current) {
+      return { synced: 0, appliedServerChanges: 0, skipped: true };
+    }
+
+    syncInFlightRef.current = true;
+    setSyncingData(true);
+    try {
+      const result = await runDataSync({
+        userId: Number(user.id),
+        accessToken: session.access_token,
+      });
+
+      if (Number(result?.synced || 0) > 0 || Number(result?.appliedServerChanges || 0) > 0) {
+        await loadAllData();
+      }
+
+      return result;
+    } catch (error) {
+      console.warn('[APP] data sync skipped or failed:', error?.message || error);
+      return { synced: 0, appliedServerChanges: 0, skipped: true };
+    } finally {
+      syncInFlightRef.current = false;
+      setSyncingData(false);
+    }
+  }, [isOnline, loadAllData, session?.access_token, user?.id]);
+
+  useEffect(() => {
+    if (!isOnline || !session?.access_token || !user?.id) {
+      return undefined;
+    }
+
+    let disposed = false;
+
+    const run = async () => {
+      if (disposed) {
+        return;
+      }
+
+      await runOnlineSync();
+    };
+
+    run();
+    const timer = setInterval(run, 20000);
+
+    return () => {
+      disposed = true;
+      clearInterval(timer);
+    };
+  }, [isOnline, runOnlineSync, session?.access_token, user?.id]);
 
   const addProduct = useCallback(
     async ({ name, quantity, price, expiryDate, lowStockThreshold }) => {
@@ -461,6 +520,7 @@ function MainDataShell() {
     () => ({
       booting,
       refreshing,
+      syncingData,
       products,
       expiringSoonProducts,
       expiredProducts,
@@ -486,10 +546,12 @@ function MainDataShell() {
       getDashboardTopActiveCustomers,
       getStockMovementCountInRange,
       getAuditLogs,
+      runOnlineSync,
     }),
     [
       booting,
       refreshing,
+      syncingData,
       products,
       expiringSoonProducts,
       expiredProducts,
@@ -515,6 +577,7 @@ function MainDataShell() {
       getDashboardTopActiveCustomers,
       getStockMovementCountInRange,
       getAuditLogs,
+      runOnlineSync,
     ]
   );
 

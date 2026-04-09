@@ -167,7 +167,7 @@ export function AuthProvider({ children }) {
   const syncPendingData = useCallback(async () => {
     try {
       setSyncingPending(true);
-      const items = await getPendingSyncItems({ limit: 100 });
+      const items = await getPendingSyncItems({ limit: 100, entityTypes: ['auth'], forCurrentUser: true });
       if (!items.length) {
         return 0;
       }

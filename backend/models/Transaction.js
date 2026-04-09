@@ -30,6 +30,11 @@ const transactionSchema = new mongoose.Schema(
       ref: 'Customer',
       default: null,
     },
+    customerClientRefId: {
+      type: String,
+      trim: true,
+      default: null,
+    },
     referenceType: {
       type: String,
       default: null,
@@ -72,6 +77,30 @@ const transactionSchema = new mongoose.Schema(
       ref: 'Transaction',
       default: null,
     },
+    version: {
+      type: Number,
+      default: 1,
+    },
+    serverVersion: {
+      type: Number,
+      default: 1,
+      index: true,
+    },
+    clientRefId: {
+      type: String,
+      trim: true,
+      default: null,
+      index: true,
+    },
+    deletedAt: {
+      type: Date,
+      default: null,
+      index: true,
+    },
+    lastClientMutationAt: {
+      type: Date,
+      default: null,
+    },
   },
   {
     timestamps: true,
@@ -79,5 +108,6 @@ const transactionSchema = new mongoose.Schema(
 );
 
 transactionSchema.index({ userId: 1, transactionType: 1, occurredAt: -1 });
+transactionSchema.index({ userId: 1, clientRefId: 1 }, { unique: true, sparse: true });
 
 module.exports = mongoose.model('Transaction', transactionSchema);
