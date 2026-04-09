@@ -1,4 +1,5 @@
 import * as SQLite from 'expo-sqlite';
+import bcrypt from 'bcryptjs';
 
 const db = SQLite.openDatabaseSync('hisab.db');
 
@@ -50,7 +51,7 @@ const BAKI_TRANSACTION_TYPES = new Set(['credit', 'payment']);
 const AUTH_MIN_PASSWORD_LENGTH = 6;
 const AUTH_DEFAULT_SESSION_HOURS = 24;
 const AUTH_REMEMBER_SESSION_DAYS = 30;
-const AUTH_HASH_PEPPER = 'hisab-local-auth-v1';
+const AUTH_BCRYPT_ROUNDS = 10;
 
 const normalizeAuthEmail = (email) => String(email || '').trim().toLowerCase();
 
@@ -68,7 +69,8 @@ const hashString = (input) => {
 	return hash.toString(16).padStart(8, '0');
 };
 
-const derivePasswordHash = ({ password, salt }) => {
+const deriveLegacyPasswordHash = ({ password, salt }) => {
+	const AUTH_HASH_PEPPER = 'hisab-local-auth-v1';
 	let current = `${String(password || '')}:${String(salt || '')}:${AUTH_HASH_PEPPER}`;
 
 	for (let i = 0; i < 4096; i += 1) {
@@ -78,7 +80,22 @@ const derivePasswordHash = ({ password, salt }) => {
 	return current;
 };
 
-const generateSalt = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
+const isBcryptHash = (value) => /^\$2[aby]\$/.test(String(value || ''));
+
+const hashPasswordBcrypt = (password) => bcrypt.hashSync(String(password || ''), AUTH_BCRYPT_ROUNDS);
+
+const verifyPassword = ({ password, storedHash, storedSalt }) => {
+	if (isBcryptHash(storedHash)) {
+		return bcrypt.compareSync(String(password || ''), String(storedHash || ''));
+	}
+
+	const legacyHash = deriveLegacyPasswordHash({
+		password,
+		salt: String(storedSalt || ''),
+	});
+
+	return legacyHash === String(storedHash || '');
+};
 
 const generateSessionToken = ({ userId, email }) => {
 	const seed = `${Date.now()}:${Math.random()}:${String(userId || '')}:${String(email || '')}`;
@@ -307,28 +324,6 @@ const fromMoneyCents = (value) => {
 
 	return Math.round(cents) / 100;
 };
-
-const SALES_AGGREGATION_DAILY_SQL = `SELECT
-	m.product_id,
-	DATE(m.created_at) AS sale_date,
-	ABS(SUM(m.quantity_delta)) AS units_sold
-FROM stock_movements m
-WHERE m.movement_type = 'out'
-	AND m.quantity_delta < 0
-	AND DATE(m.created_at) >= DATE('now', ?)
-GROUP BY m.product_id, DATE(m.created_at)
-ORDER BY m.product_id ASC, sale_date ASC;`;
-
-const SALES_AGGREGATION_SUMMARY_SQL = `SELECT
-	m.product_id,
-	ABS(SUM(m.quantity_delta)) AS total_units_sold,
-	COUNT(DISTINCT DATE(m.created_at)) AS sales_days
-FROM stock_movements m
-WHERE m.movement_type = 'out'
-	AND m.quantity_delta < 0
-	AND DATE(m.created_at) >= DATE('now', ?)
-GROUP BY m.product_id
-ORDER BY m.product_id ASC;`;
 
 export const createTables = async () => {
 	await db.execAsync(`CREATE TABLE IF NOT EXISTS products (
@@ -1764,8 +1759,7 @@ export const signupUser = async ({ email, password, rememberMe = false } = {}) =
 		throw new Error('Email already exists. Please login instead.');
 	}
 
-	const salt = generateSalt();
-	const passwordHash = derivePasswordHash({ password: normalizedPassword, salt });
+	const passwordHash = hashPasswordBcrypt(normalizedPassword);
 
 	let inserted;
 	try {
@@ -1774,7 +1768,7 @@ export const signupUser = async ({ email, password, rememberMe = false } = {}) =
 			 VALUES (?, ?, ?);`,
 			normalizedEmail,
 			passwordHash,
-			salt
+			'bcrypt'
 		);
 	} catch (error) {
 		if (String(error?.message || '').toLowerCase().includes('unique')) {
@@ -1833,13 +1827,25 @@ export const loginUser = async ({ email, password, rememberMe = false } = {}) =>
 		throw new Error('Invalid email or password.');
 	}
 
-	const computedHash = derivePasswordHash({
+	const passwordMatches = verifyPassword({
 		password: normalizedPassword,
-		salt: String(userRow.password_salt || ''),
+		storedHash: String(userRow.password_hash || ''),
+		storedSalt: String(userRow.password_salt || ''),
 	});
 
-	if (computedHash !== String(userRow.password_hash || '')) {
+	if (!passwordMatches) {
 		throw new Error('Invalid email or password.');
+	}
+
+	if (!isBcryptHash(String(userRow.password_hash || ''))) {
+		const upgradedHash = hashPasswordBcrypt(normalizedPassword);
+		await db.runAsync(
+			`UPDATE users
+			 SET password_hash = ?, password_salt = 'bcrypt', updated_at = datetime('now')
+			 WHERE id = ?;`,
+			upgradedHash,
+			Number(userRow.id)
+		);
 	}
 
 	await db.runAsync(

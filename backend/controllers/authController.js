@@ -8,13 +8,15 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MAX_FAILED_LOGINS = 5;
 const LOCK_DURATION_MS = 15 * 60 * 1000;
 const PASSWORD_RESET_WINDOW_MS = 30 * 60 * 1000;
-const PASSWORD_MIN_LENGTH = 6;
+const PASSWORD_MIN_LENGTH = process.env.NODE_ENV === 'production' ? 10 : 6;
+const ACCESS_TOKEN_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '15m';
+const REFRESH_TOKEN_EXPIRES_IN = process.env.JWT_REFRESH_EXPIRES_IN || '7d';
 
 const normalizeEmail = (value) => String(value || '').trim().toLowerCase();
 
 const getAccessSecret = () => process.env.JWT_SECRET;
 
-const getRefreshSecret = () => process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET;
+const getRefreshSecret = () => process.env.JWT_REFRESH_SECRET || process.env.REFRESH_TOKEN_SECRET || process.env.JWT_SECRET;
 
 const buildAccessToken = (userId) => {
   const secret = getAccessSecret();
@@ -24,7 +26,7 @@ const buildAccessToken = (userId) => {
   }
 
   return jwt.sign({ user_id: String(userId), token_type: 'access' }, secret, {
-    expiresIn: '15m',
+    expiresIn: ACCESS_TOKEN_EXPIRES_IN,
   });
 };
 
@@ -36,7 +38,7 @@ const buildRefreshToken = (userId) => {
   }
 
   return jwt.sign({ user_id: String(userId), token_type: 'refresh' }, secret, {
-    expiresIn: '7d',
+    expiresIn: REFRESH_TOKEN_EXPIRES_IN,
   });
 };
 
