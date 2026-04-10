@@ -1,14 +1,11 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import {
   createTables,
-  enqueuePendingSyncItem,
+  getAuthDeviceProfile,
   getCurrentUser,
-  getPendingSyncItems,
-  loginUser,
-  markPendingSyncItemDone,
-  markPendingSyncItemFailed,
   logoutCurrentUser,
-  signupUser,
+  saveAuthenticatedUserSession,
+  setAuthDeviceProfile,
   updateSessionServerStatus,
   updateSessionTokens,
 } from '../database/db';
@@ -16,8 +13,16 @@ import {
   fetchOnlineProfile,
   isBackendOnline,
   loginOnline,
+  loginWithPinOnline,
+  logoutOnline,
+  requestEmailVerificationOnline,
+  requestPasswordRecoveryOnline,
+  resetPasswordOnline,
   refreshOnlineToken,
+  setupPinOnline,
   signupOnline,
+  updatePasswordOnline,
+  verifyEmailCodeOnline,
 } from '../services/backend/authApi';
 
 export const AuthContext = createContext(null);
@@ -52,21 +57,74 @@ const toServerTokenShape = (payload) => ({
   refreshTokenExpiresAt: payload?.refreshTokenExpiresAt || null,
 });
 
+const SESSION_STATES = {
+  BOOTING: 'booting',
+  ONLINE_VALID: 'online-valid',
+  OFFLINE_VALID: 'offline-valid',
+  REFRESHING: 'refreshing',
+  FORCED_LOGOUT: 'forced-logout',
+  UNAUTHENTICATED: 'unauthenticated',
+};
+
+const ONLINE_AUTH_REQUIRED_CODE = 'ONLINE_AUTH_REQUIRED';
+const PIN_LOGIN_EMAIL_REQUIRED_CODE = 'PIN_LOGIN_EMAIL_REQUIRED';
+
+const buildStateSnapshot = (state, message = '', reason = '') => ({
+  state,
+  message,
+  reason,
+  updatedAt: new Date().toISOString(),
+});
+
+const mergeLocalAndServerUser = (localUser, serverUser = null) => {
+  const localId = Number(localUser?.id || 0);
+  const normalizedLocalId = Number.isInteger(localId) && localId > 0 ? localId : null;
+
+  return {
+    ...(localUser || {}),
+    ...(serverUser || {}),
+    id: normalizedLocalId ?? localUser?.id ?? null,
+    local_id: normalizedLocalId,
+    server_id: serverUser?.id ? String(serverUser.id) : localUser?.server_id || null,
+  };
+};
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [session, setSession] = useState(null);
   const [authBooting, setAuthBooting] = useState(true);
   const [isOnline, setIsOnline] = useState(false);
-  const [syncingPending, setSyncingPending] = useState(false);
+  const [authDeviceProfile, setAuthDeviceProfileState] = useState({
+    deviceId: null,
+    preferredEmail: null,
+    pinEnabled: false,
+  });
+  const [authStatus, setAuthStatus] = useState(buildStateSnapshot(SESSION_STATES.BOOTING, 'Restoring saved session...'));
 
-  const hardLogout = useCallback(async (sessionToken = null) => {
+  const updateAuthStatus = useCallback((state, message = '', reason = '') => {
+    setAuthStatus(buildStateSnapshot(state, message, reason));
+  }, []);
+
+  const syncAuthDeviceProfile = useCallback(async () => {
+    const profile = await getAuthDeviceProfile();
+    setAuthDeviceProfileState(profile || {
+      deviceId: null,
+      preferredEmail: null,
+      pinEnabled: false,
+    });
+    return profile;
+  }, []);
+
+  const hardLogout = useCallback(async ({ sessionToken = null, message = 'Your session has ended.', reason = 'FORCED_LOGOUT' } = {}) => {
     await logoutCurrentUser({ sessionToken });
     setUser(null);
     setSession(null);
-  }, []);
+    updateAuthStatus(SESSION_STATES.FORCED_LOGOUT, message, reason);
+  }, [updateAuthStatus]);
 
   const refreshSessionWithServer = useCallback(
     async ({ sessionToken, refreshToken, fallbackUser }) => {
+      updateAuthStatus(SESSION_STATES.REFRESHING, 'Refreshing session token...');
       const refreshed = await refreshOnlineToken({ refreshToken });
 
       const updatedSession = await updateSessionTokens({
@@ -78,16 +136,18 @@ export function AuthProvider({ children }) {
       });
 
       setSession(updatedSession);
-      setUser((prev) => ({ ...prev, ...(fallbackUser || {}), ...(refreshed?.user || {}) }));
+      setUser((prev) => mergeLocalAndServerUser(fallbackUser || prev, refreshed?.user || null));
+      updateAuthStatus(SESSION_STATES.ONLINE_VALID, 'Session is valid and synced.', 'TOKEN_REFRESHED');
 
       return updatedSession;
     },
-    []
+    [updateAuthStatus]
   );
 
   const validateSessionOnline = useCallback(
     async (currentPayload) => {
       if (!currentPayload?.user || !currentPayload?.session?.token) {
+        updateAuthStatus(SESSION_STATES.UNAUTHENTICATED, 'No active session found.', 'NO_LOCAL_SESSION');
         return { valid: false, reason: 'NO_LOCAL_SESSION' };
       }
 
@@ -97,6 +157,7 @@ export function AuthProvider({ children }) {
 
       if (!accessToken) {
         await updateSessionServerStatus({ sessionToken, serverStatus: 'local-only' });
+        updateAuthStatus(SESSION_STATES.OFFLINE_VALID, 'Session is available in offline mode.', 'NO_ACCESS_TOKEN');
         return { valid: true, mode: 'offline-local' };
       }
 
@@ -115,10 +176,12 @@ export function AuthProvider({ children }) {
         });
 
         setSession(updatedSession);
-        setUser((prev) => ({ ...prev, ...(currentPayload.user || {}), ...(profile?.user || {}) }));
+        setUser((prev) => mergeLocalAndServerUser(currentPayload.user || prev, profile?.user || null));
+        updateAuthStatus(SESSION_STATES.ONLINE_VALID, 'Session is valid and synced.');
         return { valid: true, mode: 'online' };
       } catch (error) {
         if (error?.isNetworkError) {
+          updateAuthStatus(SESSION_STATES.OFFLINE_VALID, 'Internet unavailable. Using cached session.', 'NO_INTERNET');
           return { valid: true, mode: 'offline-fallback', reason: 'NO_INTERNET' };
         }
 
@@ -136,11 +199,16 @@ export function AuthProvider({ children }) {
           } catch (refreshError) {
             const refreshCode = String(refreshError?.code || '');
             if (refreshCode === 'REFRESH_TOKEN_EXPIRED' || refreshCode === 'INVALID_REFRESH_TOKEN' || Number(refreshError?.status) === 401) {
-              await hardLogout(sessionToken);
+              await hardLogout({
+                sessionToken,
+                message: 'Session expired. Please login again.',
+                reason: refreshCode || 'REFRESH_INVALID_FORCE_LOGOUT',
+              });
               return { valid: false, reason: refreshCode || 'REFRESH_INVALID_FORCE_LOGOUT' };
             }
 
             if (refreshError?.isNetworkError) {
+              updateAuthStatus(SESSION_STATES.OFFLINE_VALID, 'Internet unavailable. Using cached session.', 'NO_INTERNET');
               return { valid: true, mode: 'offline-fallback', reason: 'NO_INTERNET' };
             }
 
@@ -149,67 +217,40 @@ export function AuthProvider({ children }) {
         }
 
         if (isAccessExpired && !refreshToken) {
-          await hardLogout(sessionToken);
+          await hardLogout({
+            sessionToken,
+            message: 'Session expired and no refresh token is available.',
+            reason: 'ACCESS_EXPIRED_NO_REFRESH',
+          });
           return { valid: false, reason: 'ACCESS_EXPIRED_NO_REFRESH' };
         }
 
         if (errorCode === 'INVALID_ACCESS_TOKEN') {
-          await hardLogout(sessionToken);
+          await hardLogout({
+            sessionToken,
+            message: 'Session token is invalid. Please login again.',
+            reason: 'INVALID_ACCESS_TOKEN',
+          });
           return { valid: false, reason: 'INVALID_ACCESS_TOKEN' };
         }
 
         throw error;
       }
     },
-    [hardLogout, refreshSessionWithServer]
+    [hardLogout, refreshSessionWithServer, updateAuthStatus]
   );
-
-  const syncPendingData = useCallback(async () => {
-    try {
-      setSyncingPending(true);
-      const items = await getPendingSyncItems({ limit: 100, entityTypes: ['auth'], forCurrentUser: true });
-      if (!items.length) {
-        return 0;
-      }
-
-      let syncedCount = 0;
-      for (const item of items) {
-        if (item.entity_type === 'auth' && item.operation === 'session_verify') {
-          const current = await getCurrentUser();
-          if (!current?.session?.token) {
-            await markPendingSyncItemDone(item.id);
-            syncedCount += 1;
-            continue;
-          }
-
-          const targetToken = String(item?.payload?.sessionToken || '');
-          if (!targetToken || targetToken === current.session.token) {
-            const validation = await validateSessionOnline(current);
-            if (validation.valid) {
-              await markPendingSyncItemDone(item.id);
-              syncedCount += 1;
-            } else {
-              await markPendingSyncItemFailed({ id: item.id, errorMessage: validation.reason || 'Session validation failed' });
-            }
-          } else {
-            await markPendingSyncItemDone(item.id);
-            syncedCount += 1;
-          }
-        }
-      }
-
-      return syncedCount;
-    } finally {
-      setSyncingPending(false);
-    }
-  }, [validateSessionOnline]);
 
   useEffect(() => {
     const restoreAuth = async () => {
       try {
         await createTables();
-        const payload = await getCurrentUser();
-        const online = await isBackendOnline();
+
+        const [, payload, online] = await Promise.all([
+          syncAuthDeviceProfile(),
+          getCurrentUser(),
+          isBackendOnline(),
+        ]);
+
         setIsOnline(online);
 
         if (payload?.user) {
@@ -218,22 +259,25 @@ export function AuthProvider({ children }) {
 
           if (online) {
             await validateSessionOnline(payload);
-            await syncPendingData();
+          } else {
+            updateAuthStatus(SESSION_STATES.OFFLINE_VALID, 'Offline. Using cached authenticated session.', 'OFFLINE_AT_BOOT');
           }
         } else {
           setUser(null);
           setSession(null);
+          updateAuthStatus(SESSION_STATES.UNAUTHENTICATED, 'Please login to continue.');
         }
       } catch {
         setUser(null);
         setSession(null);
+        updateAuthStatus(SESSION_STATES.UNAUTHENTICATED, 'Failed to restore saved session. Please login again.', 'RESTORE_FAILED');
       } finally {
         setAuthBooting(false);
       }
     };
 
     restoreAuth();
-  }, [syncPendingData, validateSessionOnline]);
+  }, [syncAuthDeviceProfile, updateAuthStatus, validateSessionOnline]);
 
   useEffect(() => {
     let cancelled = false;
@@ -252,7 +296,6 @@ export function AuthProvider({ children }) {
               if (current?.user) {
                 await validateSessionOnline(current);
               }
-              await syncPendingData();
             })
             .catch(() => null);
         }
@@ -267,7 +310,7 @@ export function AuthProvider({ children }) {
       cancelled = true;
       clearInterval(timer);
     };
-  }, [syncPendingData, validateSessionOnline]);
+  }, [validateSessionOnline]);
 
   useEffect(() => {
     if (!user || !session?.token || !isOnline) {
@@ -293,7 +336,11 @@ export function AuthProvider({ children }) {
       } catch (error) {
         const refreshCode = String(error?.code || '');
         if (refreshCode === 'REFRESH_TOKEN_EXPIRED' || refreshCode === 'INVALID_REFRESH_TOKEN' || Number(error?.status) === 401) {
-          await hardLogout(current.session.token);
+          await hardLogout({
+            sessionToken: current.session.token,
+            message: 'Session expired. Please login again.',
+            reason: refreshCode || 'REFRESH_INVALID_FORCE_LOGOUT',
+          });
         }
       }
     }, 60000);
@@ -301,151 +348,271 @@ export function AuthProvider({ children }) {
     return () => clearInterval(timer);
   }, [hardLogout, isOnline, refreshSessionWithServer, session?.token, user]);
 
-  const login = useCallback(async (email, password, options = {}) => {
-    let localPayload = null;
-    let localLoginError = null;
-
-    try {
-      localPayload = await loginUser({
-        email,
-        password,
-        rememberMe: Boolean(options?.rememberMe),
-      });
-    } catch (error) {
-      localLoginError = error;
-    }
-
-    if (localPayload?.user) {
-      setUser(localPayload.user);
-      setSession(localPayload.session || null);
-    }
-
-    const online = await isBackendOnline();
-    setIsOnline(online);
-
-    if (!localPayload?.user && !online) {
-      throw localLoginError || new Error('Invalid email or password.');
-    }
-
-    if (online) {
-      try {
-        const serverPayload = await loginOnline({ email, password });
-
-        if (!localPayload?.user) {
-          try {
-            localPayload = await signupUser({
-              email,
-              password,
-              rememberMe: Boolean(options?.rememberMe),
-            });
-          } catch {
-            localPayload = await loginUser({
-              email,
-              password,
-              rememberMe: Boolean(options?.rememberMe),
-            });
-          }
-
-          setUser(localPayload?.user || null);
-          setSession(localPayload?.session || null);
-        }
-
-        const updatedSession = await updateSessionTokens({
-          sessionToken: localPayload?.session?.token,
-          ...toServerTokenShape(serverPayload),
-          authMode: 'hybrid',
-          serverStatus: 'ok',
-          syncPending: false,
-        });
-
-        setSession(updatedSession);
-        setUser((prev) => ({ ...prev, ...(serverPayload?.user || {}) }));
-      } catch (error) {
-        if (!error?.isNetworkError && Number(error?.status) === 401 && !localPayload?.user) {
-          throw error;
-        }
-
-        await updateSessionServerStatus({
-          sessionToken: localPayload?.session?.token,
-          serverStatus: !error?.isNetworkError && Number(error?.status) === 401 ? 'server-credential-mismatch' : 'offline-fallback',
-        });
-
-        await enqueuePendingSyncItem({
-          entityType: 'auth',
-          operation: 'session_verify',
-          payload: { sessionToken: localPayload?.session?.token || null },
-        });
-      }
-    } else {
-      await enqueuePendingSyncItem({
-        entityType: 'auth',
-        operation: 'session_verify',
-        payload: { sessionToken: localPayload?.session?.token || null },
-      });
-    }
-
-    if (!localPayload?.user) {
-      throw localLoginError || new Error('Invalid email or password.');
-    }
-
-    return localPayload.user;
-  }, []);
-
-  const signup = useCallback(async (email, password, options = {}) => {
-    const localPayload = await signupUser({
-      email,
-      password,
-      rememberMe: Boolean(options?.rememberMe),
+  const persistOnlineSession = useCallback(async ({ serverPayload, rememberMe = false, statusMessage = 'Login successful.' } = {}) => {
+    const localPayload = await saveAuthenticatedUserSession({
+      user: serverPayload?.user,
+      rememberMe: Boolean(rememberMe),
+      serverTokens: toServerTokenShape(serverPayload),
+      authMode: 'hybrid',
+      serverStatus: 'ok',
+      syncPending: false,
     });
 
-    setUser(localPayload?.user || null);
-    setSession(localPayload?.session || null);
+    setUser(mergeLocalAndServerUser(localPayload.user, serverPayload?.user || null));
+    setSession(localPayload.session || null);
+    updateAuthStatus(SESSION_STATES.ONLINE_VALID, statusMessage);
 
+    await setAuthDeviceProfile({
+      preferredEmail: serverPayload?.user?.email || localPayload?.user?.email || null,
+      pinEnabled: Boolean(serverPayload?.user?.pinEnabled),
+    });
+    await syncAuthDeviceProfile();
+
+    return localPayload?.user || null;
+  }, [syncAuthDeviceProfile, updateAuthStatus]);
+
+  const login = useCallback(async (email, password, options = {}) => {
     const online = await isBackendOnline();
     setIsOnline(online);
 
-    if (online) {
-      try {
-        const signupPayload = await signupOnline({ email, password });
-
-        const updatedSession = await updateSessionTokens({
-          sessionToken: localPayload?.session?.token,
-          ...toServerTokenShape(signupPayload),
-          authMode: 'hybrid',
-          serverStatus: 'ok',
-          syncPending: false,
-        });
-
-        setSession(updatedSession);
-        setUser((prev) => ({ ...prev, ...(signupPayload?.user || {}) }));
-      } catch (error) {
-        await updateSessionServerStatus({
-          sessionToken: localPayload?.session?.token,
-          serverStatus: error?.isNetworkError ? 'offline-fallback' : 'server-signup-failed',
-        });
-
-        await enqueuePendingSyncItem({
-          entityType: 'auth',
-          operation: 'session_verify',
-          payload: { sessionToken: localPayload?.session?.token || null },
-        });
-      }
-    } else {
-      await enqueuePendingSyncItem({
-        entityType: 'auth',
-        operation: 'session_verify',
-        payload: { sessionToken: localPayload?.session?.token || null },
-      });
+    if (!online) {
+      const error = new Error('Internet connection is required for login.');
+      error.code = ONLINE_AUTH_REQUIRED_CODE;
+      throw error;
     }
 
-    return localPayload?.user || null;
-  }, []);
+    const rememberMe = Boolean(options?.rememberMe);
+
+    const serverPayload = await loginOnline({ email, password, rememberMe });
+    if (!serverPayload?.accessToken || !serverPayload?.refreshToken || !serverPayload?.user) {
+      const error = new Error('Login response is incomplete. Please try again.');
+      error.code = 'AUTH_INVALID_LOGIN_RESPONSE';
+      throw error;
+    }
+
+    return persistOnlineSession({
+      serverPayload,
+      rememberMe,
+      statusMessage: 'Login successful.',
+    });
+  }, [persistOnlineSession]);
+
+  const signup = useCallback(async (email, password, options = {}) => {
+    const online = await isBackendOnline();
+    setIsOnline(online);
+
+    if (!online) {
+      const error = new Error('Internet connection is required for signup.');
+      error.code = ONLINE_AUTH_REQUIRED_CODE;
+      throw error;
+    }
+
+    const rememberMe = Boolean(options?.rememberMe);
+    const signupPayload = await signupOnline({ email, password, rememberMe });
+
+    if (signupPayload?.verificationRequired) {
+      await setAuthDeviceProfile({
+        preferredEmail: signupPayload?.email || email,
+        pinEnabled: false,
+      });
+      await syncAuthDeviceProfile();
+      updateAuthStatus(SESSION_STATES.UNAUTHENTICATED, 'Signup complete. Enter the code sent to your email.');
+
+      return {
+        verificationRequired: true,
+        email: signupPayload?.email || email,
+        verificationCode: signupPayload?.verificationCode || null,
+        verificationCodeExpiresAt: signupPayload?.verificationCodeExpiresAt || null,
+        emailDelivery: signupPayload?.emailDelivery || null,
+      };
+    }
+
+    if (!signupPayload?.accessToken || !signupPayload?.refreshToken || !signupPayload?.user) {
+      const error = new Error('Signup response is incomplete. Please try again.');
+      error.code = 'AUTH_INVALID_SIGNUP_RESPONSE';
+      throw error;
+    }
+
+    return persistOnlineSession({
+      serverPayload: signupPayload,
+      rememberMe,
+      statusMessage: 'Signup successful.',
+    });
+  }, [persistOnlineSession, syncAuthDeviceProfile, updateAuthStatus]);
+
+  const requestEmailVerification = useCallback(async (email) => {
+    const online = await isBackendOnline();
+    setIsOnline(online);
+
+    if (!online) {
+      const error = new Error('Internet connection is required for email verification.');
+      error.code = ONLINE_AUTH_REQUIRED_CODE;
+      throw error;
+    }
+
+    const payload = await requestEmailVerificationOnline({ email });
+    await setAuthDeviceProfile({ preferredEmail: email });
+    await syncAuthDeviceProfile();
+
+    return payload;
+  }, [syncAuthDeviceProfile]);
+
+  const verifyEmailCode = useCallback(async ({ email, verificationCode, rememberMe = false }) => {
+    const online = await isBackendOnline();
+    setIsOnline(online);
+
+    if (!online) {
+      const error = new Error('Internet connection is required to verify email code.');
+      error.code = ONLINE_AUTH_REQUIRED_CODE;
+      throw error;
+    }
+
+    const payload = await verifyEmailCodeOnline({ email, verificationCode, rememberMe });
+    if (!payload?.accessToken || !payload?.refreshToken || !payload?.user) {
+      const error = new Error('Verification succeeded but login data is missing.');
+      error.code = 'AUTH_INVALID_VERIFY_RESPONSE';
+      throw error;
+    }
+
+    return persistOnlineSession({
+      serverPayload: payload,
+      rememberMe,
+      statusMessage: 'Email verified and login successful.',
+    });
+  }, [persistOnlineSession]);
+
+  const loginWithPin = useCallback(async ({ pin, email = null, rememberMe = true } = {}) => {
+    const online = await isBackendOnline();
+    setIsOnline(online);
+
+    if (!online) {
+      const error = new Error('Internet connection is required for PIN login.');
+      error.code = ONLINE_AUTH_REQUIRED_CODE;
+      throw error;
+    }
+
+    const profile = await getAuthDeviceProfile();
+    const selectedEmail = String(email || profile?.preferredEmail || '').trim();
+    if (!selectedEmail) {
+      const error = new Error('Email is required for PIN login.');
+      error.code = PIN_LOGIN_EMAIL_REQUIRED_CODE;
+      throw error;
+    }
+
+    const payload = await loginWithPinOnline({
+      email: selectedEmail,
+      pin,
+      deviceId: profile?.deviceId || null,
+      rememberMe,
+    });
+
+    if (!payload?.accessToken || !payload?.refreshToken || !payload?.user) {
+      const error = new Error('PIN login response is incomplete.');
+      error.code = 'AUTH_INVALID_PIN_LOGIN_RESPONSE';
+      throw error;
+    }
+
+    return persistOnlineSession({
+      serverPayload: payload,
+      rememberMe,
+      statusMessage: 'PIN login successful.',
+    });
+  }, [persistOnlineSession]);
+
+  const setupPin = useCallback(async ({ pin, trustDevice = true } = {}) => {
+    const accessToken = session?.access_token;
+    if (!accessToken) {
+      const error = new Error('Active authenticated session is required.');
+      error.code = 'NO_ACTIVE_SESSION';
+      throw error;
+    }
+
+    const profile = await getAuthDeviceProfile();
+    const result = await setupPinOnline({
+      accessToken,
+      pin,
+      deviceId: profile?.deviceId || null,
+      trustDevice,
+    });
+
+    await setAuthDeviceProfile({
+      preferredEmail: user?.email || profile?.preferredEmail || null,
+      pinEnabled: true,
+    });
+    await syncAuthDeviceProfile();
+    updateAuthStatus(SESSION_STATES.ONLINE_VALID, 'PIN setup completed.');
+
+    return result;
+  }, [session?.access_token, syncAuthDeviceProfile, updateAuthStatus, user?.email]);
 
   const logout = useCallback(async () => {
+    const online = await isBackendOnline();
+
+    if (online && session?.refresh_token) {
+      try {
+        await logoutOnline({ refreshToken: session.refresh_token });
+      } catch {
+        // local logout always continues even when server revoke fails
+      }
+    }
+
     await logoutCurrentUser({ sessionToken: session?.token || null });
     setUser(null);
     setSession(null);
-  }, [session?.token]);
+    updateAuthStatus(SESSION_STATES.UNAUTHENTICATED, 'You have been logged out.');
+    await syncAuthDeviceProfile();
+  }, [session?.refresh_token, session?.token, syncAuthDeviceProfile, updateAuthStatus]);
+
+  const requestPasswordRecovery = useCallback(async (email) => {
+    const online = await isBackendOnline();
+    setIsOnline(online);
+
+    if (!online) {
+      const error = new Error('Internet connection is required for account recovery.');
+      error.code = ONLINE_AUTH_REQUIRED_CODE;
+      throw error;
+    }
+
+    return requestPasswordRecoveryOnline({ email });
+  }, []);
+
+  const resetPassword = useCallback(async ({ resetToken, newPassword }) => {
+    const online = await isBackendOnline();
+    setIsOnline(online);
+
+    if (!online) {
+      const error = new Error('Internet connection is required for password reset.');
+      error.code = ONLINE_AUTH_REQUIRED_CODE;
+      throw error;
+    }
+
+    return resetPasswordOnline({ resetToken, newPassword });
+  }, []);
+
+  const updatePassword = useCallback(async ({ currentPassword, newPassword }) => {
+    const accessToken = session?.access_token;
+    const sessionToken = session?.token;
+    if (!accessToken || !sessionToken) {
+      const error = new Error('Active authenticated session is required.');
+      error.code = 'NO_ACTIVE_SESSION';
+      throw error;
+    }
+
+    await updatePasswordOnline({
+      accessToken,
+      currentPassword,
+      newPassword,
+    });
+
+    await hardLogout({
+      sessionToken,
+      message: 'Password updated. Please login again.',
+      reason: 'PASSWORD_UPDATED',
+    });
+
+    await setAuthDeviceProfile({ pinEnabled: false });
+    await syncAuthDeviceProfile();
+  }, [hardLogout, session?.access_token, session?.token, syncAuthDeviceProfile]);
 
   const value = useMemo(
     () => ({
@@ -453,13 +620,38 @@ export function AuthProvider({ children }) {
       session,
       isAuthenticated: Boolean(user),
       isOnline,
-      syncingPending,
+      authDeviceProfile,
+      authStatus,
       authBooting,
       login,
+      loginWithPin,
       signup,
+      requestEmailVerification,
+      verifyEmailCode,
+      requestPasswordRecovery,
+      resetPassword,
+      updatePassword,
+      setupPin,
       logout,
     }),
-    [authBooting, isOnline, login, logout, session, signup, syncingPending, user]
+    [
+      authBooting,
+      authDeviceProfile,
+      authStatus,
+      isOnline,
+      login,
+      loginWithPin,
+      logout,
+      requestEmailVerification,
+      requestPasswordRecovery,
+      resetPassword,
+      session,
+      setupPin,
+      signup,
+      updatePassword,
+      user,
+      verifyEmailCode,
+    ]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -45,8 +45,14 @@ import ProductListScreen from './screens/ProductListScreen';
 import StockMovementScreen from './screens/StockMovementScreen.js';
 import DashboardScreen from './screens/DashboardScreen';
 import AuditHistoryScreen from './screens/AuditHistoryScreen';
+import AccountRecoveryScreen from './screens/auth/AccountRecoveryScreen';
 import LoginScreen from './screens/auth/LoginScreen';
+import PinLoginScreen from './screens/auth/PinLoginScreen';
+import ResetPasswordScreen from './screens/auth/ResetPasswordScreen';
+import SetupPinScreen from './screens/auth/SetupPinScreen';
 import SignupScreen from './screens/auth/SignupScreen';
+import UpdatePasswordScreen from './screens/auth/UpdatePasswordScreen';
+import VerifyEmailScreen from './screens/auth/VerifyEmailScreen';
 import { applyCustomerRiskClassification, createCustomerRiskModel } from './services/customers/customerRiskEngine';
 import { createReorderPredictor } from './services/reorder/reorderSuggestionEngine.js';
 import { runDataSync } from './services/sync/dataSync';
@@ -69,7 +75,19 @@ const AppTheme = {
   },
 };
 
-function BootLoading({ title = 'Preparing Hisab', subtitle = 'Loading products, customers, and baki data...' }) {
+function BootLoading({
+  title = 'Preparing Hisab',
+  subtitle = 'Loading products, customers, and baki data...',
+  compact = false,
+}) {
+  if (compact) {
+    return (
+      <SafeAreaView style={styles.loadingSafeAreaCompact}>
+        <ActivityIndicator size="large" color={UI_COLORS.primary} />
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.loadingSafeArea}>
       <View style={styles.loadingCard}>
@@ -217,8 +235,28 @@ function MainTabs() {
 
 function MainStackNavigator() {
   return (
-    <MainStack.Navigator screenOptions={{ headerShown: false }}>
-      <MainStack.Screen name="MainTabs" component={MainTabs} />
+    <MainStack.Navigator>
+      <MainStack.Screen name="MainTabs" component={MainTabs} options={{ headerShown: false }} />
+      <MainStack.Screen
+        name="UpdatePassword"
+        component={UpdatePasswordScreen}
+        options={{
+          title: 'Update Password',
+          headerStyle: { backgroundColor: UI_COLORS.textPrimary },
+          headerTintColor: UI_COLORS.surface,
+          contentStyle: { backgroundColor: UI_COLORS.background },
+        }}
+      />
+      <MainStack.Screen
+        name="SetupPin"
+        component={SetupPinScreen}
+        options={{
+          title: 'Setup PIN',
+          headerStyle: { backgroundColor: UI_COLORS.textPrimary },
+          headerTintColor: UI_COLORS.surface,
+          contentStyle: { backgroundColor: UI_COLORS.background },
+        }}
+      />
     </MainStack.Navigator>
   );
 }
@@ -234,7 +272,11 @@ function AuthStackNavigator() {
         contentStyle: { backgroundColor: UI_COLORS.background },
       }}>
       <AuthStack.Screen name="Login" component={LoginScreen} options={{ title: 'Login' }} />
+      <AuthStack.Screen name="PinLogin" component={PinLoginScreen} options={{ title: 'PIN Login' }} />
       <AuthStack.Screen name="Signup" component={SignupScreen} options={{ title: 'Signup' }} />
+      <AuthStack.Screen name="VerifyEmail" component={VerifyEmailScreen} options={{ title: 'Verify Email' }} />
+      <AuthStack.Screen name="AccountRecovery" component={AccountRecoveryScreen} options={{ title: 'Account Recovery' }} />
+      <AuthStack.Screen name="ResetPassword" component={ResetPasswordScreen} options={{ title: 'Reset Password' }} />
     </AuthStack.Navigator>
   );
 }
@@ -596,7 +638,7 @@ function RootNavigator() {
   const { authBooting, isAuthenticated } = useAuth();
 
   if (authBooting) {
-    return <BootLoading title="Checking Session" subtitle="Restoring saved login state..." />;
+    return <BootLoading compact />;
   }
 
   return (
@@ -625,6 +667,12 @@ export default function App() {
 registerRootComponent(App);
 
 const styles = StyleSheet.create({
+  loadingSafeAreaCompact: {
+    flex: 1,
+    backgroundColor: UI_COLORS.background,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   loadingSafeArea: {
     flex: 1,
     backgroundColor: UI_COLORS.background,

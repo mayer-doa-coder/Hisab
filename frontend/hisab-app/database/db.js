@@ -1,5 +1,4 @@
 import * as SQLite from 'expo-sqlite';
-import bcrypt from 'bcryptjs';
 
 const db = SQLite.openDatabaseSync('hisab.db');
 
@@ -48,14 +47,10 @@ const toUtcStartOfDay = (dateInput) => {
 const MOVEMENT_TYPES = new Set(['in', 'out', 'adjust']);
 const BAKI_TRANSACTION_TYPES = new Set(['credit', 'payment']);
 
-const AUTH_MIN_PASSWORD_LENGTH = 6;
 const AUTH_DEFAULT_SESSION_HOURS = 24;
 const AUTH_REMEMBER_SESSION_DAYS = 30;
-const AUTH_BCRYPT_ROUNDS = 10;
 
 const normalizeAuthEmail = (email) => String(email || '').trim().toLowerCase();
-
-const normalizePasswordInput = (password) => String(password || '').trim();
 
 const hashString = (input) => {
 	let hash = 2166136261;
@@ -69,37 +64,15 @@ const hashString = (input) => {
 	return hash.toString(16).padStart(8, '0');
 };
 
-const deriveLegacyPasswordHash = ({ password, salt }) => {
-	const AUTH_HASH_PEPPER = 'hisab-local-auth-v1';
-	let current = `${String(password || '')}:${String(salt || '')}:${AUTH_HASH_PEPPER}`;
-
-	for (let i = 0; i < 4096; i += 1) {
-		current = hashString(`${current}:${i}`);
-	}
-
-	return current;
-};
-
-const isBcryptHash = (value) => /^\$2[aby]\$/.test(String(value || ''));
-
-const hashPasswordBcrypt = (password) => bcrypt.hashSync(String(password || ''), AUTH_BCRYPT_ROUNDS);
-
-const verifyPassword = ({ password, storedHash, storedSalt }) => {
-	if (isBcryptHash(storedHash)) {
-		return bcrypt.compareSync(String(password || ''), String(storedHash || ''));
-	}
-
-	const legacyHash = deriveLegacyPasswordHash({
-		password,
-		salt: String(storedSalt || ''),
-	});
-
-	return legacyHash === String(storedHash || '');
-};
 
 const generateSessionToken = ({ userId, email }) => {
 	const seed = `${Date.now()}:${Math.random()}:${String(userId || '')}:${String(email || '')}`;
 	return `sess_${hashString(seed)}_${hashString(`${seed}:${Math.random()}`)}`;
+};
+
+const generateLocalDeviceId = () => {
+	const seed = `${Date.now()}:${Math.random()}:${Math.random()}`;
+	return `dev_${hashString(seed)}_${hashString(`${seed}:device`)}`;
 };
 
 const getSessionExpiryIso = (rememberMe = false) => {
@@ -379,6 +352,44 @@ const enqueueEntitySyncChange = async ({
 	});
 };
 
+const migrateLegacyUsersTable = async () => {
+	const tableInfo = await db.getAllAsync(`PRAGMA table_info(users);`);
+	const columnNames = new Set((tableInfo || []).map((column) => String(column?.name || '')));
+	const hasLegacyCredentialColumns = columnNames.has('password_hash') || columnNames.has('password_salt');
+
+	if (!hasLegacyCredentialColumns) {
+		return;
+	}
+
+	await db.execAsync('PRAGMA foreign_keys = OFF;');
+
+	try {
+		await db.execAsync('BEGIN TRANSACTION;');
+		await db.execAsync(`DROP TABLE IF EXISTS users_migrated;`);
+		await db.execAsync(`CREATE TABLE users_migrated (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			email TEXT NOT NULL UNIQUE,
+			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			last_login_at DATETIME
+		);`);
+
+		await db.execAsync(`INSERT INTO users_migrated (id, email, created_at, updated_at, last_login_at)
+			SELECT id, email, COALESCE(created_at, CURRENT_TIMESTAMP), COALESCE(updated_at, CURRENT_TIMESTAMP), last_login_at
+			FROM users;`);
+
+		await db.execAsync(`DROP TABLE users;`);
+		await db.execAsync(`ALTER TABLE users_migrated RENAME TO users;`);
+		await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);`);
+		await db.execAsync('COMMIT;');
+	} catch (error) {
+		await db.execAsync('ROLLBACK;');
+		throw error;
+	} finally {
+		await db.execAsync('PRAGMA foreign_keys = ON;');
+	}
+};
+
 export const createTables = async () => {
 	await db.execAsync(`CREATE TABLE IF NOT EXISTS products (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -415,8 +426,6 @@ export const createTables = async () => {
 	await db.execAsync(`CREATE TABLE IF NOT EXISTS users (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		email TEXT NOT NULL UNIQUE,
-		password_hash TEXT NOT NULL,
-		password_salt TEXT NOT NULL,
 		created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 		updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 		last_login_at DATETIME
@@ -439,6 +448,15 @@ export const createTables = async () => {
 		created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 		revoked_at DATETIME,
 		FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+	);`);
+
+	await db.execAsync(`CREATE TABLE IF NOT EXISTS auth_device_profile (
+		id INTEGER PRIMARY KEY CHECK (id = 1),
+		device_id TEXT NOT NULL,
+		preferred_email TEXT,
+		pin_enabled INTEGER NOT NULL DEFAULT 0 CHECK (pin_enabled IN (0, 1)),
+		created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 	);`);
 
 	await db.execAsync(`CREATE TABLE IF NOT EXISTS pending_sync_queue (
@@ -539,6 +557,7 @@ export const createTables = async () => {
 	await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_auth_sessions_user_id ON auth_sessions(user_id);`);
 	await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_auth_sessions_expires_at ON auth_sessions(expires_at DESC);`);
 	await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_auth_sessions_access_expires_at ON auth_sessions(access_expires_at DESC);`);
+	await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_auth_device_profile_email ON auth_device_profile(preferred_email);`);
 	await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_pending_sync_queue_created_at ON pending_sync_queue(created_at ASC);`);
 
 	await ensureColumn(
@@ -585,6 +604,7 @@ export const createTables = async () => {
 	await ensureColumn('customers', 'deleted_at', `ALTER TABLE customers ADD COLUMN deleted_at DATETIME;`);
 
 	await ensureColumn('users', 'last_login_at', `ALTER TABLE users ADD COLUMN last_login_at DATETIME;`);
+	await migrateLegacyUsersTable();
 	await ensureColumn('auth_sessions', 'access_token', `ALTER TABLE auth_sessions ADD COLUMN access_token TEXT;`);
 	await ensureColumn('auth_sessions', 'refresh_token', `ALTER TABLE auth_sessions ADD COLUMN refresh_token TEXT;`);
 	await ensureColumn('auth_sessions', 'access_expires_at', `ALTER TABLE auth_sessions ADD COLUMN access_expires_at DATETIME;`);
@@ -761,6 +781,23 @@ export const createTables = async () => {
 			);`);
 
 	await cleanupExpiredSessions();
+
+	const deviceRow = await db.getFirstAsync(`SELECT id, device_id FROM auth_device_profile WHERE id = 1 LIMIT 1;`);
+	if (!deviceRow?.id || !String(deviceRow.device_id || '').trim()) {
+		const nextDeviceId = generateLocalDeviceId();
+		await db.runAsync(
+			`INSERT INTO auth_device_profile (id, device_id, preferred_email, pin_enabled, created_at, updated_at)
+			 VALUES (1, ?, NULL, 0, datetime('now'), datetime('now'))
+			 ON CONFLICT(id)
+			 DO UPDATE SET
+				device_id = CASE
+					WHEN excluded.device_id IS NOT NULL AND length(trim(excluded.device_id)) > 0 THEN excluded.device_id
+					ELSE auth_device_profile.device_id
+				END,
+				updated_at = datetime('now');`,
+			nextDeviceId
+		);
+	}
 };
 
 export const insertCustomer = async ({ name, phone = null, address = null }) => {
@@ -1769,6 +1806,77 @@ export const getAuditLogs = async ({
 	);
 };
 
+export const getOrCreateDeviceId = async () => {
+	const existing = await db.getFirstAsync(
+		`SELECT device_id
+		 FROM auth_device_profile
+		 WHERE id = 1
+		 LIMIT 1;`
+	);
+
+	const existingDeviceId = String(existing?.device_id || '').trim();
+	if (existingDeviceId) {
+		return existingDeviceId;
+	}
+
+	const nextDeviceId = generateLocalDeviceId();
+	await db.runAsync(
+		`INSERT INTO auth_device_profile (id, device_id, preferred_email, pin_enabled, created_at, updated_at)
+		 VALUES (1, ?, NULL, 0, datetime('now'), datetime('now'))
+		 ON CONFLICT(id)
+		 DO UPDATE SET
+			device_id = excluded.device_id,
+			updated_at = datetime('now');`,
+		nextDeviceId
+	);
+
+	return nextDeviceId;
+};
+
+export const getAuthDeviceProfile = async () => {
+	const deviceId = await getOrCreateDeviceId();
+	const row = await db.getFirstAsync(
+		`SELECT preferred_email, pin_enabled
+		 FROM auth_device_profile
+		 WHERE id = 1
+		 LIMIT 1;`
+	);
+
+	return {
+		deviceId,
+		preferredEmail: String(row?.preferred_email || '').trim() || null,
+		pinEnabled: Boolean(Number(row?.pin_enabled || 0)),
+	};
+};
+
+export const setAuthDeviceProfile = async ({ preferredEmail, pinEnabled } = {}) => {
+	await getOrCreateDeviceId();
+
+	const shouldUpdateEmail = preferredEmail !== undefined;
+	const normalizedEmail = shouldUpdateEmail ? normalizeAuthEmail(preferredEmail) : null;
+	const shouldUpdatePinEnabled = pinEnabled !== undefined;
+
+	await db.runAsync(
+		`UPDATE auth_device_profile
+		 SET preferred_email = CASE
+				WHEN ? = 1 THEN ?
+				ELSE preferred_email
+			END,
+			pin_enabled = CASE
+				WHEN ? = 1 THEN ?
+				ELSE pin_enabled
+			END,
+			updated_at = datetime('now')
+		 WHERE id = 1;`,
+		shouldUpdateEmail ? 1 : 0,
+		normalizedEmail || null,
+		shouldUpdatePinEnabled ? 1 : 0,
+		shouldUpdatePinEnabled && pinEnabled ? 1 : 0
+	);
+
+	return getAuthDeviceProfile();
+};
+
 export const updateSessionTokens = async ({
 	sessionToken,
 	accessToken,
@@ -2000,132 +2108,89 @@ export const setLastSyncAt = async ({ userId = null, lastSyncAt = null } = {}) =
 	return normalizedLastSyncAt;
 };
 
-export const signupUser = async ({ email, password, rememberMe = false } = {}) => {
-	const normalizedEmail = normalizeAuthEmail(email);
-	const normalizedPassword = normalizePasswordInput(password);
-
-	if (!normalizedEmail) {
-		throw new Error('Email is required.');
+const normalizeServerUserPayload = (userPayload) => {
+	const email = normalizeAuthEmail(userPayload?.email);
+	if (!email) {
+		throw new Error('Authenticated server user email is required.');
 	}
-
-	if (normalizedPassword.length < AUTH_MIN_PASSWORD_LENGTH) {
-		throw new Error(`Password must be at least ${AUTH_MIN_PASSWORD_LENGTH} characters.`);
-	}
-
-	const existing = await db.getFirstAsync(`SELECT id FROM users WHERE email = ? LIMIT 1;`, normalizedEmail);
-	if (existing?.id) {
-		throw new Error('Email already exists. Please login instead.');
-	}
-
-	const passwordHash = hashPasswordBcrypt(normalizedPassword);
-
-	let inserted;
-	try {
-		inserted = await db.runAsync(
-			`INSERT INTO users (email, password_hash, password_salt)
-			 VALUES (?, ?, ?);`,
-			normalizedEmail,
-			passwordHash,
-			'bcrypt'
-		);
-	} catch (error) {
-		if (String(error?.message || '').toLowerCase().includes('unique')) {
-			throw new Error('Email already exists. Please login instead.');
-		}
-
-		throw error;
-	}
-
-	const userId = Number(inserted?.lastInsertRowId);
-	if (!Number.isInteger(userId) || userId <= 0) {
-		throw new Error('Unable to create user account.');
-	}
-
-	await db.runAsync(
-		`UPDATE users SET updated_at = datetime('now'), last_login_at = datetime('now') WHERE id = ?;`,
-		userId
-	);
-
-	const userRow = await db.getFirstAsync(
-		`SELECT id, email, created_at, updated_at, last_login_at FROM users WHERE id = ? LIMIT 1;`,
-		userId
-	);
-
-	const session = await createSessionForUser({
-		userId,
-		email: normalizedEmail,
-		rememberMe,
-		authMode: 'offline',
-		syncPending: false,
-	});
 
 	return {
-		user: sanitizeAuthUser(userRow),
-		session,
+		email,
+		createdAt: userPayload?.createdAt ? String(userPayload.createdAt) : null,
 	};
 };
 
-export const loginUser = async ({ email, password, rememberMe = false } = {}) => {
-	const normalizedEmail = normalizeAuthEmail(email);
-	const normalizedPassword = normalizePasswordInput(password);
+export const saveAuthenticatedUserSession = async ({
+	user,
+	rememberMe = false,
+	serverTokens = null,
+	authMode = 'hybrid',
+	serverStatus = 'ok',
+	syncPending = false,
+} = {}) => {
+	const normalizedUser = normalizeServerUserPayload(user || {});
 
-	if (!normalizedEmail || !normalizedPassword) {
-		throw new Error('Email and password are required.');
-	}
-
-	const userRow = await db.getFirstAsync(
-		`SELECT id, email, password_hash, password_salt, created_at, updated_at, last_login_at
-		 FROM users
-		 WHERE email = ?
-		 LIMIT 1;`,
-		normalizedEmail
+	const existing = await db.getFirstAsync(
+		`SELECT id FROM users WHERE email = ? LIMIT 1;`,
+		normalizedUser.email
 	);
 
-	if (!userRow) {
-		throw new Error('Invalid email or password.');
-	}
-
-	const passwordMatches = verifyPassword({
-		password: normalizedPassword,
-		storedHash: String(userRow.password_hash || ''),
-		storedSalt: String(userRow.password_salt || ''),
-	});
-
-	if (!passwordMatches) {
-		throw new Error('Invalid email or password.');
-	}
-
-	if (!isBcryptHash(String(userRow.password_hash || ''))) {
-		const upgradedHash = hashPasswordBcrypt(normalizedPassword);
-		await db.runAsync(
-			`UPDATE users
-			 SET password_hash = ?, password_salt = 'bcrypt', updated_at = datetime('now')
-			 WHERE id = ?;`,
-			upgradedHash,
-			Number(userRow.id)
+	let userId = Number(existing?.id || 0);
+	if (!Number.isInteger(userId) || userId <= 0) {
+		const inserted = await db.runAsync(
+			`INSERT INTO users (email, created_at, updated_at, last_login_at)
+			 VALUES (?, COALESCE(?, CURRENT_TIMESTAMP), datetime('now'), datetime('now'));`,
+			normalizedUser.email,
+			normalizedUser.createdAt
 		);
+		userId = Number(inserted?.lastInsertRowId || 0);
+	}
+
+	if (!Number.isInteger(userId) || userId <= 0) {
+		throw new Error('Unable to persist authenticated user session.');
 	}
 
 	await db.runAsync(
-		`UPDATE users SET updated_at = datetime('now'), last_login_at = datetime('now') WHERE id = ?;`,
-		Number(userRow.id)
+		`UPDATE users
+		 SET email = ?,
+			 updated_at = datetime('now'),
+			 last_login_at = datetime('now')
+		 WHERE id = ?;`,
+		normalizedUser.email,
+		userId
 	);
 
-	const refreshedUserRow = await db.getFirstAsync(
-		`SELECT id, email, created_at, updated_at, last_login_at FROM users WHERE id = ? LIMIT 1;`,
-		Number(userRow.id)
-	);
+	await db.runAsync(`DELETE FROM auth_sessions WHERE user_id = ?;`, userId);
 
+	const nextAuthMode = serverTokens?.accessToken ? authMode : 'offline';
 	const session = await createSessionForUser({
-		userId: Number(userRow.id),
-		email: normalizedEmail,
+		userId,
+		email: normalizedUser.email,
 		rememberMe,
-		authMode: 'offline',
-		syncPending: false,
+		serverTokens,
+		authMode: nextAuthMode,
+		syncPending,
 	});
 
+	await updateSessionServerStatus({
+		sessionToken: session.token,
+		serverStatus,
+	});
+
+	await setAuthDeviceProfile({
+		preferredEmail: normalizedUser.email,
+	});
+
+	const userRow = await db.getFirstAsync(
+		`SELECT id, email, created_at, updated_at, last_login_at
+		 FROM users
+		 WHERE id = ?
+		 LIMIT 1;`,
+		userId
+	);
+
 	return {
-		user: sanitizeAuthUser(refreshedUserRow),
+		user: sanitizeAuthUser(userRow),
 		session,
 	};
 };

@@ -15,6 +15,51 @@ const userSchema = new mongoose.Schema(
       minlength: 6,
       select: false,
     },
+    emailVerifiedAt: {
+      type: Date,
+      default: null,
+      select: false,
+    },
+    emailVerificationCodeHash: {
+      type: String,
+      default: null,
+      select: false,
+    },
+    emailVerificationExpiresAt: {
+      type: Date,
+      default: null,
+      select: false,
+    },
+    emailVerificationLastSentAt: {
+      type: Date,
+      default: null,
+      select: false,
+    },
+    pinHash: {
+      type: String,
+      default: null,
+      select: false,
+    },
+    pinSetAt: {
+      type: Date,
+      default: null,
+      select: false,
+    },
+    failedPinAttempts: {
+      type: Number,
+      default: 0,
+      select: false,
+    },
+    pinLockUntil: {
+      type: Date,
+      default: null,
+      select: false,
+    },
+    trustedDeviceIdHash: {
+      type: String,
+      default: null,
+      select: false,
+    },
     refreshTokenHash: {
       type: String,
       default: null,

@@ -2,10 +2,12 @@ require('dotenv').config();
 
 const app = require('./app');
 const { connectDB } = require('./config/db');
+const { startAuthRetentionScheduler } = require('./services/authRetentionService');
 
 const port = Number(process.env.PORT) || 5000;
 
 let server = null;
+let stopAuthCleanup = null;
 
 const startServer = async () => {
   try {
@@ -14,6 +16,8 @@ const startServer = async () => {
     server = app.listen(port, () => {
       console.log(`Server running on port ${port}`);
     });
+
+    stopAuthCleanup = startAuthRetentionScheduler({ logger: console });
   } catch (error) {
     console.error(`[BOOT] Failed to start server: ${error?.message || error}`);
     process.exit(1);
@@ -34,6 +38,11 @@ const shutdown = async (signal) => {
           resolve();
         });
       });
+    }
+
+    if (typeof stopAuthCleanup === 'function') {
+      stopAuthCleanup();
+      stopAuthCleanup = null;
     }
 
     process.exit(0);

@@ -118,7 +118,7 @@ function LoadingPlaceholder() {
 
 export default function DashboardScreen() {
   const navigation = useNavigation();
-  const { user, logout } = useAuth();
+  const { user, logout, authDeviceProfile } = useAuth();
   const {
     products,
     customers,
@@ -365,8 +365,17 @@ export default function DashboardScreen() {
           </View>
           <Text style={styles.subtitle}>Dynamic business overview from app database + backend health.</Text>
           <Text style={styles.rangeLabel}>Signed in: {String(user?.email || 'N/A')}</Text>
+          <Text style={styles.rangeLabel}>PIN login: {user?.pinEnabled || authDeviceProfile?.pinEnabled ? 'Enabled' : 'Not set'}</Text>
           <Text style={styles.rangeLabel}>{rangeLabel}</Text>
           <Text style={styles.rangeLabel}>Last refresh: {formatLocalDateTime(lastRefreshAt)}</Text>
+          <TouchableOpacity style={styles.updatePasswordButton} onPress={() => navigation.navigate('UpdatePassword')}>
+            <MaterialIcons name="lock-reset" size={15} color={UI_COLORS.primary} />
+            <Text style={styles.updatePasswordButtonText}>Update Password</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.updatePasswordButton} onPress={() => navigation.navigate('SetupPin')}>
+            <MaterialIcons name="pin" size={15} color={UI_COLORS.primary} />
+            <Text style={styles.updatePasswordButtonText}>{user?.pinEnabled || authDeviceProfile?.pinEnabled ? 'Change PIN' : 'Setup PIN Login'}</Text>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.kpiGrid}>
@@ -684,6 +693,24 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: UI_COLORS.textMuted,
     fontWeight: '600',
+  },
+  updatePasswordButton: {
+    marginTop: 8,
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    backgroundColor: '#EFF6FF',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  updatePasswordButtonText: {
+    color: UI_COLORS.primary,
+    fontWeight: '700',
+    fontSize: 12,
   },
   filterRow: {
     flexDirection: 'row',
