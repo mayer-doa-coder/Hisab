@@ -1,179 +1,159 @@
 import { useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { UI_COLORS } from '../../constants/ui-theme';
+import AuthScene, { AUTH_FORM_STYLES } from '../../components/auth/AuthScene';
 import { useAuth } from '../../context/AuthContext';
 
-export default function LoginScreen({ navigation }) {
-  const { login } = useAuth();
+const formatRetryDuration = (totalSeconds) => {
+  const seconds = Math.max(0, Number(totalSeconds) || 0);
+  if (seconds <= 0) {
+    return 'less than 1 min';
+  }
 
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.ceil((seconds % 3600) / 60);
+
+  if (hours > 0 && minutes > 0) {
+    return `${hours} ${hours === 1 ? 'hour' : 'hours'} ${minutes} ${minutes === 1 ? 'min' : 'mins'}`;
+  }
+
+  if (hours > 0) {
+    return `${hours} ${hours === 1 ? 'hour' : 'hours'}`;
+  }
+
+  return `${minutes} ${minutes === 1 ? 'min' : 'mins'}`;
+};
+
+const resolveRetrySeconds = (error) => {
+  const directSeconds = Number(error?.details?.retryAfterSeconds || 0);
+  if (Number.isFinite(directSeconds) && directSeconds > 0) {
+    return directSeconds;
+  }
+
+  const lockUntilRaw = error?.details?.lockUntil;
+  const lockUntilMs = lockUntilRaw ? new Date(lockUntilRaw).getTime() : 0;
+  if (!Number.isFinite(lockUntilMs) || lockUntilMs <= 0) {
+    return 0;
+  }
+
+  return Math.max(0, Math.ceil((lockUntilMs - Date.now()) / 1000));
+};
+
+export default function LoginScreen({ navigation }) {
+  const { login, authDeviceProfile } = useAuth();
+
+  const [pin, setPin] = useState('');
   const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState('');
 
   const handleLogin = async () => {
-    const normalizedEmail = String(email || '').trim();
-    const normalizedPassword = String(password || '').trim();
+    if (loading) {
+      return;
+    }
 
-    if (!normalizedEmail || !normalizedPassword) {
-      Alert.alert('Invalid input', 'Email and password are required.');
+    const normalizedEmail = String(authDeviceProfile?.preferredEmail || '').trim();
+    const normalizedPin = String(pin || '').trim();
+
+    if (!normalizedEmail) {
+      setMessage('Email is not registered.');
+      return;
+    }
+
+    if (!normalizedPin) {
+      setMessage('PIN is required.');
+      return;
+    }
+
+    if (!/^\d{4,6}$/.test(normalizedPin)) {
+      setMessage('PIN must be 4 to 6 digits.');
       return;
     }
 
     try {
+      setMessage('');
       setLoading(true);
-      await login(normalizedEmail, normalizedPassword, { rememberMe });
+      await login(normalizedEmail, normalizedPin, { rememberMe });
     } catch (error) {
-      Alert.alert('Login failed', error?.message || 'Unable to login.');
+      if (String(error?.code || '').toUpperCase() === 'EMAIL_NOT_VERIFIED') {
+        navigation.navigate('VerifyEmail', {
+          email: normalizedEmail,
+          rememberMe,
+          verificationCode: error?.details?.verificationCode || null,
+          verificationCodeExpiresAt: error?.details?.verificationCodeExpiresAt || null,
+          emailDelivery: error?.details?.emailDelivery || null,
+        });
+        return;
+      }
+
+      if (String(error?.code || '').toUpperCase() === 'EMAIL_NOT_REGISTERED') {
+        setMessage('Email is not registered.');
+      } else if (String(error?.code || '').toUpperCase() === 'PIN_LOCKED') {
+        const retrySeconds = resolveRetrySeconds(error);
+        if (retrySeconds > 0) {
+          setMessage(`PIN login is temporarily blocked. Try again in ${formatRetryDuration(retrySeconds)}.`);
+        } else {
+          setMessage(error?.message || 'PIN login is temporarily blocked. Try again later.');
+        }
+      } else {
+        setMessage(error?.message || 'Login failed.');
+      }
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex}>
-        <View style={styles.container}>
-          <Text style={styles.title}>Welcome Back</Text>
-          <Text style={styles.subtitle}>Login to continue to Hisab dashboard.</Text>
-
-          <TextInput
-            value={email}
-            onChangeText={setEmail}
-            placeholder="Email"
-            autoCapitalize="none"
-            keyboardType="email-address"
-            style={styles.input}
-          />
-
-          <TextInput
-            value={password}
-            onChangeText={setPassword}
-            placeholder="Password"
-            secureTextEntry
-            style={styles.input}
-          />
-
-          <TouchableOpacity style={styles.rememberRow} onPress={() => setRememberMe((prev) => !prev)}>
-            <View style={[styles.checkbox, rememberMe && styles.checkboxActive]}>
-              {rememberMe ? <Text style={styles.checkboxTick}>✓</Text> : null}
-            </View>
-            <Text style={styles.rememberText}>Remember me</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={[styles.button, loading && styles.buttonDisabled]} onPress={handleLogin} disabled={loading}>
-            {loading ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.buttonText}>Login</Text>}
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.linkButton} onPress={() => navigation.navigate('Signup')}>
-            <Text style={styles.linkText}>No account? Create one</Text>
-          </TouchableOpacity>
+    <AuthScene
+      eyebrow="Hisab Access"
+      title="Login"
+      subtitle="Enter your PIN to log in"
+    >
+      {message ? (
+        <View style={AUTH_FORM_STYLES.noticeStrip}>
+          <Text style={AUTH_FORM_STYLES.noticeText}>{message}</Text>
         </View>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+      ) : null}
+
+      <TextInput
+        value={pin}
+        onChangeText={setPin}
+        placeholder="PIN"
+        keyboardType="number-pad"
+        maxLength={6}
+        secureTextEntry
+        placeholderTextColor="#607D94"
+        style={AUTH_FORM_STYLES.input}
+      />
+
+      <TouchableOpacity style={AUTH_FORM_STYLES.checkboxRow} onPress={() => setRememberMe((prev) => !prev)}>
+        <View style={[AUTH_FORM_STYLES.checkbox, rememberMe && AUTH_FORM_STYLES.checkboxActive]}>
+          {rememberMe ? <Text style={AUTH_FORM_STYLES.checkboxTick}>✓</Text> : null}
+        </View>
+        <Text style={AUTH_FORM_STYLES.checkboxText}>Remember me</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={[AUTH_FORM_STYLES.primaryButton, loading && AUTH_FORM_STYLES.primaryButtonDisabled]}
+        onPress={handleLogin}
+        disabled={loading}
+      >
+        {loading ? <ActivityIndicator size="small" color="#FFFFFF" /> : <Text style={AUTH_FORM_STYLES.primaryButtonText}>Log In</Text>}
+      </TouchableOpacity>
+
+      <TouchableOpacity style={AUTH_FORM_STYLES.linkButton} onPress={() => navigation.navigate('AccountRecovery')}>
+        <Text style={AUTH_FORM_STYLES.linkText}>Forgot Password ?</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity style={AUTH_FORM_STYLES.linkButton} onPress={() => navigation.navigate('Signup')}>
+        <Text style={AUTH_FORM_STYLES.linkText}>Don’t have an account? Sign Up</Text>
+      </TouchableOpacity>
+    </AuthScene>
   );
 }
-
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: UI_COLORS.background,
-  },
-  flex: {
-    flex: 1,
-  },
-  container: {
-    flex: 1,
-    padding: 20,
-    justifyContent: 'center',
-    gap: 10,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: UI_COLORS.textPrimary,
-  },
-  subtitle: {
-    marginBottom: 6,
-    fontSize: 13,
-    color: UI_COLORS.textSecondary,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: UI_COLORS.border,
-    borderRadius: 10,
-    backgroundColor: UI_COLORS.surface,
-    paddingHorizontal: 12,
-    paddingVertical: 11,
-    color: UI_COLORS.textPrimary,
-    fontSize: 15,
-  },
-  button: {
-    marginTop: 6,
-    borderRadius: 10,
-    backgroundColor: UI_COLORS.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    minHeight: 46,
-  },
-  buttonDisabled: {
-    opacity: 0.7,
-  },
-  rememberRow: {
-    marginTop: 2,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  checkbox: {
-    width: 18,
-    height: 18,
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: UI_COLORS.border,
-    backgroundColor: UI_COLORS.surface,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  checkboxActive: {
-    borderColor: UI_COLORS.primary,
-    backgroundColor: '#DBEAFE',
-  },
-  checkboxTick: {
-    color: UI_COLORS.primary,
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  rememberText: {
-    color: UI_COLORS.textSecondary,
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  linkButton: {
-    marginTop: 4,
-    alignItems: 'center',
-  },
-  linkText: {
-    color: UI_COLORS.primary,
-    fontSize: 13,
-    fontWeight: '700',
-  },
-});

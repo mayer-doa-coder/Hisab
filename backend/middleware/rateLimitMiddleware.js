@@ -14,6 +14,11 @@ const getClientKey = (req) => {
   return req.ip || req.connection?.remoteAddress || 'unknown';
 };
 
+const getUserKey = (req) => {
+  const userId = String(req.user_id || req.auth?.user_id || '').trim();
+  return userId || null;
+};
+
 const cleanupBuckets = (currentTime) => {
   for (const [key, value] of buckets.entries()) {
     if (value.resetAt <= currentTime) {
@@ -26,12 +31,14 @@ const createRateLimiter = ({
   windowMs = DEFAULT_WINDOW_MS,
   maxRequests = DEFAULT_MAX_REQUESTS,
   keyPrefix = 'global',
+  scopeByUser = false,
 } = {}) => {
   return (req, res, next) => {
     const currentTime = now();
     cleanupBuckets(currentTime);
 
-    const clientKey = `${keyPrefix}:${getClientKey(req)}`;
+    const scopeValue = scopeByUser ? getUserKey(req) || getClientKey(req) : getClientKey(req);
+    const clientKey = `${keyPrefix}:${scopeValue}`;
     const existing = buckets.get(clientKey);
 
     if (!existing || existing.resetAt <= currentTime) {

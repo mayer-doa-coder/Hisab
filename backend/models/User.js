@@ -11,8 +11,54 @@ const userSchema = new mongoose.Schema(
     },
     password: {
       type: String,
-      required: true,
+      required: false,
+      default: null,
       minlength: 6,
+      select: false,
+    },
+    emailVerifiedAt: {
+      type: Date,
+      default: null,
+      select: false,
+    },
+    emailVerificationCodeHash: {
+      type: String,
+      default: null,
+      select: false,
+    },
+    emailVerificationExpiresAt: {
+      type: Date,
+      default: null,
+      select: false,
+    },
+    emailVerificationLastSentAt: {
+      type: Date,
+      default: null,
+      select: false,
+    },
+    pinHash: {
+      type: String,
+      default: null,
+      select: false,
+    },
+    pinSetAt: {
+      type: Date,
+      default: null,
+      select: false,
+    },
+    failedPinAttempts: {
+      type: Number,
+      default: 0,
+      select: false,
+    },
+    pinLockUntil: {
+      type: Date,
+      default: null,
+      select: false,
+    },
+    trustedDeviceIdHash: {
+      type: String,
+      default: null,
       select: false,
     },
     refreshTokenHash: {
@@ -50,6 +96,11 @@ const userSchema = new mongoose.Schema(
       default: null,
       select: false,
     },
+    pinChangedAt: {
+      type: Date,
+      default: null,
+      select: false,
+    },
   },
   {
     timestamps: { createdAt: 'createdAt', updatedAt: false },
@@ -59,6 +110,7 @@ const userSchema = new mongoose.Schema(
 userSchema.set('toJSON', {
   transform: (_doc, ret) => {
     delete ret.password;
+    delete ret.pinHash;
     return ret;
   },
 });

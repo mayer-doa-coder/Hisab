@@ -1,11 +1,23 @@
-import { getBackendBaseUrl } from './backendHealth';
+import { fetchBackendHealth, getBackendBaseUrl } from './backendHealth';
 
 const REQUEST_TIMEOUT_MS = 7000;
 
-const createApiError = ({ message, status = null, code = null, isNetworkError = false }) => {
+const pickErrorMessage = (payload, status) => {
+  return (
+    payload?.error?.message
+    || payload?.message
+    || `Request failed with status ${status}`
+  );
+};
+
+const pickErrorCode = (payload) => payload?.error?.code || payload?.code || null;
+const pickErrorDetails = (payload) => payload?.error?.details || payload?.details || null;
+
+const createApiError = ({ message, status = null, code = null, details = null, isNetworkError = false }) => {
   const error = new Error(message || 'Request failed.');
   error.status = status;
   error.code = code;
+  error.details = details;
   error.isNetworkError = isNetworkError;
   return error;
 };
@@ -44,13 +56,14 @@ const requestJson = async ({ path, method = 'GET', body = null, accessToken = nu
 
     if (!response.ok) {
       throw createApiError({
-        message: payload?.message || `Request failed with status ${response.status}`,
+        message: pickErrorMessage(payload, response.status),
         status: response.status,
-        code: payload?.code || null,
+        code: pickErrorCode(payload),
+        details: pickErrorDetails(payload),
       });
     }
 
-    return payload;
+    return payload?.data || payload;
   } catch (error) {
     if (error?.name === 'AbortError') {
       throw createApiError({
@@ -73,31 +86,56 @@ const requestJson = async ({ path, method = 'GET', body = null, accessToken = nu
 };
 
 export const isBackendOnline = async () => {
-  try {
-    await requestJson({ path: '/health', method: 'GET' });
-    return true;
-  } catch (error) {
-    if (error?.isNetworkError) {
-      return false;
-    }
-
-    return true;
-  }
+  const health = await fetchBackendHealth();
+  return Boolean(health?.ok);
 };
 
-export const signupOnline = async ({ email, password }) => {
+export const signupOnline = async ({ email, pin, rememberMe = false }) => {
   return requestJson({
     path: '/api/auth/signup',
     method: 'POST',
-    body: { email, password },
+    body: { email, pin, rememberMe },
   });
 };
 
-export const loginOnline = async ({ email, password }) => {
+export const loginOnline = async ({ email, pin, deviceId = null, rememberMe = false }) => {
   return requestJson({
     path: '/api/auth/login',
     method: 'POST',
-    body: { email, password },
+    body: { email, pin, deviceId, rememberMe },
+  });
+};
+
+export const loginWithPinOnline = async ({ email, pin, deviceId, rememberMe = true }) => {
+  return requestJson({
+    path: '/api/auth/pin/login',
+    method: 'POST',
+    body: { email, pin, deviceId, rememberMe },
+  });
+};
+
+export const setupPinOnline = async ({ accessToken, pin, deviceId, trustDevice = true }) => {
+  return requestJson({
+    path: '/api/auth/pin/setup',
+    method: 'POST',
+    body: { pin, deviceId, trustDevice },
+    accessToken,
+  });
+};
+
+export const requestEmailVerificationOnline = async ({ email }) => {
+  return requestJson({
+    path: '/api/auth/verify-email/request',
+    method: 'POST',
+    body: { email },
+  });
+};
+
+export const verifyEmailCodeOnline = async ({ email, verificationCode, rememberMe = false }) => {
+  return requestJson({
+    path: '/api/auth/verify-email/confirm',
+    method: 'POST',
+    body: { email, verificationCode, rememberMe },
   });
 };
 
@@ -114,5 +152,42 @@ export const fetchOnlineProfile = async ({ accessToken }) => {
     path: '/api/user/profile',
     method: 'GET',
     accessToken,
+  });
+};
+
+export const requestPinRecoveryOnline = async ({ email }) => {
+  return requestJson({
+    path: '/api/auth/recover/request-pin',
+    method: 'POST',
+    body: { email },
+  });
+};
+
+export const resetPinOnline = async ({ resetToken, newPin }) => {
+  return requestJson({
+    path: '/api/auth/recover/reset-pin',
+    method: 'POST',
+    body: { resetToken, newPin },
+  });
+};
+
+export const updatePinOnline = async ({ accessToken, currentPin, newPin }) => {
+  return requestJson({
+    path: '/api/auth/update-pin',
+    method: 'POST',
+    body: { currentPin, newPin },
+    accessToken,
+  });
+};
+
+export const requestPasswordRecoveryOnline = async ({ email }) => requestPinRecoveryOnline({ email });
+export const resetPasswordOnline = async ({ resetToken, newPassword }) => resetPinOnline({ resetToken, newPin: newPassword });
+export const updatePasswordOnline = async ({ accessToken, currentPassword, newPassword }) => updatePinOnline({ accessToken, currentPin: currentPassword, newPin: newPassword });
+
+export const logoutOnline = async ({ refreshToken }) => {
+  return requestJson({
+    path: '/api/auth/logout',
+    method: 'POST',
+    body: { refreshToken },
   });
 };

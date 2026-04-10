@@ -3,7 +3,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { registerRootComponent } from 'expo';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Platform, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -45,10 +45,17 @@ import ProductListScreen from './screens/ProductListScreen';
 import StockMovementScreen from './screens/StockMovementScreen.js';
 import DashboardScreen from './screens/DashboardScreen';
 import AuditHistoryScreen from './screens/AuditHistoryScreen';
+import AccountRecoveryScreen from './screens/auth/AccountRecoveryScreen';
 import LoginScreen from './screens/auth/LoginScreen';
+import PinLoginScreen from './screens/auth/PinLoginScreen';
+import ResetPasswordScreen from './screens/auth/ResetPasswordScreen';
+import SetupPinScreen from './screens/auth/SetupPinScreen';
 import SignupScreen from './screens/auth/SignupScreen';
+import UpdatePasswordScreen from './screens/auth/UpdatePasswordScreen';
+import VerifyEmailScreen from './screens/auth/VerifyEmailScreen';
 import { applyCustomerRiskClassification, createCustomerRiskModel } from './services/customers/customerRiskEngine';
 import { createReorderPredictor } from './services/reorder/reorderSuggestionEngine.js';
+import { runDataSync } from './services/sync/dataSync';
 import { UI_COLORS } from './constants/ui-theme';
 
 const Tab = createBottomTabNavigator();
@@ -68,7 +75,19 @@ const AppTheme = {
   },
 };
 
-function BootLoading({ title = 'Preparing Hisab', subtitle = 'Loading products, customers, and baki data...' }) {
+function BootLoading({
+  title = 'Preparing Hisab',
+  subtitle = 'Loading products, customers, and baki data...',
+  compact = false,
+}) {
+  if (compact) {
+    return (
+      <SafeAreaView style={styles.loadingSafeAreaCompact}>
+        <ActivityIndicator size="large" color={UI_COLORS.primary} />
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.loadingSafeArea}>
       <View style={styles.loadingCard}>
@@ -216,8 +235,28 @@ function MainTabs() {
 
 function MainStackNavigator() {
   return (
-    <MainStack.Navigator screenOptions={{ headerShown: false }}>
-      <MainStack.Screen name="MainTabs" component={MainTabs} />
+    <MainStack.Navigator>
+      <MainStack.Screen name="MainTabs" component={MainTabs} options={{ headerShown: false }} />
+      <MainStack.Screen
+        name="UpdatePassword"
+        component={UpdatePasswordScreen}
+        options={{
+          title: 'Update PIN',
+          headerStyle: { backgroundColor: UI_COLORS.textPrimary },
+          headerTintColor: UI_COLORS.surface,
+          contentStyle: { backgroundColor: UI_COLORS.background },
+        }}
+      />
+      <MainStack.Screen
+        name="SetupPin"
+        component={SetupPinScreen}
+        options={{
+          title: 'Setup PIN',
+          headerStyle: { backgroundColor: UI_COLORS.textPrimary },
+          headerTintColor: UI_COLORS.surface,
+          contentStyle: { backgroundColor: UI_COLORS.background },
+        }}
+      />
     </MainStack.Navigator>
   );
 }
@@ -233,12 +272,17 @@ function AuthStackNavigator() {
         contentStyle: { backgroundColor: UI_COLORS.background },
       }}>
       <AuthStack.Screen name="Login" component={LoginScreen} options={{ title: 'Login' }} />
+      <AuthStack.Screen name="PinLogin" component={PinLoginScreen} options={{ title: 'PIN Login' }} />
       <AuthStack.Screen name="Signup" component={SignupScreen} options={{ title: 'Signup' }} />
+      <AuthStack.Screen name="VerifyEmail" component={VerifyEmailScreen} options={{ title: 'Verify Email' }} />
+      <AuthStack.Screen name="AccountRecovery" component={AccountRecoveryScreen} options={{ title: 'Account Recovery' }} />
+      <AuthStack.Screen name="ResetPassword" component={ResetPasswordScreen} options={{ title: 'Reset PIN' }} />
     </AuthStack.Navigator>
   );
 }
 
 function MainDataShell() {
+  const { user, session, isOnline } = useAuth();
   const customerRiskModel = useMemo(() => createCustomerRiskModel('rule-based'), []);
   const reorderPredictor = useMemo(() => createReorderPredictor('rule-based'), []);
   const reorderRuleConfig = useMemo(
@@ -252,7 +296,10 @@ function MainDataShell() {
     []
   );
   const [booting, setBooting] = useState(true);
+  const [initialDataLoading, setInitialDataLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [syncingData, setSyncingData] = useState(false);
+  const syncInFlightRef = useRef(false);
   const [products, setProducts] = useState([]);
   const [expiringSoonProducts, setExpiringSoonProducts] = useState([]);
   const [expiredProducts, setExpiredProducts] = useState([]);
@@ -324,19 +371,41 @@ function MainDataShell() {
   }, [customerRiskModel, reorderPredictor, reorderRuleConfig]);
 
   useEffect(() => {
+    let disposed = false;
+
     const boot = async () => {
       try {
         await createTables();
-
-        await loadAllData();
       } catch (error) {
         console.error('[APP] boot failed:', error);
       } finally {
-        setBooting(false);
+        if (!disposed) {
+          setBooting(false);
+        }
+      }
+    };
+
+    const hydrateAfterPaint = async () => {
+      try {
+        await loadAllData();
+      } catch (error) {
+        console.error('[APP] initial data hydration failed:', error);
+      } finally {
+        if (!disposed) {
+          setInitialDataLoading(false);
+        }
       }
     };
 
     boot();
+
+    requestAnimationFrame(() => {
+      void hydrateAfterPaint();
+    });
+
+    return () => {
+      disposed = true;
+    };
   }, [loadAllData]);
 
   const refreshAll = useCallback(async () => {
@@ -347,6 +416,61 @@ function MainDataShell() {
       setRefreshing(false);
     }
   }, [loadAllData]);
+
+  const runOnlineSync = useCallback(async () => {
+    if (!isOnline || !session?.access_token || !user?.id) {
+      return { synced: 0, appliedServerChanges: 0, skipped: true };
+    }
+
+    if (syncInFlightRef.current) {
+      return { synced: 0, appliedServerChanges: 0, skipped: true };
+    }
+
+    syncInFlightRef.current = true;
+    setSyncingData(true);
+    try {
+      const result = await runDataSync({
+        userId: Number(user.id),
+        accessToken: session.access_token,
+      });
+
+      if (Number(result?.synced || 0) > 0 || Number(result?.appliedServerChanges || 0) > 0) {
+        await loadAllData();
+      }
+
+      return result;
+    } catch (error) {
+      console.warn('[APP] data sync skipped or failed:', error?.message || error);
+      return { synced: 0, appliedServerChanges: 0, skipped: true };
+    } finally {
+      syncInFlightRef.current = false;
+      setSyncingData(false);
+    }
+  }, [isOnline, loadAllData, session?.access_token, user?.id]);
+
+  useEffect(() => {
+    if (!isOnline || !session?.access_token || !user?.id) {
+      return undefined;
+    }
+
+    let disposed = false;
+
+    const run = async () => {
+      if (disposed) {
+        return;
+      }
+
+      await runOnlineSync();
+    };
+
+    run();
+    const timer = setInterval(run, 20000);
+
+    return () => {
+      disposed = true;
+      clearInterval(timer);
+    };
+  }, [isOnline, runOnlineSync, session?.access_token, user?.id]);
 
   const addProduct = useCallback(
     async ({ name, quantity, price, expiryDate, lowStockThreshold }) => {
@@ -460,7 +584,9 @@ function MainDataShell() {
   const contextValue = useMemo(
     () => ({
       booting,
+      initialDataLoading,
       refreshing,
+      syncingData,
       products,
       expiringSoonProducts,
       expiredProducts,
@@ -486,10 +612,13 @@ function MainDataShell() {
       getDashboardTopActiveCustomers,
       getStockMovementCountInRange,
       getAuditLogs,
+      runOnlineSync,
     }),
     [
       booting,
+      initialDataLoading,
       refreshing,
+      syncingData,
       products,
       expiringSoonProducts,
       expiredProducts,
@@ -515,6 +644,7 @@ function MainDataShell() {
       getDashboardTopActiveCustomers,
       getStockMovementCountInRange,
       getAuditLogs,
+      runOnlineSync,
     ]
   );
 
@@ -533,7 +663,7 @@ function RootNavigator() {
   const { authBooting, isAuthenticated } = useAuth();
 
   if (authBooting) {
-    return <BootLoading title="Checking Session" subtitle="Restoring saved login state..." />;
+    return <BootLoading compact />;
   }
 
   return (
@@ -562,6 +692,12 @@ export default function App() {
 registerRootComponent(App);
 
 const styles = StyleSheet.create({
+  loadingSafeAreaCompact: {
+    flex: 1,
+    backgroundColor: UI_COLORS.background,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   loadingSafeArea: {
     flex: 1,
     backgroundColor: UI_COLORS.background,

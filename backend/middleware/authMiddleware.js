@@ -1,22 +1,49 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const { error: sendError } = require('../utils/apiResponse');
+
+const sendAuthError = (req, res, {
+  statusCode = 401,
+  code = 'AUTH_UNAUTHORIZED',
+  message = 'Unauthorized.',
+  details = null,
+} = {}) => {
+  return sendError(req, res, {
+    statusCode,
+    code,
+    message,
+    details,
+  });
+};
 
 const authMiddleware = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization || '';
 
     if (!authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ message: 'Missing or invalid authorization token.' });
+      return sendAuthError(req, res, {
+        statusCode: 401,
+        code: 'MISSING_ACCESS_TOKEN',
+        message: 'Missing or invalid authorization token.',
+      });
     }
 
     const token = authHeader.slice(7).trim();
     if (!token) {
-      return res.status(401).json({ message: 'Missing or invalid authorization token.' });
+      return sendAuthError(req, res, {
+        statusCode: 401,
+        code: 'MISSING_ACCESS_TOKEN',
+        message: 'Missing or invalid authorization token.',
+      });
     }
 
     const secret = process.env.JWT_SECRET;
     if (!secret) {
-      return res.status(500).json({ message: 'Server authentication is not configured.' });
+      return sendAuthError(req, res, {
+        statusCode: 500,
+        code: 'AUTH_CONFIG_ERROR',
+        message: 'Server authentication is not configured.',
+      });
     }
 
     let decoded;
@@ -24,31 +51,53 @@ const authMiddleware = async (req, res, next) => {
       decoded = jwt.verify(token, secret);
     } catch (error) {
       if (error?.name === 'TokenExpiredError') {
-        return res.status(401).json({ code: 'ACCESS_TOKEN_EXPIRED', message: 'Access token has expired.' });
+        return sendAuthError(req, res, {
+          statusCode: 401,
+          code: 'ACCESS_TOKEN_EXPIRED',
+          message: 'Access token has expired.',
+        });
       }
 
-      return res.status(401).json({ code: 'INVALID_ACCESS_TOKEN', message: 'Invalid access token.' });
+      return sendAuthError(req, res, {
+        statusCode: 401,
+        code: 'INVALID_ACCESS_TOKEN',
+        message: 'Invalid access token.',
+      });
     }
 
     if (decoded?.token_type && decoded.token_type !== 'access') {
-      return res.status(401).json({ code: 'INVALID_ACCESS_TOKEN', message: 'Invalid access token type.' });
+      return sendAuthError(req, res, {
+        statusCode: 401,
+        code: 'INVALID_ACCESS_TOKEN',
+        message: 'Invalid access token type.',
+      });
     }
 
     const userId = decoded?.user_id;
     if (!userId) {
-      return res.status(401).json({ code: 'INVALID_ACCESS_TOKEN', message: 'Invalid access token payload.' });
+      return sendAuthError(req, res, {
+        statusCode: 401,
+        code: 'INVALID_ACCESS_TOKEN',
+        message: 'Invalid access token payload.',
+      });
     }
 
-    const user = await User.findById(userId).select('+passwordChangedAt');
+    const user = await User.findById(userId).select('+passwordChangedAt +pinChangedAt +emailVerifiedAt +pinSetAt');
     if (!user) {
-      return res.status(401).json({ code: 'INVALID_ACCESS_TOKEN', message: 'User for token no longer exists.' });
+      return sendAuthError(req, res, {
+        statusCode: 401,
+        code: 'INVALID_ACCESS_TOKEN',
+        message: 'User for token no longer exists.',
+      });
     }
 
     const issuedAt = Number(decoded?.iat || 0);
-    if (user.passwordChangedAt && issuedAt > 0) {
-      const changedAtSec = Math.floor(new Date(user.passwordChangedAt).getTime() / 1000);
-      if (changedAtSec >= issuedAt) {
-        return res.status(401).json({
+    if ((user.pinChangedAt || user.passwordChangedAt) && issuedAt > 0) {
+      const effectiveChangedAt = user.pinChangedAt || user.passwordChangedAt;
+      const changedAtSec = Math.floor(new Date(effectiveChangedAt).getTime() / 1000);
+      if (changedAtSec > issuedAt) {
+        return sendAuthError(req, res, {
+          statusCode: 401,
           code: 'TOKEN_REVOKED',
           message: 'Token is no longer valid. Please login again.',
         });
@@ -63,7 +112,11 @@ const authMiddleware = async (req, res, next) => {
     req.user = user;
     return next();
   } catch {
-    return res.status(500).json({ message: 'Failed to authorize request.' });
+    return sendAuthError(req, res, {
+      statusCode: 500,
+      code: 'AUTHORIZATION_FAILED',
+      message: 'Failed to authorize request.',
+    });
   }
 };
 
