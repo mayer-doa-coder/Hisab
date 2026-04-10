@@ -26,11 +26,11 @@ const mapPinError = (error) => {
   }
 
   if (code === 'PIN_DEVICE_NOT_TRUSTED') {
-    return 'PIN login works only on your trusted device. Use password login now.';
+    return 'PIN login works only on your trusted device.';
   }
 
   if (code === 'PIN_NOT_CONFIGURED') {
-    return 'PIN is not set yet. Login with password first.';
+    return 'PIN is not set yet for this account.';
   }
 
   if (code === 'EMAIL_NOT_VERIFIED') {
@@ -123,7 +123,7 @@ export default function PinLoginScreen({ navigation }) {
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.secondaryButton} onPress={() => navigation.navigate('Login')}>
-            <Text style={styles.secondaryButtonText}>Use Password Instead</Text>
+            <Text style={styles.secondaryButtonText}>Use Main Login</Text>
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>

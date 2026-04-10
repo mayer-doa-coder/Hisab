@@ -15,13 +15,13 @@ import {
   loginOnline,
   loginWithPinOnline,
   logoutOnline,
+  requestPinRecoveryOnline,
   requestEmailVerificationOnline,
-  requestPasswordRecoveryOnline,
-  resetPasswordOnline,
+  resetPinOnline,
   refreshOnlineToken,
   setupPinOnline,
   signupOnline,
-  updatePasswordOnline,
+  updatePinOnline,
   verifyEmailCodeOnline,
 } from '../services/backend/authApi';
 
@@ -371,7 +371,7 @@ export function AuthProvider({ children }) {
     return localPayload?.user || null;
   }, [syncAuthDeviceProfile, updateAuthStatus]);
 
-  const login = useCallback(async (email, password, options = {}) => {
+  const login = useCallback(async (email, pin, options = {}) => {
     const online = await isBackendOnline();
     setIsOnline(online);
 
@@ -382,8 +382,14 @@ export function AuthProvider({ children }) {
     }
 
     const rememberMe = Boolean(options?.rememberMe);
+    const profile = await getAuthDeviceProfile();
 
-    const serverPayload = await loginOnline({ email, password, rememberMe });
+    const serverPayload = await loginOnline({
+      email,
+      pin,
+      rememberMe,
+      deviceId: profile?.deviceId || null,
+    });
     if (!serverPayload?.accessToken || !serverPayload?.refreshToken || !serverPayload?.user) {
       const error = new Error('Login response is incomplete. Please try again.');
       error.code = 'AUTH_INVALID_LOGIN_RESPONSE';
@@ -397,7 +403,7 @@ export function AuthProvider({ children }) {
     });
   }, [persistOnlineSession]);
 
-  const signup = useCallback(async (email, password, options = {}) => {
+  const signup = useCallback(async (email, pin, options = {}) => {
     const online = await isBackendOnline();
     setIsOnline(online);
 
@@ -408,7 +414,7 @@ export function AuthProvider({ children }) {
     }
 
     const rememberMe = Boolean(options?.rememberMe);
-    const signupPayload = await signupOnline({ email, password, rememberMe });
+    const signupPayload = await signupOnline({ email, pin, rememberMe });
 
     if (signupPayload?.verificationRequired) {
       await setAuthDeviceProfile({
@@ -563,7 +569,7 @@ export function AuthProvider({ children }) {
     await syncAuthDeviceProfile();
   }, [session?.refresh_token, session?.token, syncAuthDeviceProfile, updateAuthStatus]);
 
-  const requestPasswordRecovery = useCallback(async (email) => {
+  const requestPinRecovery = useCallback(async (email) => {
     const online = await isBackendOnline();
     setIsOnline(online);
 
@@ -573,23 +579,23 @@ export function AuthProvider({ children }) {
       throw error;
     }
 
-    return requestPasswordRecoveryOnline({ email });
+    return requestPinRecoveryOnline({ email });
   }, []);
 
-  const resetPassword = useCallback(async ({ resetToken, newPassword }) => {
+  const resetPin = useCallback(async ({ resetToken, newPin }) => {
     const online = await isBackendOnline();
     setIsOnline(online);
 
     if (!online) {
-      const error = new Error('Internet connection is required for password reset.');
+      const error = new Error('Internet connection is required for PIN reset.');
       error.code = ONLINE_AUTH_REQUIRED_CODE;
       throw error;
     }
 
-    return resetPasswordOnline({ resetToken, newPassword });
+    return resetPinOnline({ resetToken, newPin });
   }, []);
 
-  const updatePassword = useCallback(async ({ currentPassword, newPassword }) => {
+  const updatePin = useCallback(async ({ currentPin, newPin }) => {
     const accessToken = session?.access_token;
     const sessionToken = session?.token;
     if (!accessToken || !sessionToken) {
@@ -598,21 +604,29 @@ export function AuthProvider({ children }) {
       throw error;
     }
 
-    await updatePasswordOnline({
+    await updatePinOnline({
       accessToken,
-      currentPassword,
-      newPassword,
+      currentPin,
+      newPin,
     });
 
     await hardLogout({
       sessionToken,
-      message: 'Password updated. Please login again.',
-      reason: 'PASSWORD_UPDATED',
+      message: 'PIN updated. Please login again.',
+      reason: 'PIN_UPDATED',
     });
 
     await setAuthDeviceProfile({ pinEnabled: false });
     await syncAuthDeviceProfile();
   }, [hardLogout, session?.access_token, session?.token, syncAuthDeviceProfile]);
+
+  const requestPasswordRecovery = requestPinRecovery;
+  const resetPassword = useCallback(async ({ resetToken, newPassword }) => {
+    return resetPin({ resetToken, newPin: newPassword });
+  }, [resetPin]);
+  const updatePassword = useCallback(async ({ currentPassword, newPassword }) => {
+    return updatePin({ currentPin: currentPassword, newPin: newPassword });
+  }, [updatePin]);
 
   const value = useMemo(
     () => ({
@@ -628,6 +642,9 @@ export function AuthProvider({ children }) {
       signup,
       requestEmailVerification,
       verifyEmailCode,
+      requestPinRecovery,
+      resetPin,
+      updatePin,
       requestPasswordRecovery,
       resetPassword,
       updatePassword,
@@ -643,11 +660,14 @@ export function AuthProvider({ children }) {
       loginWithPin,
       logout,
       requestEmailVerification,
+      requestPinRecovery,
       requestPasswordRecovery,
+      resetPin,
       resetPassword,
       session,
       setupPin,
       signup,
+      updatePin,
       updatePassword,
       user,
       verifyEmailCode,

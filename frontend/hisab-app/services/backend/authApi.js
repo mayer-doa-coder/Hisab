@@ -90,19 +90,19 @@ export const isBackendOnline = async () => {
   return Boolean(health?.ok);
 };
 
-export const signupOnline = async ({ email, password, rememberMe = false }) => {
+export const signupOnline = async ({ email, pin, rememberMe = false }) => {
   return requestJson({
     path: '/api/auth/signup',
     method: 'POST',
-    body: { email, password, rememberMe },
+    body: { email, pin, rememberMe },
   });
 };
 
-export const loginOnline = async ({ email, password, rememberMe = false }) => {
+export const loginOnline = async ({ email, pin, deviceId = null, rememberMe = false }) => {
   return requestJson({
     path: '/api/auth/login',
     method: 'POST',
-    body: { email, password, rememberMe },
+    body: { email, pin, deviceId, rememberMe },
   });
 };
 
@@ -155,30 +155,34 @@ export const fetchOnlineProfile = async ({ accessToken }) => {
   });
 };
 
-export const requestPasswordRecoveryOnline = async ({ email }) => {
+export const requestPinRecoveryOnline = async ({ email }) => {
   return requestJson({
-    path: '/api/auth/recover/request',
+    path: '/api/auth/recover/request-pin',
     method: 'POST',
     body: { email },
   });
 };
 
-export const resetPasswordOnline = async ({ resetToken, newPassword }) => {
+export const resetPinOnline = async ({ resetToken, newPin }) => {
   return requestJson({
-    path: '/api/auth/recover/reset',
+    path: '/api/auth/recover/reset-pin',
     method: 'POST',
-    body: { resetToken, newPassword },
+    body: { resetToken, newPin },
   });
 };
 
-export const updatePasswordOnline = async ({ accessToken, currentPassword, newPassword }) => {
+export const updatePinOnline = async ({ accessToken, currentPin, newPin }) => {
   return requestJson({
-    path: '/api/auth/update-password',
+    path: '/api/auth/update-pin',
     method: 'POST',
-    body: { currentPassword, newPassword },
+    body: { currentPin, newPin },
     accessToken,
   });
 };
+
+export const requestPasswordRecoveryOnline = async ({ email }) => requestPinRecoveryOnline({ email });
+export const resetPasswordOnline = async ({ resetToken, newPassword }) => resetPinOnline({ resetToken, newPin: newPassword });
+export const updatePasswordOnline = async ({ accessToken, currentPassword, newPassword }) => updatePinOnline({ accessToken, currentPin: currentPassword, newPin: newPassword });
 
 export const logoutOnline = async ({ refreshToken }) => {
   return requestJson({

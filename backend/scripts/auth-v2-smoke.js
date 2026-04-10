@@ -6,8 +6,8 @@ const DEFAULT_TIMEOUT_MS = Number(process.env.AUTH_SMOKE_TIMEOUT_MS || 10000);
 
 const randomSuffix = crypto.randomBytes(4).toString('hex');
 const email = `authv2_${Date.now()}_${randomSuffix}@example.com`;
-const initialPassword = 'Str0ng!Pass#One';
-const updatedPassword = 'N3wStrong!Pass#Two';
+const initialPin = '4455';
+const updatedPin = '667788';
 const loginPin = '445566';
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -79,21 +79,21 @@ const cases = [
     const result = await requestJson({ path: '/health' });
     assert(result.ok, `Expected /health to succeed. status=${result.status} code=${result.code}`);
   }),
-  createCase('Reject weak signup password', async () => {
+  createCase('Reject invalid signup PIN', async () => {
     const result = await requestJson({
       path: '/api/auth/signup',
       method: 'POST',
-      body: { email, password: 'weak' },
+      body: { email, pin: '12ab' },
     });
 
-    assert(!result.ok, 'Expected weak signup password to fail.');
-    assert(result.code === 'WEAK_PASSWORD', `Expected WEAK_PASSWORD, got ${result.code || 'none'}`);
+    assert(!result.ok, 'Expected invalid signup PIN to fail.');
+    assert(result.code === 'INVALID_PIN_FORMAT', `Expected INVALID_PIN_FORMAT, got ${result.code || 'none'}`);
   }),
-  createCase('Signup with strong password', async () => {
+  createCase('Signup with valid PIN', async () => {
     const result = await requestJson({
       path: '/api/auth/signup',
       method: 'POST',
-      body: { email, password: initialPassword },
+      body: { email, pin: initialPin },
     });
 
     assert(result.ok, `Expected signup success. status=${result.status} code=${result.code}`);
@@ -105,7 +105,7 @@ const cases = [
     const result = await requestJson({
       path: '/api/auth/signup',
       method: 'POST',
-      body: { email, password: initialPassword },
+      body: { email, pin: initialPin },
     });
 
     assert(!result.ok, 'Expected duplicate signup to fail.');
@@ -114,21 +114,24 @@ const cases = [
       `Expected OTP_REQUEST_RATE_LIMITED or EMAIL_ALREADY_EXISTS, got ${result.code || 'none'}`
     );
   }),
-  createCase('Reject login with invalid password', async () => {
+  createCase('Reject login with invalid PIN', async () => {
     const result = await requestJson({
       path: '/api/auth/login',
       method: 'POST',
-      body: { email, password: 'Wrong!Pass#1' },
+      body: { email, pin: '1111' },
     });
 
-    assert(!result.ok, 'Expected invalid login to fail.');
-    assert(result.code === 'INVALID_CREDENTIALS', `Expected INVALID_CREDENTIALS, got ${result.code || 'none'}`);
+    assert(!result.ok, 'Expected invalid PIN login to fail.');
+    assert(
+      result.code === 'INVALID_PIN' || result.code === 'EMAIL_NOT_VERIFIED',
+      `Expected INVALID_PIN or EMAIL_NOT_VERIFIED, got ${result.code || 'none'}`
+    );
   }),
   createCase('Reject login before email verification', async () => {
     const result = await requestJson({
       path: '/api/auth/login',
       method: 'POST',
-      body: { email, password: initialPassword },
+      body: { email, pin: initialPin },
     });
 
     assert(!result.ok, 'Expected unverified login to fail.');
@@ -181,11 +184,11 @@ const cases = [
     assert(!result.ok, 'Expected verification code reuse to fail.');
     assert(result.code === 'EMAIL_ALREADY_VERIFIED', `Expected EMAIL_ALREADY_VERIFIED, got ${result.code || 'none'}`);
   }),
-  createCase('Login with valid credentials', async () => {
+  createCase('Login with valid PIN', async () => {
     const result = await requestJson({
       path: '/api/auth/login',
       method: 'POST',
-      body: { email, password: initialPassword },
+      body: { email, pin: initialPin },
     });
 
     assert(result.ok, `Expected login success. status=${result.status} code=${result.code}`);
@@ -330,9 +333,9 @@ const cases = [
       `Expected refresh revocation error, got ${result.code || 'none'}`
     );
   }),
-  createCase('Recovery request accepted', async () => {
+  createCase('PIN recovery request accepted', async () => {
     const result = await requestJson({
-      path: '/api/auth/recover/request',
+      path: '/api/auth/recover/request-pin',
       method: 'POST',
       body: { email },
     });
@@ -342,70 +345,70 @@ const cases = [
       state.resetToken = String(result.payload.resetToken);
     }
   }),
-  createCase('Reject reset with invalid token', async () => {
+  createCase('Reject PIN reset with invalid token', async () => {
     const result = await requestJson({
-      path: '/api/auth/recover/reset',
+      path: '/api/auth/recover/reset-pin',
       method: 'POST',
       body: {
         resetToken: 'invalid-token',
-        newPassword: 'An0ther!StrongPass',
+        newPin: '2233',
       },
     });
 
     assert(!result.ok, 'Expected invalid reset token to fail.');
     assert(result.code === 'INVALID_RESET_TOKEN', `Expected INVALID_RESET_TOKEN, got ${result.code || 'none'}`);
   }),
-  createCase('Reset password with valid token (non-production only)', async () => {
+  createCase('Reset PIN with valid token (non-production only)', async () => {
     if (!state.resetToken) {
       console.log('SKIP: No reset token returned by backend (likely production mode).');
       return;
     }
 
     const result = await requestJson({
-      path: '/api/auth/recover/reset',
+      path: '/api/auth/recover/reset-pin',
       method: 'POST',
       body: {
         resetToken: state.resetToken,
-        newPassword: updatedPassword,
+        newPin: updatedPin,
       },
     });
 
-    assert(result.ok, `Expected reset password success. status=${result.status} code=${result.code}`);
+    assert(result.ok, `Expected reset PIN success. status=${result.status} code=${result.code}`);
   }),
-  createCase('Login with updated password', async () => {
+  createCase('Login with updated PIN', async () => {
     if (!state.resetToken) {
-      console.log('SKIP: Updated-password login skipped because reset token was unavailable.');
+      console.log('SKIP: Updated-PIN login skipped because reset token was unavailable.');
       return;
     }
 
     const result = await requestJson({
       path: '/api/auth/login',
       method: 'POST',
-      body: { email, password: updatedPassword },
+      body: { email, pin: updatedPin },
     });
 
-    assert(result.ok, `Expected login with updated password to succeed. status=${result.status} code=${result.code}`);
+    assert(result.ok, `Expected login with updated PIN to succeed. status=${result.status} code=${result.code}`);
     state.accessToken = result.payload?.accessToken || state.accessToken;
     state.refreshToken = result.payload?.refreshToken || state.refreshToken;
   }),
-  createCase('Update password endpoint rejects bad current password', async () => {
+  createCase('Update PIN endpoint rejects bad current PIN', async () => {
     if (!state.accessToken) {
-      console.log('SKIP: Update password tests skipped due to missing access token.');
+      console.log('SKIP: Update PIN tests skipped due to missing access token.');
       return;
     }
 
     const result = await requestJson({
-      path: '/api/auth/update-password',
+      path: '/api/auth/update-pin',
       method: 'POST',
       accessToken: state.accessToken,
       body: {
-        currentPassword: 'Wrong!Current#1',
-        newPassword: 'YetAn0ther!Pass#3',
+        currentPin: '1122',
+        newPin: '3344',
       },
     });
 
-    assert(!result.ok, 'Expected update-password with wrong current password to fail.');
-    assert(result.code === 'CURRENT_PASSWORD_INCORRECT', `Expected CURRENT_PASSWORD_INCORRECT, got ${result.code || 'none'}`);
+    assert(!result.ok, 'Expected update-pin with wrong current PIN to fail.');
+    assert(result.code === 'CURRENT_PIN_INCORRECT', `Expected CURRENT_PIN_INCORRECT, got ${result.code || 'none'}`);
   }),
   createCase('Logout succeeds with refresh token', async () => {
     if (!state.refreshToken) {

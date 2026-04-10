@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import {
   ActivityIndicator,
-  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
@@ -12,7 +11,7 @@ import AuthScene, { AUTH_FORM_STYLES } from '../../components/auth/AuthScene';
 import { useAuth } from '../../context/AuthContext';
 
 export default function AccountRecoveryScreen({ navigation }) {
-  const { requestPasswordRecovery } = useAuth();
+  const { requestPinRecovery } = useAuth();
 
   const [email, setEmail] = useState('');
   const [requesting, setRequesting] = useState(false);
@@ -28,7 +27,7 @@ export default function AccountRecoveryScreen({ navigation }) {
     try {
       setMessage('');
       setRequesting(true);
-      const response = await requestPasswordRecovery(normalizedEmail);
+      const response = await requestPinRecovery(normalizedEmail);
       const tokenHint = String(response?.resetToken || '').trim();
       const delivery = response?.emailDelivery || null;
 
@@ -52,7 +51,7 @@ export default function AccountRecoveryScreen({ navigation }) {
     <AuthScene
       eyebrow="Hisab Recovery"
       title="Recover Account"
-      subtitle="Request token, then reset password."
+      subtitle="Request a recovery token to reset your PIN"
     >
       <TextInput
         value={email}
@@ -65,8 +64,8 @@ export default function AccountRecoveryScreen({ navigation }) {
       />
 
       {message ? (
-        <View style={styles.inlineNotice}>
-          <Text style={styles.inlineNoticeText}>{message}</Text>
+        <View style={AUTH_FORM_STYLES.noticeStrip}>
+          <Text style={AUTH_FORM_STYLES.noticeText}>{message}</Text>
         </View>
       ) : null}
 
@@ -75,7 +74,7 @@ export default function AccountRecoveryScreen({ navigation }) {
         onPress={handleRequestRecovery}
         disabled={requesting}
       >
-        {requesting ? <ActivityIndicator size="small" color="#FFF8EE" /> : <Text style={AUTH_FORM_STYLES.primaryButtonText}>Request Recovery Token</Text>}
+        {requesting ? <ActivityIndicator size="small" color="#FFFFFF" /> : <Text style={AUTH_FORM_STYLES.primaryButtonText}>Request PIN Recovery Token</Text>}
       </TouchableOpacity>
 
       <TouchableOpacity style={AUTH_FORM_STYLES.secondaryButton} onPress={() => navigation.navigate('ResetPassword')}>
@@ -88,20 +87,3 @@ export default function AccountRecoveryScreen({ navigation }) {
     </AuthScene>
   );
 }
-
-const styles = StyleSheet.create({
-  inlineNotice: {
-    marginTop: 4,
-    borderLeftWidth: 3,
-    borderColor: '#B91C1C',
-    backgroundColor: '#FEE2E2',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-  },
-  inlineNoticeText: {
-    color: '#7F1D1D',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-});

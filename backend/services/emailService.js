@@ -170,21 +170,21 @@ const sendVerificationCodeEmail = async ({ to, code, expiresAt }) => {
   return sendEmail({ to, subject, text, html });
 };
 
-const sendPasswordRecoveryEmail = async ({ to, resetToken, expiresAt }) => {
+const sendPinRecoveryEmail = async ({ to, resetToken, expiresAt }) => {
   const expiresLabel = formatExpiresAt(expiresAt);
-  const subject = `${APP_NAME} password reset token`;
+  const subject = `${APP_NAME} PIN reset token`;
   const text = [
-    `Your ${APP_NAME} password reset token is: ${resetToken}`,
+    `Your ${APP_NAME} PIN reset token is: ${resetToken}`,
     '',
     `This token expires at ${expiresLabel}.`,
-    'Use this token in the app reset password screen.',
+    'Use this token in the app reset PIN screen.',
     'If you did not request this, you can ignore this email.',
     APP_SUPPORT ? `Support: ${APP_SUPPORT}` : '',
   ].filter(Boolean).join('\n');
 
   const html = `
     <div style="font-family:Arial,sans-serif;line-height:1.5;color:#102a43;max-width:560px;margin:0 auto;">
-      <h2 style="margin:0 0 12px;">Reset your password</h2>
+      <h2 style="margin:0 0 12px;">Reset your PIN</h2>
       <p style="margin:0 0 12px;">Use this token in the app reset screen:</p>
       <p style="margin:0 0 16px;font-size:18px;font-weight:700;word-break:break-all;">${resetToken}</p>
       <p style="margin:0 0 10px;">This token expires at <strong>${expiresLabel}</strong>.</p>
@@ -199,5 +199,6 @@ module.exports = {
   isEmailTransportConfigured,
   isEmailDeliveryRequired: () => emailDeliveryRequired,
   sendVerificationCodeEmail,
-  sendPasswordRecoveryEmail,
+  sendPinRecoveryEmail,
+  sendPasswordRecoveryEmail: sendPinRecoveryEmail,
 };

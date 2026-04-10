@@ -241,7 +241,7 @@ function MainStackNavigator() {
         name="UpdatePassword"
         component={UpdatePasswordScreen}
         options={{
-          title: 'Update Password',
+          title: 'Update PIN',
           headerStyle: { backgroundColor: UI_COLORS.textPrimary },
           headerTintColor: UI_COLORS.surface,
           contentStyle: { backgroundColor: UI_COLORS.background },
@@ -276,7 +276,7 @@ function AuthStackNavigator() {
       <AuthStack.Screen name="Signup" component={SignupScreen} options={{ title: 'Signup' }} />
       <AuthStack.Screen name="VerifyEmail" component={VerifyEmailScreen} options={{ title: 'Verify Email' }} />
       <AuthStack.Screen name="AccountRecovery" component={AccountRecoveryScreen} options={{ title: 'Account Recovery' }} />
-      <AuthStack.Screen name="ResetPassword" component={ResetPasswordScreen} options={{ title: 'Reset Password' }} />
+      <AuthStack.Screen name="ResetPassword" component={ResetPasswordScreen} options={{ title: 'Reset PIN' }} />
     </AuthStack.Navigator>
   );
 }
@@ -296,6 +296,7 @@ function MainDataShell() {
     []
   );
   const [booting, setBooting] = useState(true);
+  const [initialDataLoading, setInitialDataLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [syncingData, setSyncingData] = useState(false);
   const syncInFlightRef = useRef(false);
@@ -370,19 +371,41 @@ function MainDataShell() {
   }, [customerRiskModel, reorderPredictor, reorderRuleConfig]);
 
   useEffect(() => {
+    let disposed = false;
+
     const boot = async () => {
       try {
         await createTables();
-
-        await loadAllData();
       } catch (error) {
         console.error('[APP] boot failed:', error);
       } finally {
-        setBooting(false);
+        if (!disposed) {
+          setBooting(false);
+        }
+      }
+    };
+
+    const hydrateAfterPaint = async () => {
+      try {
+        await loadAllData();
+      } catch (error) {
+        console.error('[APP] initial data hydration failed:', error);
+      } finally {
+        if (!disposed) {
+          setInitialDataLoading(false);
+        }
       }
     };
 
     boot();
+
+    requestAnimationFrame(() => {
+      void hydrateAfterPaint();
+    });
+
+    return () => {
+      disposed = true;
+    };
   }, [loadAllData]);
 
   const refreshAll = useCallback(async () => {
@@ -561,6 +584,7 @@ function MainDataShell() {
   const contextValue = useMemo(
     () => ({
       booting,
+      initialDataLoading,
       refreshing,
       syncingData,
       products,
@@ -592,6 +616,7 @@ function MainDataShell() {
     }),
     [
       booting,
+      initialDataLoading,
       refreshing,
       syncingData,
       products,

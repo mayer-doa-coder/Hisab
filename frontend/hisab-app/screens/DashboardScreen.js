@@ -116,10 +116,32 @@ function LoadingPlaceholder() {
   );
 }
 
+function SkeletonBlock({ height = 14, width = '100%' }) {
+  return <View style={[styles.skeletonBlock, { height, width }]} />;
+}
+
+function DashboardSkeleton() {
+  return (
+    <View style={styles.sectionWrap}>
+      <Text style={styles.sectionTitle}>Loading Dashboard</Text>
+      <View style={styles.kpiGrid}>
+        <View style={styles.skeletonCard}><SkeletonBlock width="55%" /><SkeletonBlock width="40%" height={20} /></View>
+        <View style={styles.skeletonCard}><SkeletonBlock width="58%" /><SkeletonBlock width="45%" height={20} /></View>
+        <View style={styles.skeletonCard}><SkeletonBlock width="52%" /><SkeletonBlock width="48%" height={20} /></View>
+        <View style={styles.skeletonCard}><SkeletonBlock width="60%" /><SkeletonBlock width="36%" height={20} /></View>
+      </View>
+      <SkeletonBlock width="80%" />
+      <SkeletonBlock width="92%" />
+      <SkeletonBlock width="70%" />
+    </View>
+  );
+}
+
 export default function DashboardScreen() {
   const navigation = useNavigation();
   const { user, logout, authDeviceProfile } = useAuth();
   const {
+    initialDataLoading,
     products,
     customers,
     lowStockProducts,
@@ -162,6 +184,8 @@ export default function DashboardScreen() {
     mostActiveCustomerName: null,
     mostActiveCustomerTxCount: 0,
   });
+
+  const showInitialSkeleton = initialDataLoading && !lastRefreshAt;
 
   const summary = useMemo(() => {
     const totalOutstandingDue = (customers || []).reduce((sum, row) => sum + Math.max(0, toFinite(row.total_due, 0)), 0);
@@ -370,13 +394,18 @@ export default function DashboardScreen() {
           <Text style={styles.rangeLabel}>Last refresh: {formatLocalDateTime(lastRefreshAt)}</Text>
           <TouchableOpacity style={styles.updatePasswordButton} onPress={() => navigation.navigate('UpdatePassword')}>
             <MaterialIcons name="lock-reset" size={15} color={UI_COLORS.primary} />
-            <Text style={styles.updatePasswordButtonText}>Update Password</Text>
+            <Text style={styles.updatePasswordButtonText}>Update PIN</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.updatePasswordButton} onPress={() => navigation.navigate('SetupPin')}>
             <MaterialIcons name="pin" size={15} color={UI_COLORS.primary} />
             <Text style={styles.updatePasswordButtonText}>{user?.pinEnabled || authDeviceProfile?.pinEnabled ? 'Change PIN' : 'Setup PIN Login'}</Text>
           </TouchableOpacity>
         </View>
+
+        {showInitialSkeleton ? <DashboardSkeleton /> : null}
+
+        {!showInitialSkeleton ? (
+          <>
 
         <View style={styles.kpiGrid}>
           <SummaryCard title="Total Products" value={String(summary.totalProducts)} icon="inventory-2" />
@@ -619,6 +648,9 @@ export default function DashboardScreen() {
           ) : null}
         </View>
 
+          </>
+        ) : null}
+
         {loadError ? (
           <View style={styles.errorCard}>
             <Text style={styles.errorTitle}>Unable to load dashboard</Text>
@@ -631,7 +663,7 @@ export default function DashboardScreen() {
 
         {loading ? <LoadingPlaceholder /> : null}
 
-        {!loading && !loadError && summary.totalProducts === 0 && summary.totalCustomers === 0 ? (
+        {!showInitialSkeleton && !loading && !loadError && summary.totalProducts === 0 && summary.totalCustomers === 0 ? (
           <View style={styles.emptyCard}>
             <Text style={styles.emptyTitle}>No business data found yet</Text>
             <Text style={styles.emptyText}>Use quick actions above to add products, customers, and transactions.</Text>
@@ -1061,5 +1093,20 @@ const styles = StyleSheet.create({
     color: UI_COLORS.textPrimary,
     fontSize: 14,
     fontWeight: '800',
+  },
+  skeletonCard: {
+    width: '48.5%',
+    minHeight: 84,
+    borderWidth: 1,
+    borderColor: UI_COLORS.border,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: UI_COLORS.surface,
+    gap: 10,
+  },
+  skeletonBlock: {
+    borderRadius: 8,
+    backgroundColor: '#E5EAF1',
   },
 });

@@ -9,7 +9,7 @@ const {
   isEmailTransportConfigured,
   isEmailDeliveryRequired,
   sendVerificationCodeEmail,
-  sendPasswordRecoveryEmail,
+  sendPinRecoveryEmail,
 } = require('../services/emailService');
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -20,8 +20,7 @@ const PIN_LOCK_DURATION_MS = 10 * 60 * 1000;
 const EMAIL_VERIFICATION_WINDOW_MS = Number(process.env.EMAIL_VERIFICATION_WINDOW_MS) || 10 * 60 * 1000;
 const EMAIL_VERIFICATION_RESEND_COOLDOWN_MS = Number(process.env.EMAIL_VERIFICATION_RESEND_COOLDOWN_MS) || 60 * 1000;
 const EMAIL_VERIFICATION_CODE_LENGTH = 6;
-const PASSWORD_RESET_WINDOW_MS = 30 * 60 * 1000;
-const PASSWORD_MIN_LENGTH = Number(process.env.AUTH_MIN_PASSWORD_LENGTH) || (process.env.NODE_ENV === 'production' ? 10 : 8);
+const PIN_RESET_WINDOW_MS = 30 * 60 * 1000;
 const ACCESS_TOKEN_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '15m';
 const REFRESH_TOKEN_EXPIRES_IN = process.env.JWT_REFRESH_EXPIRES_IN || '7d';
 const REFRESH_TOKEN_REMEMBER_EXPIRES_IN = process.env.JWT_REFRESH_REMEMBER_EXPIRES_IN || '30d';
@@ -115,7 +114,7 @@ const getAccessSecret = () => process.env.JWT_SECRET;
 
 const getRefreshSecret = () => process.env.JWT_REFRESH_SECRET || process.env.REFRESH_TOKEN_SECRET || process.env.JWT_SECRET;
 
-const buildAccessToken = (userId, { authMethod = 'password' } = {}) => {
+const buildAccessToken = (userId, { authMethod = 'pin' } = {}) => {
   const secret = getAccessSecret();
 
   if (!secret) {
@@ -313,63 +312,29 @@ const toPublicUser = (userDoc) => ({
   createdAt: userDoc.createdAt,
 });
 
-const validatePasswordPolicy = (password) => {
-  const normalizedPassword = String(password || '');
-  const issues = [];
-
-  if (normalizedPassword.length < PASSWORD_MIN_LENGTH) {
-    issues.push(`at least ${PASSWORD_MIN_LENGTH} characters`);
-  }
-
-  if (!/[A-Z]/.test(normalizedPassword)) {
-    issues.push('one uppercase letter');
-  }
-
-  if (!/[a-z]/.test(normalizedPassword)) {
-    issues.push('one lowercase letter');
-  }
-
-  if (!/[0-9]/.test(normalizedPassword)) {
-    issues.push('one number');
-  }
-
-  if (!/[^A-Za-z0-9]/.test(normalizedPassword)) {
-    issues.push('one special character');
-  }
-
-  if (!issues.length) {
-    return { ok: true };
-  }
-
-  return {
-    ok: false,
-    message: `Password must contain ${issues.join(', ')}.`,
-  };
-};
-
-const validateCredentials = ({ email, password, requireStrongPassword = false }) => {
+const validateCredentials = ({ email, pin, password, requirePin = false }) => {
   const normalizedEmail = normalizeEmail(email);
-  const normalizedPassword = String(password || '');
+  const normalizedPin = normalizePin(pin || password);
 
-  if (!normalizedEmail || !normalizedPassword) {
-    return { ok: false, message: 'Email and password are required.' };
+  if (!normalizedEmail || !normalizedPin) {
+    return { ok: false, message: 'Email and PIN are required.' };
   }
 
   if (!EMAIL_REGEX.test(normalizedEmail)) {
     return { ok: false, code: 'INVALID_EMAIL', message: 'Please provide a valid email address.' };
   }
 
-  if (requireStrongPassword) {
-    const policyResult = validatePasswordPolicy(normalizedPassword);
-    if (!policyResult.ok) {
-      return { ok: false, code: 'WEAK_PASSWORD', message: policyResult.message };
+  if (requirePin) {
+    const pinPolicy = validatePinPolicy(normalizedPin);
+    if (!pinPolicy.ok) {
+      return { ok: false, code: pinPolicy.code, message: pinPolicy.message };
     }
   }
 
   return {
     ok: true,
     email: normalizedEmail,
-    password: normalizedPassword,
+    pin: normalizedPin,
   };
 };
 
@@ -392,7 +357,7 @@ const validatePinPolicy = (pin) => {
 
 const signup = async (req, res) => {
   try {
-    const validation = validateCredentials({ ...(req.body || {}), requireStrongPassword: true });
+    const validation = validateCredentials({ ...(req.body || {}), requirePin: true });
     if (!validation.ok) {
       return sendAuthError(req, res, {
         statusCode: 400,
@@ -402,9 +367,9 @@ const signup = async (req, res) => {
     }
 
     const existing = await User.findOne({ email: validation.email }).select(
-      '+emailVerifiedAt +emailVerificationCodeHash +emailVerificationExpiresAt +emailVerificationLastSentAt'
+      '+emailVerifiedAt +emailVerificationCodeHash +emailVerificationExpiresAt +emailVerificationLastSentAt +pinHash +pinSetAt'
     );
-    const passwordHash = await bcrypt.hash(validation.password, 12);
+    const pinHash = await bcrypt.hash(validation.pin, 12);
 
     let user = existing;
     if (user?.emailVerifiedAt) {
@@ -416,19 +381,29 @@ const signup = async (req, res) => {
     }
 
     if (user) {
-      user.password = passwordHash;
+      user.password = pinHash;
+      user.pinHash = pinHash;
       user.passwordChangedAt = new Date();
+      user.pinChangedAt = new Date();
+      user.pinSetAt = new Date();
+      user.failedPinAttempts = 0;
+      user.pinLockUntil = null;
       user.failedLoginAttempts = 0;
       user.lockUntil = null;
       await user.save();
     } else {
       user = await User.create({
         email: validation.email,
-        password: passwordHash,
+        password: pinHash,
+        pinHash,
+        pinSetAt: new Date(),
         emailVerifiedAt: null,
+        failedPinAttempts: 0,
+        pinLockUntil: null,
         failedLoginAttempts: 0,
         lockUntil: null,
         passwordChangedAt: new Date(),
+        pinChangedAt: new Date(),
       });
     }
 
@@ -638,7 +613,7 @@ const verifyEmailCode = async (req, res) => {
     await user.save();
 
     await revokeAllUserRefreshTokens(user._id);
-    const accessToken = buildAccessToken(user._id, { authMethod: 'password' });
+    const accessToken = buildAccessToken(user._id, { authMethod: 'pin' });
     const refreshToken = buildRefreshToken(user._id, { rememberMe });
     await persistRefreshToken({ userId: user._id, refreshToken });
 
@@ -660,67 +635,127 @@ const verifyEmailCode = async (req, res) => {
 };
 
 const login = async (req, res) => {
-  try {
-    const validation = validateCredentials(req.body || {});
-    const rememberMe = toBoolean(req.body?.rememberMe, false);
-    if (!validation.ok) {
-      return sendAuthError(req, res, {
-        statusCode: 400,
-        code: validation.code || 'AUTH_VALIDATION_ERROR',
-        message: validation.message,
-      });
-    }
+  req.body = {
+    ...(req.body || {}),
+    pin: req.body?.pin || req.body?.password || null,
+  };
 
-    const user = await User.findOne({ email: validation.email }).select(
-      '+password +failedLoginAttempts +lockUntil +emailVerifiedAt +emailVerificationCodeHash +emailVerificationExpiresAt +emailVerificationLastSentAt +pinSetAt'
-    );
-    if (!user) {
-      await logSecurityEvent(req, {
-        eventType: 'AUTH_LOGIN_FAILED',
-        severity: 'warning',
-        metadata: { reason: 'USER_NOT_FOUND', email: validation.email },
-      });
+  return loginWithPin(req, res);
+};
+
+const setupPin = async (req, res) => {
+  try {
+    if (!req.user) {
       return sendAuthError(req, res, {
         statusCode: 401,
-        code: 'INVALID_CREDENTIALS',
-        message: 'Invalid email or password.',
+        code: 'AUTH_UNAUTHORIZED',
+        message: 'Unauthorized.',
       });
     }
 
-    if (user.lockUntil && new Date(user.lockUntil).getTime() > Date.now()) {
+    const pinValidation = validatePinPolicy(req.body?.pin);
+    if (!pinValidation.ok) {
       return sendAuthError(req, res, {
-        statusCode: 423,
-        code: 'ACCOUNT_LOCKED',
-        message: 'Account is temporarily locked due to multiple failed login attempts.',
-        details: { lockUntil: user.lockUntil },
+        statusCode: 400,
+        code: pinValidation.code,
+        message: pinValidation.message,
       });
     }
 
-    const passwordMatch = await bcrypt.compare(validation.password, user.password);
-    if (!passwordMatch) {
-      const failedAttempts = Number(user.failedLoginAttempts || 0) + 1;
-      const shouldLock = failedAttempts >= MAX_FAILED_LOGINS;
+    const trustDevice = toBoolean(req.body?.trustDevice, true);
+    const normalizedDeviceId = normalizeDeviceId(req.body?.deviceId);
 
-      await User.findByIdAndUpdate(user._id, {
-        failedLoginAttempts: shouldLock ? 0 : failedAttempts,
-        lockUntil: shouldLock ? new Date(Date.now() + LOCK_DURATION_MS) : null,
+    const user = await User.findById(req.user._id).select('+emailVerifiedAt +pinHash +pinSetAt +trustedDeviceIdHash +failedPinAttempts +pinLockUntil');
+    if (!user) {
+      return sendAuthError(req, res, {
+        statusCode: 401,
+        code: 'AUTH_UNAUTHORIZED',
+        message: 'Unauthorized.',
       });
+    }
 
+    if (!user.emailVerifiedAt) {
+      return sendAuthError(req, res, {
+        statusCode: 403,
+        code: 'EMAIL_NOT_VERIFIED',
+        message: 'Email must be verified before setting PIN.',
+      });
+    }
+
+    const pinHash = await bcrypt.hash(pinValidation.pin, 12);
+    user.pinHash = pinHash;
+    user.password = pinHash;
+    user.passwordChangedAt = new Date();
+    user.pinChangedAt = new Date();
+    user.pinSetAt = new Date();
+    user.failedPinAttempts = 0;
+    user.pinLockUntil = null;
+    user.trustedDeviceIdHash = trustDevice && normalizedDeviceId ? hashToken(normalizedDeviceId) : null;
+    await user.save();
+
+    await logSecurityEvent(req, {
+      eventType: 'AUTH_PIN_SETUP_SUCCESS',
+      severity: 'info',
+      userId: user._id,
+      metadata: {
+        trustedDeviceBound: Boolean(user.trustedDeviceIdHash),
+      },
+    });
+
+    return res.status(200).json({
+      message: 'PIN set successfully.',
+      pinEnabled: true,
+      trustedDeviceBound: Boolean(user.trustedDeviceIdHash),
+    });
+  } catch {
+    return sendAuthError(req, res, {
+      statusCode: 500,
+      code: 'PIN_SETUP_FAILED',
+      message: 'Failed to set PIN.',
+    });
+  }
+};
+
+const loginWithPin = async (req, res) => {
+  try {
+    const credentialValidation = validateCredentials({
+      email: req.body?.email,
+      pin: req.body?.pin,
+      password: req.body?.password,
+      requirePin: true,
+    });
+    const rememberMe = toBoolean(req.body?.rememberMe, true);
+    const normalizedDeviceId = normalizeDeviceId(req.body?.deviceId);
+
+    if (!credentialValidation.ok) {
+      return sendAuthError(req, res, {
+        statusCode: 400,
+        code: credentialValidation.code || 'AUTH_VALIDATION_ERROR',
+        message: credentialValidation.message,
+      });
+    }
+
+    const email = credentialValidation.email;
+    const normalizedPin = credentialValidation.pin;
+
+    const user = await User.findOne({ email }).select(
+      '+emailVerifiedAt +emailVerificationCodeHash +emailVerificationExpiresAt +emailVerificationLastSentAt +pinHash +pinSetAt +password +failedPinAttempts +pinLockUntil +trustedDeviceIdHash'
+    );
+
+    if (!user) {
       await logSecurityEvent(req, {
-        eventType: shouldLock ? 'AUTH_ACCOUNT_LOCKED' : 'AUTH_LOGIN_FAILED',
-        severity: shouldLock ? 'critical' : 'warning',
-        userId: user._id,
+        eventType: 'AUTH_PIN_LOGIN_FAILED',
+        severity: 'warning',
         metadata: {
-          reason: 'PASSWORD_MISMATCH',
-          failedAttempts,
-          lockUntil: shouldLock ? new Date(Date.now() + LOCK_DURATION_MS).toISOString() : null,
+          reason: 'USER_NOT_FOUND',
+          email,
         },
       });
 
       return sendAuthError(req, res, {
         statusCode: 401,
-        code: 'INVALID_CREDENTIALS',
-        message: 'Invalid email or password.',
+        code: 'INVALID_PIN',
+        message: 'Wrong PIN. Please try again.',
       });
     }
 
@@ -728,7 +763,7 @@ const login = async (req, res) => {
       const verification = await issueEmailVerificationCode({
         req,
         user,
-        reason: 'LOGIN_BLOCKED_UNVERIFIED',
+        reason: 'PIN_LOGIN_BLOCKED_UNVERIFIED',
         enforceCooldown: true,
       });
 
@@ -772,155 +807,12 @@ const login = async (req, res) => {
       });
     }
 
-    await revokeAllUserRefreshTokens(user._id);
-    const accessToken = buildAccessToken(user._id, { authMethod: 'password' });
-    const refreshToken = buildRefreshToken(user._id, { rememberMe });
-    await persistRefreshToken({ userId: user._id, refreshToken });
-
-    await logSecurityEvent(req, {
-      eventType: 'AUTH_LOGIN_SUCCESS',
-      severity: 'info',
-      userId: user._id,
-      metadata: { rememberMe },
-    });
-
-    return res.status(200).json(buildAuthResponse(user, accessToken, refreshToken));
-  } catch (error) {
-    return sendAuthError(req, res, {
-      statusCode: 500,
-      code: 'LOGIN_FAILED',
-      message: 'Failed to login user.',
-      details: process.env.NODE_ENV !== 'production' ? { cause: String(error?.message || '') } : null,
-    });
-  }
-};
-
-const setupPin = async (req, res) => {
-  try {
-    if (!req.user) {
-      return sendAuthError(req, res, {
-        statusCode: 401,
-        code: 'AUTH_UNAUTHORIZED',
-        message: 'Unauthorized.',
-      });
-    }
-
-    const pinValidation = validatePinPolicy(req.body?.pin);
-    if (!pinValidation.ok) {
-      return sendAuthError(req, res, {
-        statusCode: 400,
-        code: pinValidation.code,
-        message: pinValidation.message,
-      });
-    }
-
-    const trustDevice = toBoolean(req.body?.trustDevice, true);
-    const normalizedDeviceId = normalizeDeviceId(req.body?.deviceId);
-
-    const user = await User.findById(req.user._id).select('+emailVerifiedAt +pinHash +pinSetAt +trustedDeviceIdHash +failedPinAttempts +pinLockUntil');
-    if (!user) {
-      return sendAuthError(req, res, {
-        statusCode: 401,
-        code: 'AUTH_UNAUTHORIZED',
-        message: 'Unauthorized.',
-      });
-    }
-
-    if (!user.emailVerifiedAt) {
-      return sendAuthError(req, res, {
-        statusCode: 403,
-        code: 'EMAIL_NOT_VERIFIED',
-        message: 'Email must be verified before setting PIN.',
-      });
-    }
-
-    user.pinHash = await bcrypt.hash(pinValidation.pin, 12);
-    user.pinSetAt = new Date();
-    user.failedPinAttempts = 0;
-    user.pinLockUntil = null;
-    user.trustedDeviceIdHash = trustDevice && normalizedDeviceId ? hashToken(normalizedDeviceId) : null;
-    await user.save();
-
-    await logSecurityEvent(req, {
-      eventType: 'AUTH_PIN_SETUP_SUCCESS',
-      severity: 'info',
-      userId: user._id,
-      metadata: {
-        trustedDeviceBound: Boolean(user.trustedDeviceIdHash),
-      },
-    });
-
-    return res.status(200).json({
-      message: 'PIN set successfully.',
-      pinEnabled: true,
-      trustedDeviceBound: Boolean(user.trustedDeviceIdHash),
-    });
-  } catch {
-    return sendAuthError(req, res, {
-      statusCode: 500,
-      code: 'PIN_SETUP_FAILED',
-      message: 'Failed to set PIN.',
-    });
-  }
-};
-
-const loginWithPin = async (req, res) => {
-  try {
-    const email = normalizeEmail(req.body?.email);
-    const pinValidation = validatePinPolicy(req.body?.pin);
-    const rememberMe = toBoolean(req.body?.rememberMe, true);
-    const normalizedDeviceId = normalizeDeviceId(req.body?.deviceId);
-
-    if (!email || !EMAIL_REGEX.test(email)) {
-      return sendAuthError(req, res, {
-        statusCode: 400,
-        code: 'INVALID_EMAIL',
-        message: 'Please provide a valid email address.',
-      });
-    }
-
-    if (!pinValidation.ok) {
-      return sendAuthError(req, res, {
-        statusCode: 400,
-        code: pinValidation.code,
-        message: pinValidation.message,
-      });
-    }
-
-    const user = await User.findOne({ email }).select(
-      '+emailVerifiedAt +pinHash +pinSetAt +failedPinAttempts +pinLockUntil +trustedDeviceIdHash'
-    );
-
-    if (!user) {
-      await logSecurityEvent(req, {
-        eventType: 'AUTH_PIN_LOGIN_FAILED',
-        severity: 'warning',
-        metadata: {
-          reason: 'USER_NOT_FOUND',
-          email,
-        },
-      });
-
-      return sendAuthError(req, res, {
-        statusCode: 401,
-        code: 'INVALID_PIN',
-        message: 'Wrong PIN. Please try again.',
-      });
-    }
-
-    if (!user.emailVerifiedAt) {
-      return sendAuthError(req, res, {
-        statusCode: 403,
-        code: 'EMAIL_NOT_VERIFIED',
-        message: 'Email not verified. Please verify email before PIN login.',
-      });
-    }
-
-    if (!user.pinHash) {
+    const effectivePinHash = user.pinHash || user.password || null;
+    if (!effectivePinHash) {
       return sendAuthError(req, res, {
         statusCode: 400,
         code: 'PIN_NOT_CONFIGURED',
-        message: 'PIN is not set. Login with password first.',
+        message: 'PIN is not configured for this account.',
       });
     }
 
@@ -948,12 +840,12 @@ const loginWithPin = async (req, res) => {
         return sendAuthError(req, res, {
           statusCode: 403,
           code: 'PIN_DEVICE_NOT_TRUSTED',
-          message: 'PIN login is not allowed on this device. Use password login.',
+          message: 'PIN login is not allowed on this device.',
         });
       }
     }
 
-    const pinMatches = await bcrypt.compare(pinValidation.pin, user.pinHash);
+    const pinMatches = await bcrypt.compare(normalizedPin, effectivePinHash);
     if (!pinMatches) {
       const failedAttempts = Number(user.failedPinAttempts || 0) + 1;
       const shouldLock = failedAttempts >= MAX_FAILED_PIN_ATTEMPTS;
@@ -982,6 +874,10 @@ const loginWithPin = async (req, res) => {
 
     user.failedPinAttempts = 0;
     user.pinLockUntil = null;
+    if (!user.pinHash) {
+      user.pinHash = effectivePinHash;
+      user.pinSetAt = user.pinSetAt || new Date();
+    }
     await user.save();
 
     await revokeAllUserRefreshTokens(user._id);
@@ -1176,35 +1072,35 @@ const refreshToken = async (req, res) => {
   }
 };
 
-const requestPasswordRecovery = async (req, res) => {
+const requestPinRecovery = async (req, res) => {
   try {
     const normalizedEmail = normalizeEmail(req.body?.email);
 
     if (!normalizedEmail || !EMAIL_REGEX.test(normalizedEmail)) {
-      return res.status(200).json({ message: 'If the email exists, recovery instructions were generated.' });
+      return res.status(200).json({ message: 'If the email exists, PIN recovery instructions were generated.' });
     }
 
     const user = await User.findOne({ email: normalizedEmail }).select('+passwordResetTokenHash +passwordResetExpiresAt');
     if (!user) {
-      return res.status(200).json({ message: 'If the email exists, recovery instructions were generated.' });
+      return res.status(200).json({ message: 'If the email exists, PIN recovery instructions were generated.' });
     }
 
     const rawResetToken = crypto.randomBytes(32).toString('hex');
     const resetTokenHash = hashToken(rawResetToken);
-    const expiresAt = new Date(Date.now() + PASSWORD_RESET_WINDOW_MS);
+    const expiresAt = new Date(Date.now() + PIN_RESET_WINDOW_MS);
 
     user.passwordResetTokenHash = resetTokenHash;
     user.passwordResetExpiresAt = expiresAt;
     await user.save();
 
     await logSecurityEvent(req, {
-      eventType: 'PASSWORD_RECOVERY_REQUESTED',
+      eventType: 'PIN_RECOVERY_REQUESTED',
       severity: 'info',
       userId: user._id,
       metadata: { expiresAt: expiresAt.toISOString() },
     });
 
-    const delivery = await sendPasswordRecoveryEmail({
+    const delivery = await sendPinRecoveryEmail({
       to: normalizedEmail,
       resetToken: rawResetToken,
       expiresAt,
@@ -1212,7 +1108,7 @@ const requestPasswordRecovery = async (req, res) => {
 
     if (!delivery.delivered) {
       await logSecurityEvent(req, {
-        eventType: 'PASSWORD_RECOVERY_DELIVERY_FAILED',
+        eventType: 'PIN_RECOVERY_DELIVERY_FAILED',
         severity: isEmailDeliveryRequired() ? 'critical' : 'warning',
         userId: user._id,
         metadata: {
@@ -1225,13 +1121,13 @@ const requestPasswordRecovery = async (req, res) => {
         return sendAuthError(req, res, {
           statusCode: 503,
           code: 'EMAIL_DELIVERY_FAILED',
-          message: 'Unable to send recovery email right now. Please try again shortly.',
+          message: 'Unable to send PIN recovery email right now. Please try again shortly.',
         });
       }
     }
 
     return res.status(200).json({
-      message: 'If the email exists, recovery instructions were generated.',
+      message: 'If the email exists, PIN recovery instructions were generated.',
       ...(process.env.NODE_ENV !== 'production' ? { resetToken: rawResetToken, resetTokenExpiresAt: expiresAt } : {}),
       ...(process.env.NODE_ENV !== 'production' ? {
         emailDelivery: {
@@ -1245,31 +1141,23 @@ const requestPasswordRecovery = async (req, res) => {
   } catch {
     return sendAuthError(req, res, {
       statusCode: 500,
-      code: 'PASSWORD_RECOVERY_FAILED',
-      message: 'Failed to process password recovery request.',
+      code: 'PIN_RECOVERY_FAILED',
+      message: 'Failed to process PIN recovery request.',
     });
   }
 };
 
-const resetPassword = async (req, res) => {
+const resetPin = async (req, res) => {
   try {
     const incomingToken = String(req.body?.resetToken || '').trim();
-    const newPassword = String(req.body?.newPassword || '');
+    const incomingPin = req.body?.newPin ?? req.body?.newPassword;
+    const pinValidation = validatePinPolicy(incomingPin);
 
-    if (!incomingToken || !newPassword) {
+    if (!incomingToken || !pinValidation.ok) {
       return sendAuthError(req, res, {
         statusCode: 400,
-        code: 'AUTH_VALIDATION_ERROR',
-        message: 'resetToken and newPassword are required.',
-      });
-    }
-
-    const passwordPolicy = validatePasswordPolicy(newPassword);
-    if (!passwordPolicy.ok) {
-      return sendAuthError(req, res, {
-        statusCode: 400,
-        code: 'WEAK_PASSWORD',
-        message: passwordPolicy.message,
+        code: pinValidation.code || 'AUTH_VALIDATION_ERROR',
+        message: incomingToken ? (pinValidation.message || 'resetToken and newPin are required.') : 'resetToken and newPin are required.',
       });
     }
 
@@ -1294,23 +1182,26 @@ const resetPassword = async (req, res) => {
       });
     }
 
-    const isReusedPassword = await bcrypt.compare(newPassword, user.password);
-    if (isReusedPassword) {
+    const existingCredentialHash = user.pinHash || user.password || null;
+    const isReusedPin = existingCredentialHash ? await bcrypt.compare(pinValidation.pin, existingCredentialHash) : false;
+    if (isReusedPin) {
       return sendAuthError(req, res, {
         statusCode: 400,
-        code: 'PASSWORD_REUSE_NOT_ALLOWED',
-        message: 'New password must be different from the current password.',
+        code: 'PIN_REUSE_NOT_ALLOWED',
+        message: 'New PIN must be different from the current PIN.',
       });
     }
 
-    user.password = await bcrypt.hash(newPassword, 12);
+    const pinHash = await bcrypt.hash(pinValidation.pin, 12);
+    user.password = pinHash;
+    user.pinHash = pinHash;
     user.passwordChangedAt = new Date();
+    user.pinChangedAt = new Date();
+    user.pinSetAt = new Date();
     user.passwordResetTokenHash = null;
     user.passwordResetExpiresAt = null;
     user.failedLoginAttempts = 0;
     user.lockUntil = null;
-    user.pinHash = null;
-    user.pinSetAt = null;
     user.failedPinAttempts = 0;
     user.pinLockUntil = null;
     user.trustedDeviceIdHash = null;
@@ -1320,22 +1211,22 @@ const resetPassword = async (req, res) => {
     await clearUserRefreshState(user._id);
 
     await logSecurityEvent(req, {
-      eventType: 'PASSWORD_RESET_SUCCESS',
+      eventType: 'PIN_RESET_SUCCESS',
       severity: 'warning',
       userId: user._id,
     });
 
-    return res.status(200).json({ message: 'Password has been reset successfully.' });
+    return res.status(200).json({ message: 'PIN has been reset successfully.' });
   } catch {
     return sendAuthError(req, res, {
       statusCode: 500,
-      code: 'PASSWORD_RESET_FAILED',
-      message: 'Failed to reset password.',
+      code: 'PIN_RESET_FAILED',
+      message: 'Failed to reset PIN.',
     });
   }
 };
 
-const updatePassword = async (req, res) => {
+const updatePin = async (req, res) => {
   try {
     if (!req.user) {
       return sendAuthError(req, res, {
@@ -1345,23 +1236,16 @@ const updatePassword = async (req, res) => {
       });
     }
 
-    const currentPassword = String(req.body?.currentPassword || '');
-    const newPassword = String(req.body?.newPassword || '');
+    const currentPin = req.body?.currentPin ?? req.body?.currentPassword;
+    const newPin = req.body?.newPin ?? req.body?.newPassword;
+    const currentPinValidation = validatePinPolicy(currentPin);
+    const newPinValidation = validatePinPolicy(newPin);
 
-    if (!currentPassword || !newPassword) {
+    if (!currentPinValidation.ok || !newPinValidation.ok) {
       return sendAuthError(req, res, {
         statusCode: 400,
-        code: 'AUTH_VALIDATION_ERROR',
-        message: 'currentPassword and newPassword are required.',
-      });
-    }
-
-    const passwordPolicy = validatePasswordPolicy(newPassword);
-    if (!passwordPolicy.ok) {
-      return sendAuthError(req, res, {
-        statusCode: 400,
-        code: 'WEAK_PASSWORD',
-        message: passwordPolicy.message,
+        code: newPinValidation.code || currentPinValidation.code || 'AUTH_VALIDATION_ERROR',
+        message: currentPinValidation.ok ? newPinValidation.message : currentPinValidation.message,
       });
     }
 
@@ -1374,36 +1258,39 @@ const updatePassword = async (req, res) => {
       });
     }
 
-    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    const existingCredentialHash = user.pinHash || user.password || null;
+    const isMatch = existingCredentialHash ? await bcrypt.compare(currentPinValidation.pin, existingCredentialHash) : false;
     if (!isMatch) {
       await logSecurityEvent(req, {
-        eventType: 'PASSWORD_UPDATE_FAILED',
+        eventType: 'PIN_UPDATE_FAILED',
         severity: 'warning',
         userId: user._id,
-        metadata: { reason: 'CURRENT_PASSWORD_MISMATCH' },
+        metadata: { reason: 'CURRENT_PIN_MISMATCH' },
       });
       return sendAuthError(req, res, {
         statusCode: 401,
-        code: 'CURRENT_PASSWORD_INCORRECT',
-        message: 'Current password is incorrect.',
+        code: 'CURRENT_PIN_INCORRECT',
+        message: 'Current PIN is incorrect.',
       });
     }
 
-    const isReusedPassword = await bcrypt.compare(newPassword, user.password);
-    if (isReusedPassword) {
+    const isReusedPin = existingCredentialHash ? await bcrypt.compare(newPinValidation.pin, existingCredentialHash) : false;
+    if (isReusedPin) {
       return sendAuthError(req, res, {
         statusCode: 400,
-        code: 'PASSWORD_REUSE_NOT_ALLOWED',
-        message: 'New password must be different from the current password.',
+        code: 'PIN_REUSE_NOT_ALLOWED',
+        message: 'New PIN must be different from the current PIN.',
       });
     }
 
-    user.password = await bcrypt.hash(newPassword, 12);
+    const pinHash = await bcrypt.hash(newPinValidation.pin, 12);
+    user.password = pinHash;
+    user.pinHash = pinHash;
     user.passwordChangedAt = new Date();
+    user.pinChangedAt = new Date();
+    user.pinSetAt = new Date();
     user.failedLoginAttempts = 0;
     user.lockUntil = null;
-    user.pinHash = null;
-    user.pinSetAt = null;
     user.failedPinAttempts = 0;
     user.pinLockUntil = null;
     user.trustedDeviceIdHash = null;
@@ -1413,20 +1300,24 @@ const updatePassword = async (req, res) => {
     await clearUserRefreshState(user._id);
 
     await logSecurityEvent(req, {
-      eventType: 'PASSWORD_UPDATE_SUCCESS',
+      eventType: 'PIN_UPDATE_SUCCESS',
       severity: 'warning',
       userId: user._id,
     });
 
-    return res.status(200).json({ message: 'Password updated successfully. Please login again.' });
+    return res.status(200).json({ message: 'PIN updated successfully. Please login again.' });
   } catch {
     return sendAuthError(req, res, {
       statusCode: 500,
-      code: 'PASSWORD_UPDATE_FAILED',
-      message: 'Failed to update password.',
+      code: 'PIN_UPDATE_FAILED',
+      message: 'Failed to update PIN.',
     });
   }
 };
+
+const requestPasswordRecovery = requestPinRecovery;
+const resetPassword = resetPin;
+const updatePassword = updatePin;
 
 const logout = async (req, res) => {
   try {
@@ -1497,6 +1388,9 @@ module.exports = {
   setupPin,
   loginWithPin,
   refreshToken,
+  requestPinRecovery,
+  resetPin,
+  updatePin,
   requestPasswordRecovery,
   resetPassword,
   updatePassword,

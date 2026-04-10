@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import {
   ActivityIndicator,
-  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
@@ -10,46 +9,42 @@ import {
 
 import AuthScene, { AUTH_FORM_STYLES } from '../../components/auth/AuthScene';
 import { useAuth } from '../../context/AuthContext';
-import { evaluatePasswordPolicy } from '../../utils/passwordPolicy';
-
-const MIN_PASSWORD_LENGTH = 8;
 
 export default function ResetPasswordScreen({ navigation, route }) {
-  const { resetPassword } = useAuth();
+  const { resetPin } = useAuth();
 
   const [resetToken, setResetToken] = useState(String(route?.params?.resetToken || '').trim());
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [newPin, setNewPin] = useState('');
+  const [confirmPin, setConfirmPin] = useState('');
   const [resetting, setResetting] = useState(false);
   const [message, setMessage] = useState('');
 
-  const handleResetPassword = async () => {
+  const handleResetPin = async () => {
     const normalizedToken = String(resetToken || '').trim();
-    const normalizedPassword = String(newPassword || '').trim();
-    const normalizedConfirm = String(confirmPassword || '').trim();
+    const normalizedPin = String(newPin || '').trim();
+    const normalizedConfirm = String(confirmPin || '').trim();
 
-    if (!normalizedToken || !normalizedPassword || !normalizedConfirm) {
-      setMessage('Token and password fields are required.');
+    if (!normalizedToken || !normalizedPin || !normalizedConfirm) {
+      setMessage('Token and PIN fields are required.');
       return;
     }
 
-    const passwordPolicy = evaluatePasswordPolicy(normalizedPassword, MIN_PASSWORD_LENGTH);
-    if (!passwordPolicy.ok) {
-      setMessage(passwordPolicy.message);
+    if (!/^\d{4,6}$/.test(normalizedPin)) {
+      setMessage('PIN must be 4 to 6 digits.');
       return;
     }
 
-    if (normalizedPassword !== normalizedConfirm) {
-      setMessage('Passwords do not match.');
+    if (normalizedPin !== normalizedConfirm) {
+      setMessage('PINs do not match.');
       return;
     }
 
     try {
       setMessage('');
       setResetting(true);
-      await resetPassword({
+      await resetPin({
         resetToken: normalizedToken,
-        newPassword: normalizedPassword,
+        newPin: normalizedPin,
       });
 
       navigation.navigate('Login');
@@ -63,8 +58,8 @@ export default function ResetPasswordScreen({ navigation, route }) {
   return (
     <AuthScene
       eyebrow="Hisab Reset"
-      title="Set New Password"
-      subtitle="Enter token and new password."
+      title="Reset PIN"
+      subtitle="Enter your token and choose a new PIN"
     >
       <TextInput
         value={resetToken}
@@ -76,24 +71,28 @@ export default function ResetPasswordScreen({ navigation, route }) {
       />
 
       {message ? (
-        <View style={styles.inlineNotice}>
-          <Text style={styles.inlineNoticeText}>{message}</Text>
+        <View style={AUTH_FORM_STYLES.noticeStrip}>
+          <Text style={AUTH_FORM_STYLES.noticeText}>{message}</Text>
         </View>
       ) : null}
 
       <TextInput
-        value={newPassword}
-        onChangeText={setNewPassword}
-        placeholder="New password"
+        value={newPin}
+        onChangeText={setNewPin}
+        placeholder="New PIN"
+        keyboardType="number-pad"
+        maxLength={6}
         secureTextEntry
         placeholderTextColor="#607D94"
         style={AUTH_FORM_STYLES.input}
       />
 
       <TextInput
-        value={confirmPassword}
-        onChangeText={setConfirmPassword}
-        placeholder="Confirm new password"
+        value={confirmPin}
+        onChangeText={setConfirmPin}
+        placeholder="Confirm new PIN"
+        keyboardType="number-pad"
+        maxLength={6}
         secureTextEntry
         placeholderTextColor="#607D94"
         style={AUTH_FORM_STYLES.input}
@@ -101,10 +100,10 @@ export default function ResetPasswordScreen({ navigation, route }) {
 
       <TouchableOpacity
         style={[AUTH_FORM_STYLES.primaryButton, resetting && AUTH_FORM_STYLES.primaryButtonDisabled]}
-        onPress={handleResetPassword}
+        onPress={handleResetPin}
         disabled={resetting}
       >
-        {resetting ? <ActivityIndicator size="small" color="#FFF8EE" /> : <Text style={AUTH_FORM_STYLES.primaryButtonText}>Reset Password</Text>}
+        {resetting ? <ActivityIndicator size="small" color="#FFFFFF" /> : <Text style={AUTH_FORM_STYLES.primaryButtonText}>Reset PIN</Text>}
       </TouchableOpacity>
 
       <TouchableOpacity style={AUTH_FORM_STYLES.linkButton} onPress={() => navigation.navigate('Login')}>
@@ -113,20 +112,3 @@ export default function ResetPasswordScreen({ navigation, route }) {
     </AuthScene>
   );
 }
-
-const styles = StyleSheet.create({
-  inlineNotice: {
-    marginTop: 4,
-    borderLeftWidth: 3,
-    borderColor: '#B91C1C',
-    backgroundColor: '#FEE2E2',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-  },
-  inlineNoticeText: {
-    color: '#7F1D1D',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-});

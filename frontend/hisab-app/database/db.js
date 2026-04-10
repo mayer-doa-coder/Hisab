@@ -49,6 +49,7 @@ const BAKI_TRANSACTION_TYPES = new Set(['credit', 'payment']);
 
 const AUTH_DEFAULT_SESSION_HOURS = 24;
 const AUTH_REMEMBER_SESSION_DAYS = 30;
+const LOCAL_AUDIT_RETENTION_DAYS = 45;
 
 const normalizeAuthEmail = (email) => String(email || '').trim().toLowerCase();
 
@@ -109,6 +110,14 @@ const cleanupExpiredSessions = async () => {
 			)
 		 )
 			OR revoked_at IS NOT NULL;`
+	);
+};
+
+const cleanupOldAuditLogs = async () => {
+	await db.runAsync(
+		`DELETE FROM audit_logs
+		 WHERE datetime(created_at) < datetime('now', ?);`,
+		`-${LOCAL_AUDIT_RETENTION_DAYS} days`
 	);
 };
 
@@ -781,6 +790,7 @@ export const createTables = async () => {
 			);`);
 
 	await cleanupExpiredSessions();
+	await cleanupOldAuditLogs();
 
 	const deviceRow = await db.getFirstAsync(`SELECT id, device_id FROM auth_device_profile WHERE id = 1 LIMIT 1;`);
 	if (!deviceRow?.id || !String(deviceRow.device_id || '').trim()) {

@@ -82,7 +82,7 @@ const authMiddleware = async (req, res, next) => {
       });
     }
 
-    const user = await User.findById(userId).select('+passwordChangedAt +emailVerifiedAt +pinSetAt');
+    const user = await User.findById(userId).select('+passwordChangedAt +pinChangedAt +emailVerifiedAt +pinSetAt');
     if (!user) {
       return sendAuthError(req, res, {
         statusCode: 401,
@@ -92,8 +92,9 @@ const authMiddleware = async (req, res, next) => {
     }
 
     const issuedAt = Number(decoded?.iat || 0);
-    if (user.passwordChangedAt && issuedAt > 0) {
-      const changedAtSec = Math.floor(new Date(user.passwordChangedAt).getTime() / 1000);
+    if ((user.pinChangedAt || user.passwordChangedAt) && issuedAt > 0) {
+      const effectiveChangedAt = user.pinChangedAt || user.passwordChangedAt;
+      const changedAtSec = Math.floor(new Date(effectiveChangedAt).getTime() / 1000);
       if (changedAtSec > issuedAt) {
         return sendAuthError(req, res, {
           statusCode: 401,

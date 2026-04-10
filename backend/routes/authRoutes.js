@@ -7,6 +7,9 @@ const {
 	setupPin,
 	loginWithPin,
 	refreshToken,
+	requestPinRecovery,
+	resetPin,
+	updatePin,
 	requestPasswordRecovery,
 	resetPassword,
 	updatePassword,
@@ -72,9 +75,14 @@ router.post('/verify-email/confirm', authBurstLimiter, emailVerificationConfirmL
 router.post('/pin/login', authBurstLimiter, pinLoginLimiter, loginWithPin);
 router.post('/pin/setup', authMiddleware, authBurstLimiter, pinSetupLimiter, setupPin);
 router.post('/refresh', authBurstLimiter, refreshLimiter, refreshToken);
-router.post('/recover/request', authBurstLimiter, recoveryLimiter, requestPasswordRecovery);
-router.post('/recover/reset', authBurstLimiter, recoveryLimiter, resetPassword);
+router.post('/recover/request', authBurstLimiter, recoveryLimiter, requestPinRecovery);
+router.post('/recover/reset', authBurstLimiter, recoveryLimiter, resetPin);
+router.post('/recover/request-pin', authBurstLimiter, recoveryLimiter, requestPinRecovery);
+router.post('/recover/reset-pin', authBurstLimiter, recoveryLimiter, resetPin);
+router.post('/update-pin', authMiddleware, authBurstLimiter, updatePin);
 router.post('/update-password', authMiddleware, authBurstLimiter, updatePassword);
+router.post('/recover/request-password', authBurstLimiter, recoveryLimiter, requestPasswordRecovery);
+router.post('/recover/reset-password', authBurstLimiter, recoveryLimiter, resetPassword);
 router.post('/logout', authBurstLimiter, logout);
 
 module.exports = router;

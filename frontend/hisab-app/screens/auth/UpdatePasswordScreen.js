@@ -13,48 +13,44 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { UI_COLORS } from '../../constants/ui-theme';
 import { useAuth } from '../../context/AuthContext';
-import { evaluatePasswordPolicy } from '../../utils/passwordPolicy';
-
-const MIN_PASSWORD_LENGTH = 8;
 
 export default function UpdatePasswordScreen() {
-  const { updatePassword } = useAuth();
+  const { updatePin } = useAuth();
 
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [currentPin, setCurrentPin] = useState('');
+  const [newPin, setNewPin] = useState('');
+  const [confirmPin, setConfirmPin] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
 
-  const handleUpdatePassword = async () => {
-    const normalizedCurrent = String(currentPassword || '').trim();
-    const normalizedNew = String(newPassword || '').trim();
-    const normalizedConfirm = String(confirmPassword || '').trim();
+  const handleUpdatePin = async () => {
+    const normalizedCurrent = String(currentPin || '').trim();
+    const normalizedNew = String(newPin || '').trim();
+    const normalizedConfirm = String(confirmPin || '').trim();
 
     if (!normalizedCurrent || !normalizedNew || !normalizedConfirm) {
-      setMessage('All password fields are required.');
+      setMessage('All PIN fields are required.');
       return;
     }
 
-    const passwordPolicy = evaluatePasswordPolicy(normalizedNew, MIN_PASSWORD_LENGTH);
-    if (!passwordPolicy.ok) {
-      setMessage(passwordPolicy.message);
+    if (!/^\d{4,6}$/.test(normalizedCurrent) || !/^\d{4,6}$/.test(normalizedNew)) {
+      setMessage('PIN must be 4 to 6 digits.');
       return;
     }
 
     if (normalizedNew !== normalizedConfirm) {
-      setMessage('Passwords do not match.');
+      setMessage('PINs do not match.');
       return;
     }
 
     try {
       setMessage('');
       setLoading(true);
-      await updatePassword({
-        currentPassword: normalizedCurrent,
-        newPassword: normalizedNew,
+      await updatePin({
+        currentPin: normalizedCurrent,
+        newPin: normalizedNew,
       });
-      setMessage('Password updated. Please sign in again.');
+      setMessage('PIN updated. Please sign in again.');
     } catch (error) {
       setMessage(error?.message || 'Update failed.');
     } finally {
@@ -66,13 +62,15 @@ export default function UpdatePasswordScreen() {
     <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex}>
         <View style={styles.container}>
-          <Text style={styles.title}>Update Password</Text>
-          <Text style={styles.subtitle}>Change password</Text>
+          <Text style={styles.title}>Update PIN</Text>
+          <Text style={styles.subtitle}>Change PIN</Text>
 
           <TextInput
-            value={currentPassword}
-            onChangeText={setCurrentPassword}
-            placeholder="Current password"
+            value={currentPin}
+            onChangeText={setCurrentPin}
+            placeholder="Current PIN"
+            keyboardType="number-pad"
+            maxLength={6}
             secureTextEntry
             style={styles.input}
           />
@@ -84,23 +82,27 @@ export default function UpdatePasswordScreen() {
           ) : null}
 
           <TextInput
-            value={newPassword}
-            onChangeText={setNewPassword}
-            placeholder="New password"
+            value={newPin}
+            onChangeText={setNewPin}
+            placeholder="New PIN"
+            keyboardType="number-pad"
+            maxLength={6}
             secureTextEntry
             style={styles.input}
           />
 
           <TextInput
-            value={confirmPassword}
-            onChangeText={setConfirmPassword}
-            placeholder="Confirm new password"
+            value={confirmPin}
+            onChangeText={setConfirmPin}
+            placeholder="Confirm new PIN"
+            keyboardType="number-pad"
+            maxLength={6}
             secureTextEntry
             style={styles.input}
           />
 
-          <TouchableOpacity style={[styles.button, loading && styles.buttonDisabled]} onPress={handleUpdatePassword} disabled={loading}>
-            {loading ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.buttonText}>Update Password</Text>}
+          <TouchableOpacity style={[styles.button, loading && styles.buttonDisabled]} onPress={handleUpdatePin} disabled={loading}>
+            {loading ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.buttonText}>Update PIN</Text>}
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>

@@ -1,7 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import {
   ActivityIndicator,
-  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
@@ -14,29 +13,34 @@ import { useAuth } from '../../context/AuthContext';
 export default function LoginScreen({ navigation }) {
   const { login, authDeviceProfile } = useAuth();
 
-  const [email, setEmail] = useState(String(authDeviceProfile?.preferredEmail || '').trim());
-  const [password, setPassword] = useState('');
+  const [pin, setPin] = useState('');
   const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
 
-  useEffect(() => {
-    setEmail(String(authDeviceProfile?.preferredEmail || '').trim());
-  }, [authDeviceProfile?.preferredEmail]);
-
   const handleLogin = async () => {
-    const normalizedEmail = String(email || '').trim();
-    const normalizedPassword = String(password || '').trim();
+    const normalizedEmail = String(authDeviceProfile?.preferredEmail || '').trim();
+    const normalizedPin = String(pin || '').trim();
 
-    if (!normalizedEmail || !normalizedPassword) {
-      setMessage('Email and password are required.');
+    if (!normalizedEmail) {
+      setMessage('Account email is hidden and unavailable on this device. Please sign up first.');
+      return;
+    }
+
+    if (!normalizedPin) {
+      setMessage('PIN is required.');
+      return;
+    }
+
+    if (!/^\d{4,6}$/.test(normalizedPin)) {
+      setMessage('PIN must be 4 to 6 digits.');
       return;
     }
 
     try {
       setMessage('');
       setLoading(true);
-      await login(normalizedEmail, normalizedPassword, { rememberMe });
+      await login(normalizedEmail, normalizedPin, { rememberMe });
     } catch (error) {
       if (String(error?.code || '').toUpperCase() === 'EMAIL_NOT_VERIFIED') {
         navigation.navigate('VerifyEmail', {
@@ -58,29 +62,21 @@ export default function LoginScreen({ navigation }) {
   return (
     <AuthScene
       eyebrow="Hisab Access"
-      title="Welcome Back"
-      subtitle="Sign in to continue."
+      title="Login"
+      subtitle="Enter your PIN to log in"
     >
-      <TextInput
-        value={email}
-        onChangeText={setEmail}
-        placeholder="Email"
-        autoCapitalize="none"
-        keyboardType="email-address"
-        placeholderTextColor="#607D94"
-        style={AUTH_FORM_STYLES.input}
-      />
-
       {message ? (
-        <View style={styles.inlineNotice}>
-          <Text style={styles.inlineNoticeText}>{message}</Text>
+        <View style={AUTH_FORM_STYLES.noticeStrip}>
+          <Text style={AUTH_FORM_STYLES.noticeText}>{message}</Text>
         </View>
       ) : null}
 
       <TextInput
-        value={password}
-        onChangeText={setPassword}
-        placeholder="Password"
+        value={pin}
+        onChangeText={setPin}
+        placeholder="PIN"
+        keyboardType="number-pad"
+        maxLength={6}
         secureTextEntry
         placeholderTextColor="#607D94"
         style={AUTH_FORM_STYLES.input}
@@ -98,49 +94,16 @@ export default function LoginScreen({ navigation }) {
         onPress={handleLogin}
         disabled={loading}
       >
-        {loading ? <ActivityIndicator size="small" color="#FFF8EE" /> : <Text style={AUTH_FORM_STYLES.primaryButtonText}>Login</Text>}
+        {loading ? <ActivityIndicator size="small" color="#FFFFFF" /> : <Text style={AUTH_FORM_STYLES.primaryButtonText}>Log In</Text>}
       </TouchableOpacity>
 
-      {authDeviceProfile?.pinEnabled ? (
-        <TouchableOpacity style={[AUTH_FORM_STYLES.secondaryButton, styles.pinButton]} onPress={() => navigation.navigate('PinLogin')}>
-          <Text style={AUTH_FORM_STYLES.secondaryButtonText}>Quick PIN Login</Text>
-          <Text style={styles.pinButtonHint}>Trusted device shortcut</Text>
-        </TouchableOpacity>
-      ) : null}
-
       <TouchableOpacity style={AUTH_FORM_STYLES.linkButton} onPress={() => navigation.navigate('AccountRecovery')}>
-        <Text style={AUTH_FORM_STYLES.linkText}>Forgot password? Recover account</Text>
+        <Text style={AUTH_FORM_STYLES.linkText}>Forgot Password ?</Text>
       </TouchableOpacity>
 
       <TouchableOpacity style={AUTH_FORM_STYLES.linkButton} onPress={() => navigation.navigate('Signup')}>
-        <Text style={AUTH_FORM_STYLES.linkText}>No account? Create one</Text>
+        <Text style={AUTH_FORM_STYLES.linkText}>Don’t have an account? Sign Up</Text>
       </TouchableOpacity>
     </AuthScene>
   );
 }
-
-const styles = StyleSheet.create({
-  inlineNotice: {
-    marginTop: 4,
-    borderLeftWidth: 3,
-    borderColor: '#B91C1C',
-    backgroundColor: '#FEE2E2',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-  },
-  inlineNoticeText: {
-    color: '#7F1D1D',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  pinButton: {
-    marginTop: 6,
-  },
-  pinButtonHint: {
-    marginTop: 1,
-    color: '#486581',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-});

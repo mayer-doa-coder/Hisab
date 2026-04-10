@@ -11,7 +11,8 @@ const userSchema = new mongoose.Schema(
     },
     password: {
       type: String,
-      required: true,
+      required: false,
+      default: null,
       minlength: 6,
       select: false,
     },
@@ -95,6 +96,11 @@ const userSchema = new mongoose.Schema(
       default: null,
       select: false,
     },
+    pinChangedAt: {
+      type: Date,
+      default: null,
+      select: false,
+    },
   },
   {
     timestamps: { createdAt: 'createdAt', updatedAt: false },
@@ -104,6 +110,7 @@ const userSchema = new mongoose.Schema(
 userSchema.set('toJSON', {
   transform: (_doc, ret) => {
     delete ret.password;
+    delete ret.pinHash;
     return ret;
   },
 });
