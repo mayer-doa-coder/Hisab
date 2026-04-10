@@ -18,6 +18,10 @@ export default function AccountRecoveryScreen({ navigation }) {
   const [message, setMessage] = useState('');
 
   const handleRequestRecovery = async () => {
+    if (requesting) {
+      return;
+    }
+
     const normalizedEmail = String(email || '').trim();
     if (!normalizedEmail) {
       setMessage('Email is required.');
@@ -29,19 +33,16 @@ export default function AccountRecoveryScreen({ navigation }) {
       setRequesting(true);
       const response = await requestPinRecovery(normalizedEmail);
       const tokenHint = String(response?.resetToken || '').trim();
-      const delivery = response?.emailDelivery || null;
-
-      if (delivery && delivery.delivered === false && !delivery.transportConfigured) {
-        setMessage(tokenHint ? `Email service is not configured. Dev token: ${tokenHint}` : 'Email service is not configured.');
-      } else {
-        setMessage(tokenHint ? `Token generated: ${tokenHint}` : 'Recovery requested.');
-      }
 
       navigation.navigate('ResetPassword', {
         resetToken: tokenHint || '',
       });
     } catch (error) {
-      setMessage(error?.message || 'Recovery request failed.');
+      if (String(error?.code || '').toUpperCase() === 'EMAIL_NOT_REGISTERED') {
+        setMessage('Email is not registered.');
+      } else {
+        setMessage(error?.message || 'Recovery request failed.');
+      }
     } finally {
       setRequesting(false);
     }
@@ -75,10 +76,6 @@ export default function AccountRecoveryScreen({ navigation }) {
         disabled={requesting}
       >
         {requesting ? <ActivityIndicator size="small" color="#FFFFFF" /> : <Text style={AUTH_FORM_STYLES.primaryButtonText}>Request PIN Recovery Token</Text>}
-      </TouchableOpacity>
-
-      <TouchableOpacity style={AUTH_FORM_STYLES.secondaryButton} onPress={() => navigation.navigate('ResetPassword')}>
-        <Text style={AUTH_FORM_STYLES.secondaryButtonText}>Already have token? Go to Step 2</Text>
       </TouchableOpacity>
 
       <TouchableOpacity style={AUTH_FORM_STYLES.linkButton} onPress={() => navigation.navigate('Login')}>

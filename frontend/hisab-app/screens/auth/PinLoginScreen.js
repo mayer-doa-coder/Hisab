@@ -14,6 +14,50 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { UI_COLORS } from '../../constants/ui-theme';
 import { useAuth } from '../../context/AuthContext';
 
+const formatRetryDuration = (totalSeconds) => {
+  const seconds = Math.max(0, Number(totalSeconds) || 0);
+  if (seconds <= 0) {
+    return 'less than 1 min';
+  }
+
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.ceil((seconds % 3600) / 60);
+
+  if (hours > 0 && minutes > 0) {
+    return `${hours} ${hours === 1 ? 'hour' : 'hours'} ${minutes} ${minutes === 1 ? 'min' : 'mins'}`;
+  }
+
+  if (hours > 0) {
+    return `${hours} ${hours === 1 ? 'hour' : 'hours'}`;
+  }
+
+  return `${minutes} ${minutes === 1 ? 'min' : 'mins'}`;
+};
+
+const resolveRetrySeconds = (error) => {
+  const directSeconds = Number(error?.details?.retryAfterSeconds || 0);
+  if (Number.isFinite(directSeconds) && directSeconds > 0) {
+    return directSeconds;
+  }
+
+  const lockUntilRaw = error?.details?.lockUntil;
+  const lockUntilMs = lockUntilRaw ? new Date(lockUntilRaw).getTime() : 0;
+  if (!Number.isFinite(lockUntilMs) || lockUntilMs <= 0) {
+    return 0;
+  }
+
+  return Math.max(0, Math.ceil((lockUntilMs - Date.now()) / 1000));
+};
+
+const buildPinLockedMessage = (error) => {
+  const retrySeconds = resolveRetrySeconds(error);
+  if (retrySeconds > 0) {
+    return `PIN login is temporarily blocked. Try again in ${formatRetryDuration(retrySeconds)}.`;
+  }
+
+  return error?.message || 'PIN login is temporarily blocked. Try again later.';
+};
+
 const mapPinError = (error) => {
   const code = String(error?.code || '').trim().toUpperCase();
 
@@ -22,7 +66,7 @@ const mapPinError = (error) => {
   }
 
   if (code === 'PIN_LOCKED') {
-    return 'Too many wrong attempts. PIN login is locked for a while.';
+    return buildPinLockedMessage(error);
   }
 
   if (code === 'PIN_DEVICE_NOT_TRUSTED') {
@@ -31,6 +75,10 @@ const mapPinError = (error) => {
 
   if (code === 'PIN_NOT_CONFIGURED') {
     return 'PIN is not set yet for this account.';
+  }
+
+  if (code === 'EMAIL_NOT_REGISTERED') {
+    return 'Email is not registered.';
   }
 
   if (code === 'EMAIL_NOT_VERIFIED') {
@@ -53,6 +101,10 @@ export default function PinLoginScreen({ navigation }) {
   }, [authDeviceProfile?.preferredEmail]);
 
   const handlePinLogin = async () => {
+    if (submitting) {
+      return;
+    }
+
     const normalizedPin = String(pin || '').trim();
 
     if (!/^\d{4,6}$/.test(normalizedPin)) {

@@ -16,7 +16,7 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MAX_FAILED_LOGINS = 5;
 const LOCK_DURATION_MS = 15 * 60 * 1000;
 const MAX_FAILED_PIN_ATTEMPTS = 5;
-const PIN_LOCK_DURATION_MS = 10 * 60 * 1000;
+const PIN_LOCK_DURATION_MS = Number(process.env.PIN_LOCK_DURATION_MS) || 60 * 60 * 1000;
 const EMAIL_VERIFICATION_WINDOW_MS = Number(process.env.EMAIL_VERIFICATION_WINDOW_MS) || 10 * 60 * 1000;
 const EMAIL_VERIFICATION_RESEND_COOLDOWN_MS = Number(process.env.EMAIL_VERIFICATION_RESEND_COOLDOWN_MS) || 60 * 1000;
 const EMAIL_VERIFICATION_CODE_LENGTH = 6;
@@ -25,6 +25,26 @@ const ACCESS_TOKEN_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '15m';
 const REFRESH_TOKEN_EXPIRES_IN = process.env.JWT_REFRESH_EXPIRES_IN || '7d';
 const REFRESH_TOKEN_REMEMBER_EXPIRES_IN = process.env.JWT_REFRESH_REMEMBER_EXPIRES_IN || '30d';
 const PIN_REGEX = /^\d{4,6}$/;
+
+const formatRetryDuration = (totalSeconds) => {
+  const seconds = Math.max(0, Number(totalSeconds) || 0);
+  if (seconds <= 0) {
+    return 'less than 1 minute';
+  }
+
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.ceil((seconds % 3600) / 60);
+
+  if (hours > 0 && minutes > 0) {
+    return `${hours} ${hours === 1 ? 'hour' : 'hours'} ${minutes} ${minutes === 1 ? 'min' : 'mins'}`;
+  }
+
+  if (hours > 0) {
+    return `${hours} ${hours === 1 ? 'hour' : 'hours'}`;
+  }
+
+  return `${minutes} ${minutes === 1 ? 'min' : 'mins'}`;
+};
 
 const normalizeEmail = (value) => String(value || '').trim().toLowerCase();
 const normalizePin = (value) => String(value || '').trim();
@@ -728,6 +748,14 @@ const loginWithPin = async (req, res) => {
     const normalizedDeviceId = normalizeDeviceId(req.body?.deviceId);
 
     if (!credentialValidation.ok) {
+      if (credentialValidation.code === 'INVALID_EMAIL') {
+        return sendAuthError(req, res, {
+          statusCode: 404,
+          code: 'EMAIL_NOT_REGISTERED',
+          message: 'Email is not registered.',
+        });
+      }
+
       return sendAuthError(req, res, {
         statusCode: 400,
         code: credentialValidation.code || 'AUTH_VALIDATION_ERROR',
@@ -753,9 +781,9 @@ const loginWithPin = async (req, res) => {
       });
 
       return sendAuthError(req, res, {
-        statusCode: 401,
-        code: 'INVALID_PIN',
-        message: 'Wrong PIN. Please try again.',
+        statusCode: 404,
+        code: 'EMAIL_NOT_REGISTERED',
+        message: 'Email is not registered.',
       });
     }
 
@@ -817,11 +845,17 @@ const loginWithPin = async (req, res) => {
     }
 
     if (user.pinLockUntil && new Date(user.pinLockUntil).getTime() > Date.now()) {
+      const lockUntilTime = new Date(user.pinLockUntil).getTime();
+      const remainingSeconds = Math.max(1, Math.ceil((lockUntilTime - Date.now()) / 1000));
+
       return sendAuthError(req, res, {
         statusCode: 423,
         code: 'PIN_LOCKED',
-        message: 'PIN login is temporarily locked. Try again later.',
-        details: { lockUntil: user.pinLockUntil },
+        message: `PIN login is temporarily blocked. Try again in ${formatRetryDuration(remainingSeconds)}.`,
+        details: {
+          lockUntil: user.pinLockUntil,
+          retryAfterSeconds: remainingSeconds,
+        },
       });
     }
 
@@ -849,9 +883,10 @@ const loginWithPin = async (req, res) => {
     if (!pinMatches) {
       const failedAttempts = Number(user.failedPinAttempts || 0) + 1;
       const shouldLock = failedAttempts >= MAX_FAILED_PIN_ATTEMPTS;
+      const lockUntil = shouldLock ? new Date(Date.now() + PIN_LOCK_DURATION_MS) : null;
 
       user.failedPinAttempts = shouldLock ? 0 : failedAttempts;
-      user.pinLockUntil = shouldLock ? new Date(Date.now() + PIN_LOCK_DURATION_MS) : null;
+      user.pinLockUntil = lockUntil;
       await user.save();
 
       await logSecurityEvent(req, {
@@ -866,9 +901,17 @@ const loginWithPin = async (req, res) => {
       });
 
       return sendAuthError(req, res, {
-        statusCode: 401,
-        code: 'INVALID_PIN',
-        message: 'Wrong PIN. Please try again.',
+        statusCode: shouldLock ? 423 : 401,
+        code: shouldLock ? 'PIN_LOCKED' : 'INVALID_PIN',
+        message: shouldLock
+          ? `PIN login is temporarily blocked. Try again in ${formatRetryDuration(Math.max(1, Math.ceil(PIN_LOCK_DURATION_MS / 1000)))}.`
+          : 'Wrong PIN. Please try again.',
+        ...(shouldLock ? {
+          details: {
+            lockUntil,
+            retryAfterSeconds: Math.max(1, Math.ceil(PIN_LOCK_DURATION_MS / 1000)),
+          },
+        } : {}),
       });
     }
 
@@ -1077,12 +1120,29 @@ const requestPinRecovery = async (req, res) => {
     const normalizedEmail = normalizeEmail(req.body?.email);
 
     if (!normalizedEmail || !EMAIL_REGEX.test(normalizedEmail)) {
-      return res.status(200).json({ message: 'If the email exists, PIN recovery instructions were generated.' });
+      return sendAuthError(req, res, {
+        statusCode: 404,
+        code: 'EMAIL_NOT_REGISTERED',
+        message: 'Email is not registered.',
+      });
     }
 
     const user = await User.findOne({ email: normalizedEmail }).select('+passwordResetTokenHash +passwordResetExpiresAt');
     if (!user) {
-      return res.status(200).json({ message: 'If the email exists, PIN recovery instructions were generated.' });
+      await logSecurityEvent(req, {
+        eventType: 'PIN_RECOVERY_REQUEST_FAILED',
+        severity: 'warning',
+        metadata: {
+          reason: 'USER_NOT_FOUND',
+          email: normalizedEmail,
+        },
+      });
+
+      return sendAuthError(req, res, {
+        statusCode: 404,
+        code: 'EMAIL_NOT_REGISTERED',
+        message: 'Email is not registered.',
+      });
     }
 
     const rawResetToken = crypto.randomBytes(32).toString('hex');
@@ -1127,7 +1187,7 @@ const requestPinRecovery = async (req, res) => {
     }
 
     return res.status(200).json({
-      message: 'If the email exists, PIN recovery instructions were generated.',
+      message: 'PIN recovery instructions were generated.',
       ...(process.env.NODE_ENV !== 'production' ? { resetToken: rawResetToken, resetTokenExpiresAt: expiresAt } : {}),
       ...(process.env.NODE_ENV !== 'production' ? {
         emailDelivery: {
