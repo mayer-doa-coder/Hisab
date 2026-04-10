@@ -23,6 +23,10 @@ export default function SetupPinScreen({ navigation }) {
   const [message, setMessage] = useState('');
 
   const handleSetupPin = async () => {
+    if (loading) {
+      return;
+    }
+
     const normalizedPin = String(pin || '').trim();
     const normalizedConfirm = String(confirmPin || '').trim();
 

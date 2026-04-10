@@ -24,6 +24,10 @@ export default function UpdatePasswordScreen() {
   const [message, setMessage] = useState('');
 
   const handleUpdatePin = async () => {
+    if (loading) {
+      return;
+    }
+
     const normalizedCurrent = String(currentPin || '').trim();
     const normalizedNew = String(newPin || '').trim();
     const normalizedConfirm = String(confirmPin || '').trim();

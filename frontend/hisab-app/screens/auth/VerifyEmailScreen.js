@@ -65,6 +65,10 @@ export default function VerifyEmailScreen({ navigation, route }) {
   }, [deliveryNoticeShown, route?.params?.emailDelivery]);
 
   const handleVerify = async () => {
+    if (submitting) {
+      return;
+    }
+
     const normalizedEmail = String(email || '').trim().toLowerCase();
     const normalizedCode = String(code || '').trim();
 
@@ -89,6 +93,10 @@ export default function VerifyEmailScreen({ navigation, route }) {
   };
 
   const handleResend = async () => {
+    if (resending) {
+      return;
+    }
+
     const normalizedEmail = String(email || '').trim().toLowerCase();
     if (!normalizedEmail) {
       setMessage('Enter your email first.');

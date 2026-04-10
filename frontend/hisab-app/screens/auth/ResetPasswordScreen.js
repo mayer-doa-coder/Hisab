@@ -20,6 +20,10 @@ export default function ResetPasswordScreen({ navigation, route }) {
   const [message, setMessage] = useState('');
 
   const handleResetPin = async () => {
+    if (resetting) {
+      return;
+    }
+
     const normalizedToken = String(resetToken || '').trim();
     const normalizedPin = String(newPin || '').trim();
     const normalizedConfirm = String(confirmPin || '').trim();

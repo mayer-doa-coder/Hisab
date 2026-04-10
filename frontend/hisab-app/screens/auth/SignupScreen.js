@@ -21,6 +21,10 @@ export default function SignupScreen({ navigation }) {
   const [message, setMessage] = useState('');
 
   const handleSignup = async () => {
+    if (loading) {
+      return;
+    }
+
     const normalizedEmail = String(email || '').trim();
     const normalizedPin = String(pin || '').trim();
     const normalizedConfirm = String(confirmPin || '').trim();
