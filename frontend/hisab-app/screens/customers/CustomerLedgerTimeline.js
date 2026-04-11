@@ -58,10 +58,10 @@ const styles = StyleSheet.create({
     marginTop: 14,
   },
   dotBaki: {
-    backgroundColor: '#B45309',
+    backgroundColor: UI_COLORS.textWarning,
   },
   dotPayment: {
-    backgroundColor: '#166534',
+    backgroundColor: UI_COLORS.textSuccess,
   },
   card: {
     flex: 1,
@@ -87,10 +87,10 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   amountBaki: {
-    color: '#B45309',
+    color: UI_COLORS.textWarning,
   },
   amountPayment: {
-    color: '#166534',
+    color: UI_COLORS.textSuccess,
   },
   meta: {
     marginTop: 4,
@@ -104,3 +104,4 @@ const styles = StyleSheet.create({
     color: UI_COLORS.primary,
   },
 });
+

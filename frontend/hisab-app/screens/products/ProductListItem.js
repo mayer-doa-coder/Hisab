@@ -77,8 +77,10 @@ const styles = StyleSheet.create({
   meta: { marginTop: 4, fontSize: 13, color: UI_COLORS.textSecondary },
   lowStockBadge: {
     fontSize: 10,
-    color: '#B45309',
-    backgroundColor: '#FFF4E5',
+    color: UI_COLORS.textWarning,
+    backgroundColor: UI_COLORS.surfaceWarning,
+    borderWidth: 1,
+    borderColor: UI_COLORS.borderWarning,
     borderRadius: 99,
     paddingHorizontal: 7,
     paddingVertical: 3,
@@ -86,17 +88,22 @@ const styles = StyleSheet.create({
   },
   actionRow: { marginTop: 10, flexDirection: 'row', gap: 8 },
   editButton: {
-    backgroundColor: '#E7EEFF',
+    backgroundColor: UI_COLORS.surfaceSubtle,
+    borderWidth: 1,
+    borderColor: UI_COLORS.borderSoft,
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 6,
   },
   editButtonText: { color: UI_COLORS.primary, fontSize: 12, fontWeight: '700' },
   deleteButton: {
-    backgroundColor: '#FDECEC',
+    backgroundColor: UI_COLORS.surfaceDanger,
+    borderWidth: 1,
+    borderColor: UI_COLORS.borderDanger,
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 6,
   },
   deleteButtonText: { color: UI_COLORS.danger, fontSize: 12, fontWeight: '700' },
 });
+

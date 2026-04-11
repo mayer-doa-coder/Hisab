@@ -1,7 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
@@ -9,71 +8,39 @@ import {
 } from 'react-native';
 
 import AuthScene, { AUTH_FORM_STYLES } from '../../components/auth/AuthScene';
+import { UI_COLORS } from '../../constants/ui-theme';
 import { useAuth } from '../../context/AuthContext';
 
-const mapVerifyError = (error) => {
-  const code = String(error?.code || '').trim().toUpperCase();
-
-  if (code === 'VERIFICATION_CODE_EXPIRED') {
-    return 'Code expired. Request a new code and try again.';
-  }
-
-  if (code === 'INVALID_VERIFICATION_CODE') {
-    return 'Wrong code. Please check and try again.';
-  }
-
-  if (code === 'OTP_REQUEST_RATE_LIMITED') {
-    return 'Too many requests. Please wait a minute and try again.';
-  }
-
-  if (code === 'EMAIL_DELIVERY_FAILED') {
-    return 'Email service could not deliver code. Ask admin to configure SMTP or use dev code if shown.';
-  }
-
-  return error?.message || 'Unable to verify code right now.';
-};
-
 export default function VerifyEmailScreen({ navigation, route }) {
-  const { requestEmailVerification, verifyEmailCode } = useAuth();
-  const [email, setEmail] = useState(String(route?.params?.email || '').trim());
-  const [code, setCode] = useState('');
-  const [rememberMe, setRememberMe] = useState(Boolean(route?.params?.rememberMe));
+  const { verifyEmailCode, requestEmailVerification } = useAuth();
+
+  const initialEmail = String(route?.params?.email || '').trim();
+  const initialRememberMe = Boolean(route?.params?.rememberMe);
+  const emailDelivery = route?.params?.emailDelivery || null;
+
+  const [email, setEmail] = useState(initialEmail);
+  const [verificationCode, setVerificationCode] = useState('');
+  const [rememberMe, setRememberMe] = useState(initialRememberMe);
   const [submitting, setSubmitting] = useState(false);
   const [resending, setResending] = useState(false);
-  const [deliveryNoticeShown, setDeliveryNoticeShown] = useState(false);
   const [message, setMessage] = useState('');
 
-  const codeHint = useMemo(() => {
-    const debugCode = String(route?.params?.verificationCode || '').trim();
-    if (!debugCode) {
-      return '';
-    }
-
-    return `Dev code: ${debugCode}`;
-  }, [route?.params?.verificationCode]);
-
   useEffect(() => {
-    if (deliveryNoticeShown) {
-      return;
+    if (emailDelivery && emailDelivery.delivered === false && !emailDelivery.transportConfigured) {
+      setMessage('Email delivery is currently unavailable. Please contact support.');
     }
-
-    const delivery = route?.params?.emailDelivery;
-    if (delivery && delivery.delivered === false && !delivery.transportConfigured) {
-      setDeliveryNoticeShown(true);
-      setMessage('Email service is not configured. Use dev code or retry later.');
-    }
-  }, [deliveryNoticeShown, route?.params?.emailDelivery]);
+  }, [emailDelivery]);
 
   const handleVerify = async () => {
     if (submitting) {
       return;
     }
 
-    const normalizedEmail = String(email || '').trim().toLowerCase();
-    const normalizedCode = String(code || '').trim();
+    const normalizedEmail = String(email || '').trim();
+    const normalizedCode = String(verificationCode || '').trim();
 
     if (!normalizedEmail || !normalizedCode) {
-      setMessage('Email and code are required.');
+      setMessage('Email and verification code are required.');
       return;
     }
 
@@ -86,7 +53,7 @@ export default function VerifyEmailScreen({ navigation, route }) {
         rememberMe,
       });
     } catch (error) {
-      setMessage(mapVerifyError(error));
+      setMessage(error?.message || 'Verification failed.');
     } finally {
       setSubmitting(false);
     }
@@ -97,30 +64,19 @@ export default function VerifyEmailScreen({ navigation, route }) {
       return;
     }
 
-    const normalizedEmail = String(email || '').trim().toLowerCase();
+    const normalizedEmail = String(email || '').trim();
     if (!normalizedEmail) {
-      setMessage('Enter your email first.');
+      setMessage('Email is required to resend code.');
       return;
     }
 
     try {
       setMessage('');
       setResending(true);
-      const payload = await requestEmailVerification(normalizedEmail);
-      const nextDebugCode = String(payload?.verificationCode || '').trim();
-      const delivery = payload?.emailDelivery || null;
-
-      if (delivery && delivery.delivered === false && !delivery.transportConfigured) {
-        setMessage(
-          nextDebugCode
-            ? `Email service is not configured. Dev code: ${nextDebugCode}`
-            : 'Email service is not configured. Retry after setup.'
-        );
-      } else {
-        setMessage(nextDebugCode ? `Code resent. Dev code: ${nextDebugCode}` : 'Code resent.');
-      }
+      await requestEmailVerification(normalizedEmail);
+      setMessage('Verification code sent. Check your email.');
     } catch (error) {
-      setMessage(mapVerifyError(error));
+      setMessage(error?.message || 'Could not resend verification code.');
     } finally {
       setResending(false);
     }
@@ -130,61 +86,52 @@ export default function VerifyEmailScreen({ navigation, route }) {
     <AuthScene
       eyebrow="Hisab Verify"
       title="Verify Email"
-      subtitle="Enter code and continue."
+      subtitle="Enter the code sent to your email"
     >
-      {codeHint ? (
-        <View style={AUTH_FORM_STYLES.noticeStrip}>
-          <Text style={AUTH_FORM_STYLES.noticeText}>{codeHint}</Text>
-        </View>
-      ) : null}
-
       <TextInput
         value={email}
         onChangeText={setEmail}
         placeholder="Email"
         autoCapitalize="none"
         keyboardType="email-address"
-        placeholderTextColor="#607D94"
         style={AUTH_FORM_STYLES.input}
       />
 
-      {message ? (
-        <View style={styles.inlineNotice}>
-          <Text style={styles.inlineNoticeText}>{message}</Text>
-        </View>
-      ) : null}
-
       <TextInput
-        value={code}
-        onChangeText={setCode}
+        value={verificationCode}
+        onChangeText={setVerificationCode}
         placeholder="Verification code"
-        keyboardType="number-pad"
-        maxLength={6}
-        placeholderTextColor="#607D94"
+        autoCapitalize="characters"
         style={AUTH_FORM_STYLES.input}
       />
 
       <TouchableOpacity style={AUTH_FORM_STYLES.checkboxRow} onPress={() => setRememberMe((prev) => !prev)}>
         <View style={[AUTH_FORM_STYLES.checkbox, rememberMe && AUTH_FORM_STYLES.checkboxActive]}>
-          {rememberMe ? <Text style={AUTH_FORM_STYLES.checkboxTick}>✓</Text> : null}
+          {rememberMe ? <Text style={AUTH_FORM_STYLES.checkboxTick}>v</Text> : null}
         </View>
-        <Text style={AUTH_FORM_STYLES.checkboxText}>Remember me on this device</Text>
+        <Text style={AUTH_FORM_STYLES.checkboxText}>Remember me after verification</Text>
       </TouchableOpacity>
+
+      {message ? (
+        <View style={AUTH_FORM_STYLES.noticeStrip}>
+          <Text style={AUTH_FORM_STYLES.noticeText}>{message}</Text>
+        </View>
+      ) : null}
 
       <TouchableOpacity
         style={[AUTH_FORM_STYLES.primaryButton, submitting && AUTH_FORM_STYLES.primaryButtonDisabled]}
         onPress={handleVerify}
         disabled={submitting}
       >
-        {submitting ? <ActivityIndicator size="small" color="#FFF8EE" /> : <Text style={AUTH_FORM_STYLES.primaryButtonText}>Verify and Login</Text>}
+        {submitting ? <ActivityIndicator size="small" color={UI_COLORS.onAccent} /> : <Text style={AUTH_FORM_STYLES.primaryButtonText}>Verify Email</Text>}
       </TouchableOpacity>
 
       <TouchableOpacity
-        style={[AUTH_FORM_STYLES.secondaryButton, resending && AUTH_FORM_STYLES.primaryButtonDisabled]}
+        style={[AUTH_FORM_STYLES.secondaryButton, resending && { opacity: 0.7 }]}
         onPress={handleResend}
         disabled={resending}
       >
-        {resending ? <ActivityIndicator size="small" color="#16324F" /> : <Text style={AUTH_FORM_STYLES.secondaryButtonText}>Resend Code</Text>}
+        {resending ? <ActivityIndicator size="small" color={UI_COLORS.primary} /> : <Text style={AUTH_FORM_STYLES.secondaryButtonText}>Resend Code</Text>}
       </TouchableOpacity>
 
       <TouchableOpacity style={AUTH_FORM_STYLES.linkButton} onPress={() => navigation.navigate('Login')}>
@@ -194,19 +141,4 @@ export default function VerifyEmailScreen({ navigation, route }) {
   );
 }
 
-const styles = StyleSheet.create({
-  inlineNotice: {
-    marginTop: 4,
-    borderLeftWidth: 3,
-    borderColor: '#B91C1C',
-    backgroundColor: '#FEE2E2',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-  },
-  inlineNoticeText: {
-    color: '#7F1D1D',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-});
+

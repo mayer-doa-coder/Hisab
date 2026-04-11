@@ -1,4 +1,5 @@
 const buckets = new Map();
+const MAX_BUCKETS = 5000;
 
 const DEFAULT_WINDOW_MS = 15 * 60 * 1000;
 const DEFAULT_MAX_REQUESTS = 100;
@@ -32,12 +33,19 @@ const createRateLimiter = ({
   maxRequests = DEFAULT_MAX_REQUESTS,
   keyPrefix = 'global',
   scopeByUser = false,
+  keyResolver = null,
 } = {}) => {
   return (req, res, next) => {
     const currentTime = now();
     cleanupBuckets(currentTime);
 
-    const scopeValue = scopeByUser ? getUserKey(req) || getClientKey(req) : getClientKey(req);
+    if (buckets.size > MAX_BUCKETS) {
+      cleanupBuckets(currentTime);
+    }
+
+    const resolvedScope = typeof keyResolver === 'function' ? keyResolver(req) : null;
+    const fallbackScope = scopeByUser ? getUserKey(req) || getClientKey(req) : getClientKey(req);
+    const scopeValue = String(resolvedScope || fallbackScope || 'unknown').trim() || 'unknown';
     const clientKey = `${keyPrefix}:${scopeValue}`;
     const existing = buckets.get(clientKey);
 

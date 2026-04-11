@@ -212,8 +212,8 @@ const styles = StyleSheet.create({
   statBadge: {
     fontSize: 12,
     color: UI_COLORS.primary,
-    backgroundColor: '#EEF3FF',
-    borderColor: '#C7D7FF',
+    backgroundColor: UI_COLORS.surfaceSubtle,
+    borderColor: UI_COLORS.borderSoft,
     borderWidth: 1,
     borderRadius: 99,
     paddingHorizontal: 10,
@@ -229,7 +229,9 @@ const styles = StyleSheet.create({
   },
   sectionTitle: { fontSize: 20, fontWeight: '700', color: UI_COLORS.textPrimary },
   refreshButton: {
-    backgroundColor: '#E7EEFF',
+    backgroundColor: UI_COLORS.surfaceSubtle,
+    borderWidth: 1,
+    borderColor: UI_COLORS.borderSoft,
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 6,
@@ -237,3 +239,4 @@ const styles = StyleSheet.create({
   refreshText: { color: UI_COLORS.primary, fontSize: 12, fontWeight: '600' },
   emptyText: { fontSize: 14, color: UI_COLORS.textMuted },
 });
+

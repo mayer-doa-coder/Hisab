@@ -51,24 +51,25 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   lowWrap: {
-    backgroundColor: '#ECFDF3',
-    borderColor: '#BBF7D0',
+    backgroundColor: UI_COLORS.surfaceSuccess,
+    borderColor: UI_COLORS.borderSuccess,
   },
   lowText: {
-    color: '#166534',
+    color: UI_COLORS.textSuccess,
   },
   mediumWrap: {
-    backgroundColor: '#FEF9C3',
-    borderColor: '#FDE68A',
+    backgroundColor: UI_COLORS.surfaceWarning,
+    borderColor: UI_COLORS.borderWarning,
   },
   mediumText: {
-    color: '#A16207',
+    color: UI_COLORS.textWarning,
   },
   highWrap: {
-    backgroundColor: '#FEE2E2',
-    borderColor: '#FCA5A5',
+    backgroundColor: UI_COLORS.surfaceDanger,
+    borderColor: UI_COLORS.borderDanger,
   },
   highText: {
-    color: UI_COLORS.danger,
+    color: UI_COLORS.textDanger,
   },
 });
+

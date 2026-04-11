@@ -3,11 +3,13 @@ require('dotenv').config();
 const app = require('./app');
 const { connectDB } = require('./config/db');
 const { startAuthRetentionScheduler } = require('./services/authRetentionService');
+const { startTrustOptimizationScheduler } = require('./services/trustOptimizationService');
 
 const port = Number(process.env.PORT) || 5000;
 
 let server = null;
 let stopAuthCleanup = null;
+let stopTrustOptimization = null;
 
 const startServer = async () => {
   try {
@@ -18,6 +20,7 @@ const startServer = async () => {
     });
 
     stopAuthCleanup = startAuthRetentionScheduler({ logger: console });
+    stopTrustOptimization = startTrustOptimizationScheduler({ logger: console });
   } catch (error) {
     console.error(`[BOOT] Failed to start server: ${error?.message || error}`);
     process.exit(1);
@@ -43,6 +46,11 @@ const shutdown = async (signal) => {
     if (typeof stopAuthCleanup === 'function') {
       stopAuthCleanup();
       stopAuthCleanup = null;
+    }
+
+    if (typeof stopTrustOptimization === 'function') {
+      stopTrustOptimization();
+      stopTrustOptimization = null;
     }
 
     process.exit(0);

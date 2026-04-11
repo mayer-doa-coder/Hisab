@@ -113,12 +113,12 @@ const styles = StyleSheet.create({
   },
   filterChip: {
     borderRadius: 99,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: UI_COLORS.surfaceMuted,
     paddingHorizontal: 10,
     paddingVertical: 6,
   },
   filterChipActive: {
-    backgroundColor: '#E7EEFF',
+    backgroundColor: UI_COLORS.surfaceSubtle,
   },
   filterChipText: {
     fontSize: 12,
@@ -144,7 +144,7 @@ const styles = StyleSheet.create({
   clearButton: {
     alignSelf: 'flex-start',
     borderRadius: 8,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: UI_COLORS.surfaceMuted,
     borderWidth: 1,
     borderColor: UI_COLORS.border,
     paddingHorizontal: 10,
@@ -156,3 +156,4 @@ const styles = StyleSheet.create({
     color: UI_COLORS.textSecondary,
   },
 });
+

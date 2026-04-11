@@ -1,8 +1,11 @@
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useMemo, useState } from 'react';
-import { Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import { UI_COLORS } from '../../constants/ui-theme';
+import { AppButton, AppCard, AppInput } from '../../components/ui';
+import { SPACING } from '../../theme/spacing';
+import { TYPOGRAPHY } from '../../theme/typography';
 
 export default function ProductForm({
   editingId,
@@ -58,12 +61,12 @@ export default function ProductForm({
   };
 
   return (
-    <View style={styles.formWrap}>
+    <AppCard style={styles.formWrap}>
       <Text style={styles.formTitle}>{editingId ? 'Update Product' : 'Add Product'}</Text>
 
       <View style={styles.formGroup}>
         <Text style={styles.label}>Product Name *</Text>
-        <TextInput
+        <AppInput
           value={name}
           onChangeText={setName}
           placeholder="Enter product name"
@@ -76,7 +79,7 @@ export default function ProductForm({
         {!editingId ? (
           <View style={styles.col}>
             <Text style={styles.label}>Quantity *</Text>
-            <TextInput
+            <AppInput
               value={quantity}
               onChangeText={setQuantity}
               placeholder="Enter quantity"
@@ -88,7 +91,7 @@ export default function ProductForm({
 
         <View style={styles.col}>
           <Text style={styles.label}>Price *</Text>
-          <TextInput
+          <AppInput
             value={price}
             onChangeText={setPrice}
             placeholder="Enter price"
@@ -104,7 +107,7 @@ export default function ProductForm({
 
       <View style={styles.formGroup}>
         <Text style={styles.label}>Low Stock Alert Threshold *</Text>
-        <TextInput
+        <AppInput
           value={lowStockThreshold}
           onChangeText={setLowStockThreshold}
           placeholder="Enter low-stock threshold"
@@ -137,108 +140,78 @@ export default function ProductForm({
         />
       ) : null}
 
-      <TouchableOpacity
-        style={[styles.button, (saving || refreshing) && styles.buttonDisabled]}
+      <AppButton
+        title={saving ? 'Saving...' : editingId ? 'Update Product' : 'Save Product'}
         onPress={onSave}
         disabled={saving || refreshing}
-      >
-        <Text style={styles.buttonText}>{saving ? 'Saving...' : editingId ? 'Update Product' : 'Save Product'}</Text>
-      </TouchableOpacity>
+        style={styles.button}
+      />
 
       {editingId ? (
-        <TouchableOpacity style={styles.secondaryButton} onPress={onCancel}>
-          <Text style={styles.secondaryButtonText}>Cancel Edit</Text>
-        </TouchableOpacity>
+        <AppButton title="Cancel Edit" onPress={onCancel} variant="secondary" />
       ) : null}
-    </View>
+    </AppCard>
   );
 }
 
 const styles = StyleSheet.create({
   formWrap: {
-    marginTop: 10,
-    borderWidth: 1,
-    borderColor: UI_COLORS.border,
+    marginTop: SPACING.sm,
     borderRadius: 12,
-    padding: 12,
-    backgroundColor: UI_COLORS.surface,
-    gap: 8,
+    gap: SPACING.sm,
   },
-  formTitle: { fontSize: 16, fontWeight: '700', color: UI_COLORS.textPrimary },
-  formGroup: { gap: 6 },
-  formRow: { flexDirection: 'row', gap: 10 },
-  col: { flex: 1, gap: 6 },
-  label: { fontSize: 13, fontWeight: '600', color: UI_COLORS.textPrimary },
+  formTitle: { ...TYPOGRAPHY.subheading, fontWeight: '700', color: UI_COLORS.textPrimary },
+  formGroup: { gap: SPACING.xs },
+  formRow: { flexDirection: 'row', gap: SPACING.sm },
+  col: { flex: 1, gap: SPACING.xs },
+  label: { ...TYPOGRAPHY.body, fontWeight: '600', color: UI_COLORS.textPrimary },
   helpText: {
-    marginTop: -2,
-    fontSize: 12,
+    marginTop: -SPACING.xs,
+    ...TYPOGRAPHY.small,
     color: UI_COLORS.textMuted,
   },
-  input: {
-    borderWidth: 1,
-    borderColor: UI_COLORS.border,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 15,
-    color: UI_COLORS.textPrimary,
-    backgroundColor: UI_COLORS.surface,
-  },
+  input: {},
   dateRow: {
     borderWidth: 1,
     borderColor: UI_COLORS.border,
     borderRadius: 10,
-    padding: 10,
+    padding: SPACING.sm,
     backgroundColor: UI_COLORS.surface,
-    gap: 8,
+    gap: SPACING.sm,
   },
   dateValue: {
+    ...TYPOGRAPHY.body,
     color: UI_COLORS.textPrimary,
-    fontSize: 14,
     fontWeight: '600',
   },
   dateActionRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap: SPACING.sm,
   },
   dateButton: {
-    backgroundColor: '#E7EEFF',
+    backgroundColor: UI_COLORS.surfaceSoft,
     borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.xs,
   },
   dateButtonText: {
+    ...TYPOGRAPHY.small,
     color: UI_COLORS.primary,
-    fontSize: 12,
     fontWeight: '700',
   },
   clearButton: {
-    backgroundColor: '#F1F5F9',
+    backgroundColor: UI_COLORS.surfaceSoft,
     borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.xs,
   },
   clearButtonText: {
+    ...TYPOGRAPHY.small,
     color: UI_COLORS.textSecondary,
-    fontSize: 12,
     fontWeight: '700',
   },
   button: {
-    marginTop: 8,
-    backgroundColor: UI_COLORS.primary,
-    borderRadius: 10,
-    paddingVertical: 12,
-    alignItems: 'center',
+    marginTop: SPACING.sm,
   },
-  buttonDisabled: { opacity: 0.6 },
-  buttonText: { color: '#fff', fontSize: 15, fontWeight: '700' },
-  secondaryButton: {
-    borderWidth: 1,
-    borderColor: UI_COLORS.border,
-    borderRadius: 10,
-    paddingVertical: 10,
-    alignItems: 'center',
-    backgroundColor: UI_COLORS.surface,
-  },
-  secondaryButtonText: { color: UI_COLORS.textPrimary, fontWeight: '700' },
 });
+

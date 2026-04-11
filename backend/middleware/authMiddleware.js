@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const { error: sendError } = require('../utils/apiResponse');
+const { normalizeRole } = require('../utils/normalization');
 
 const sendAuthError = (req, res, {
   statusCode = 401,
@@ -104,12 +105,16 @@ const authMiddleware = async (req, res, next) => {
       }
     }
 
+    const role = normalizeRole(user.role, 'user');
+
     req.auth = {
       user_id: String(userId),
       token_type: 'access',
+      role,
     };
     req.user_id = String(userId);
     req.user = user;
+    req.user.role = role;
     return next();
   } catch {
     return sendAuthError(req, res, {

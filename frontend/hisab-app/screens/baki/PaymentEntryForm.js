@@ -1,7 +1,10 @@
 import { Picker } from '@react-native-picker/picker';
-import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { UI_COLORS } from '../../constants/ui-theme';
+import { AppButton, AppCard, AppInput } from '../../components/ui';
+import { SPACING } from '../../theme/spacing';
+import { TYPOGRAPHY } from '../../theme/typography';
 
 const PAYMENT_METHODS = [
   { label: 'Cash', value: 'cash' },
@@ -26,7 +29,7 @@ export default function PaymentEntryForm({
   refreshing,
 }) {
   return (
-    <View style={styles.formWrap}>
+    <AppCard style={styles.formWrap}>
       <Text style={styles.formTitle}>Record Repayment</Text>
 
       <Text style={styles.label}>Customer *</Text>
@@ -48,7 +51,7 @@ export default function PaymentEntryForm({
       </View>
 
       <Text style={styles.label}>Paid Amount *</Text>
-      <TextInput
+      <AppInput
         value={paymentAmount}
         onChangeText={setPaymentAmount}
         placeholder="Enter paid amount"
@@ -66,46 +69,32 @@ export default function PaymentEntryForm({
       </View>
 
       <Text style={styles.label}>Note</Text>
-      <TextInput
+      <AppInput
         value={paymentNote}
         onChangeText={setPaymentNote}
         placeholder="Optional note"
         style={styles.input}
       />
 
-      <TouchableOpacity
-        style={[styles.button, (saving || refreshing) && styles.buttonDisabled]}
+      <AppButton
+        title={saving ? 'Saving...' : 'Save Payment'}
         onPress={onSave}
         disabled={saving || refreshing || !customerId}
-      >
-        <Text style={styles.buttonText}>{saving ? 'Saving...' : 'Save Payment'}</Text>
-      </TouchableOpacity>
-    </View>
+        style={styles.button}
+      />
+    </AppCard>
   );
 }
 
 const styles = StyleSheet.create({
   formWrap: {
-    borderWidth: 1,
-    borderColor: UI_COLORS.border,
     borderRadius: 12,
-    backgroundColor: UI_COLORS.surface,
-    padding: 12,
-    gap: 8,
-    marginBottom: 10,
+    gap: SPACING.sm,
+    marginBottom: SPACING.sm,
   },
-  formTitle: { fontSize: 16, fontWeight: '700', color: UI_COLORS.textPrimary },
-  label: { fontSize: 13, fontWeight: '600', color: UI_COLORS.textPrimary },
-  input: {
-    borderWidth: 1,
-    borderColor: UI_COLORS.border,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 15,
-    color: UI_COLORS.textPrimary,
-    backgroundColor: UI_COLORS.surface,
-  },
+  formTitle: { ...TYPOGRAPHY.subheading, fontWeight: '700', color: UI_COLORS.textPrimary },
+  label: { ...TYPOGRAPHY.body, fontWeight: '600', color: UI_COLORS.textPrimary },
+  input: {},
   pickerContainer: {
     borderWidth: 1,
     borderColor: UI_COLORS.border,
@@ -119,24 +108,18 @@ const styles = StyleSheet.create({
   },
   dueHintCard: {
     borderWidth: 1,
-    borderColor: '#C7D7FF',
+    borderColor: UI_COLORS.border,
     borderRadius: 8,
-    backgroundColor: '#EEF3FF',
-    paddingHorizontal: 10,
-    paddingVertical: 8,
+    backgroundColor: UI_COLORS.surfaceSoft,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.sm,
   },
   dueHintText: {
+    ...TYPOGRAPHY.small,
     color: UI_COLORS.primary,
-    fontSize: 12,
     fontWeight: '700',
   },
   button: {
-    marginTop: 8,
-    backgroundColor: '#166534',
-    borderRadius: 10,
-    paddingVertical: 12,
-    alignItems: 'center',
+    marginTop: SPACING.sm,
   },
-  buttonDisabled: { opacity: 0.6 },
-  buttonText: { color: '#fff', fontSize: 15, fontWeight: '700' },
 });

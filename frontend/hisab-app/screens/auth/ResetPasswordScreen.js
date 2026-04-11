@@ -8,69 +8,69 @@ import {
 } from 'react-native';
 
 import AuthScene, { AUTH_FORM_STYLES } from '../../components/auth/AuthScene';
+import { UI_COLORS } from '../../constants/ui-theme';
 import { useAuth } from '../../context/AuthContext';
 
-export default function ResetPasswordScreen({ navigation, route }) {
+export default function ResetPasswordScreen({ navigation }) {
   const { resetPin } = useAuth();
 
-  const [resetToken, setResetToken] = useState(String(route?.params?.resetToken || '').trim());
+  const [resetToken, setResetToken] = useState('');
   const [newPin, setNewPin] = useState('');
   const [confirmPin, setConfirmPin] = useState('');
-  const [resetting, setResetting] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
 
   const handleResetPin = async () => {
-    if (resetting) {
+    if (loading) {
       return;
     }
 
     const normalizedToken = String(resetToken || '').trim();
-    const normalizedPin = String(newPin || '').trim();
-    const normalizedConfirm = String(confirmPin || '').trim();
+    const normalizedNewPin = String(newPin || '').trim();
+    const normalizedConfirmPin = String(confirmPin || '').trim();
 
-    if (!normalizedToken || !normalizedPin || !normalizedConfirm) {
-      setMessage('Token and PIN fields are required.');
+    if (!normalizedToken || !normalizedNewPin || !normalizedConfirmPin) {
+      setMessage('Reset token and PIN fields are required.');
       return;
     }
 
-    if (!/^\d{4,6}$/.test(normalizedPin)) {
+    if (!/^\d{4,6}$/.test(normalizedNewPin)) {
       setMessage('PIN must be 4 to 6 digits.');
       return;
     }
 
-    if (normalizedPin !== normalizedConfirm) {
+    if (normalizedNewPin !== normalizedConfirmPin) {
       setMessage('PINs do not match.');
       return;
     }
 
     try {
       setMessage('');
-      setResetting(true);
+      setLoading(true);
       await resetPin({
         resetToken: normalizedToken,
-        newPin: normalizedPin,
+        newPin: normalizedNewPin,
       });
-
+      setMessage('PIN reset successful. Please login with your new PIN.');
       navigation.navigate('Login');
     } catch (error) {
-      setMessage(error?.message || 'Reset failed.');
+      setMessage(error?.message || 'PIN reset failed.');
     } finally {
-      setResetting(false);
+      setLoading(false);
     }
   };
 
   return (
     <AuthScene
-      eyebrow="Hisab Reset"
+      eyebrow="Hisab Recovery"
       title="Reset PIN"
-      subtitle="Enter your token and choose a new PIN"
+      subtitle="Use your recovery token to set a new PIN"
     >
       <TextInput
         value={resetToken}
         onChangeText={setResetToken}
-        placeholder="Reset token"
+        placeholder="Recovery token"
         autoCapitalize="none"
-        placeholderTextColor="#607D94"
         style={AUTH_FORM_STYLES.input}
       />
 
@@ -87,7 +87,6 @@ export default function ResetPasswordScreen({ navigation, route }) {
         keyboardType="number-pad"
         maxLength={6}
         secureTextEntry
-        placeholderTextColor="#607D94"
         style={AUTH_FORM_STYLES.input}
       />
 
@@ -98,16 +97,19 @@ export default function ResetPasswordScreen({ navigation, route }) {
         keyboardType="number-pad"
         maxLength={6}
         secureTextEntry
-        placeholderTextColor="#607D94"
         style={AUTH_FORM_STYLES.input}
       />
 
       <TouchableOpacity
-        style={[AUTH_FORM_STYLES.primaryButton, resetting && AUTH_FORM_STYLES.primaryButtonDisabled]}
+        style={[AUTH_FORM_STYLES.primaryButton, loading && AUTH_FORM_STYLES.primaryButtonDisabled]}
         onPress={handleResetPin}
-        disabled={resetting}
+        disabled={loading}
       >
-        {resetting ? <ActivityIndicator size="small" color="#FFFFFF" /> : <Text style={AUTH_FORM_STYLES.primaryButtonText}>Reset PIN</Text>}
+        {loading ? <ActivityIndicator size="small" color={UI_COLORS.onAccent} /> : <Text style={AUTH_FORM_STYLES.primaryButtonText}>Reset PIN</Text>}
+      </TouchableOpacity>
+
+      <TouchableOpacity style={AUTH_FORM_STYLES.linkButton} onPress={() => navigation.navigate('AccountRecovery')}>
+        <Text style={AUTH_FORM_STYLES.linkText}>Need a new recovery token?</Text>
       </TouchableOpacity>
 
       <TouchableOpacity style={AUTH_FORM_STYLES.linkButton} onPress={() => navigation.navigate('Login')}>
@@ -116,3 +118,4 @@ export default function ResetPasswordScreen({ navigation, route }) {
     </AuthScene>
   );
 }
+

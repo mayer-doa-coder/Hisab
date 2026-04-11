@@ -7,7 +7,103 @@ import db, {
 } from '../../database/db';
 import { syncOnline } from '../backend/syncApi';
 
-const MUTATION_ENTITY_TYPES = ['product', 'customer', 'baki_entry', 'inventory_movement', 'transaction'];
+const MUTATION_ENTITY_TYPES = [
+  'product',
+  'customer',
+  'baki_entry',
+  'baki',
+  'baki_transaction',
+  'inventory_movement',
+  'stock_movement',
+  'transaction',
+];
+
+const summarizePendingByEntity = (rows = []) => {
+  const summary = {};
+  for (const row of rows) {
+    const entity = String(row?.entity_type || '').trim().toLowerCase() || 'unknown';
+    summary[entity] = (summary[entity] || 0) + 1;
+  }
+
+  return summary;
+};
+
+const getLocalSyncDiagnostics = async ({ userId }) => {
+  const [customersRow, bakiRow, pendingRows, unsyncedCustomersRow, unsyncedBakiRow, errorRows] = await Promise.all([
+    db.getFirstAsync(`SELECT COUNT(*) AS total FROM customers WHERE user_id = ?;`, userId),
+    db.getFirstAsync(`SELECT COUNT(*) AS total FROM baki_transactions WHERE user_id = ?;`, userId),
+    db.getAllAsync(
+      `SELECT entity_type
+       FROM pending_sync_queue
+       WHERE user_id IS NULL OR user_id = ?;`,
+      userId
+    ),
+    db.getFirstAsync(
+      `SELECT COUNT(*) AS total
+       FROM customers
+       WHERE user_id = ?
+         AND deleted_at IS NULL
+         AND (server_id IS NULL OR TRIM(server_id) = '');`,
+      userId
+    ),
+    db.getFirstAsync(
+      `SELECT COUNT(*) AS total
+       FROM baki_transactions
+       WHERE user_id = ?
+         AND deleted_at IS NULL
+         AND (server_id IS NULL OR TRIM(server_id) = '');`,
+      userId
+    ),
+    db.getAllAsync(
+      `SELECT id, entity_type, operation, attempts, last_error
+       FROM pending_sync_queue
+       WHERE (user_id IS NULL OR user_id = ?)
+         AND last_error IS NOT NULL
+       ORDER BY datetime(updated_at) DESC, id DESC
+       LIMIT 5;`,
+      userId
+    ),
+  ]);
+
+  return {
+    userId,
+    localCounts: {
+      customers: Number(customersRow?.total || 0),
+      bakiTransactions: Number(bakiRow?.total || 0),
+    },
+    pendingQueue: {
+      total: Array.isArray(pendingRows) ? pendingRows.length : 0,
+      byEntity: summarizePendingByEntity(pendingRows),
+      recentErrors: Array.isArray(errorRows)
+        ? errorRows.map((row) => ({
+            id: Number(row.id),
+            entity: String(row.entity_type || ''),
+            operation: String(row.operation || ''),
+            attempts: Number(row.attempts || 0),
+            message: row.last_error || null,
+          }))
+        : [],
+    },
+    unsyncedLocalRows: {
+      customersWithoutServerId: Number(unsyncedCustomersRow?.total || 0),
+      bakiWithoutServerId: Number(unsyncedBakiRow?.total || 0),
+    },
+  };
+};
+
+const normalizeOutboundEntity = (value) => {
+  const entity = String(value || '').trim().toLowerCase();
+
+  if (entity === 'baki' || entity === 'baki_transaction') {
+    return 'baki_entry';
+  }
+
+  if (entity === 'stock_movement') {
+    return 'inventory_movement';
+  }
+
+  return entity;
+};
 
 const toMovementTypeLocal = (value) => {
   const normalized = String(value || '').trim().toLowerCase();
@@ -34,7 +130,7 @@ const buildOutboundChange = (item) => {
   }
 
   return {
-    entity: String(item?.entity_type || '').trim().toLowerCase(),
+    entity: normalizeOutboundEntity(item?.entity_type),
     type: isDelete ? 'delete' : 'upsert',
     id: effectiveId,
     data,
@@ -470,10 +566,13 @@ const applyAckMapping = async ({ userId, item, ack, serverTime }) => {
 export const runDataSync = async ({ userId, accessToken, maxQueueItems = 100 } = {}) => {
   const normalizedUserId = Number(userId);
   if (!Number.isInteger(normalizedUserId) || normalizedUserId <= 0) {
+    console.warn('[SYNC][CLIENT][SKIPPED_INVALID_USER]', { userId });
     return { synced: 0, appliedServerChanges: 0, skipped: true };
   }
 
   if (!accessToken) {
+    const localDiagnostics = await getLocalSyncDiagnostics({ userId: normalizedUserId });
+    console.warn('[SYNC][CLIENT][SKIPPED_NO_ACCESS_TOKEN]', localDiagnostics);
     return { synced: 0, appliedServerChanges: 0, skipped: true };
   }
 
@@ -487,16 +586,42 @@ export const runDataSync = async ({ userId, accessToken, maxQueueItems = 100 } =
     .map((item) => ({ item, change: buildOutboundChange(item) }))
     .filter((entry) => Boolean(entry.change));
 
+  const pendingByEntity = pending.reduce((summary, row) => {
+    const entity = normalizeOutboundEntity(row?.entity_type) || 'unknown';
+    summary[entity] = (summary[entity] || 0) + 1;
+    return summary;
+  }, {});
+
+  console.info('[SYNC][CLIENT][REQUEST]', {
+    userId: normalizedUserId,
+    pendingCount: pending.length,
+    outboundCount: outbound.length,
+    pendingByEntity,
+  });
+
   const lastSyncAt = await getLastSyncAt({ userId: normalizedUserId });
 
-  const response = await syncOnline({
-    accessToken,
-    payload: {
-      clientId: `hisab-mobile-${normalizedUserId}`,
-      lastSyncAt,
-      changes: outbound.map((entry) => entry.change),
-    },
-  });
+  let response = null;
+  try {
+    response = await syncOnline({
+      accessToken,
+      payload: {
+        clientId: `hisab-mobile-${normalizedUserId}`,
+        lastSyncAt,
+        changes: outbound.map((entry) => entry.change),
+      },
+    });
+  } catch (error) {
+    const localDiagnostics = await getLocalSyncDiagnostics({ userId: normalizedUserId });
+    console.error('[SYNC][CLIENT][REQUEST_FAILED]', {
+      message: error?.message || 'Unknown sync request error.',
+      status: error?.status || null,
+      code: error?.code || null,
+      isNetworkError: Boolean(error?.isNetworkError),
+      localDiagnostics,
+    });
+    throw error;
+  }
 
   const ackRows = Array.isArray(response?.ack) ? response.ack : [];
   let syncedCount = 0;
@@ -530,6 +655,13 @@ export const runDataSync = async ({ userId, accessToken, maxQueueItems = 100 } =
     }
 
     await markPendingSyncItemFailed({ id: pendingEntry.id, errorMessage: ack.message || status || 'Sync conflict.' });
+
+    console.warn('[SYNC][CLIENT][ACK]', {
+      queueId: pendingEntry.id,
+      entity: normalizeOutboundEntity(pendingEntry.entity_type),
+      status,
+      message: ack.message || null,
+    });
   }
 
   const serverChanges = Array.isArray(response?.serverChanges) ? response.serverChanges : [];
@@ -539,6 +671,15 @@ export const runDataSync = async ({ userId, accessToken, maxQueueItems = 100 } =
 
   const nextSyncAt = response?.nextSyncAt || response?.serverTime || new Date().toISOString();
   await setLastSyncAt({ userId: normalizedUserId, lastSyncAt: nextSyncAt });
+
+  console.info('[SYNC][CLIENT][RESPONSE]', {
+    userId: normalizedUserId,
+    synced: syncedCount,
+    ackCount: ackRows.length,
+    serverChanges: serverChanges.length,
+    hasMoreServerChanges: Boolean(response?.hasMoreServerChanges),
+    nextSyncAt,
+  });
 
   return {
     synced: syncedCount,

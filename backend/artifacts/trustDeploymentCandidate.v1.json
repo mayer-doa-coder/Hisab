@@ -1,0 +1,57 @@
+{
+  "generated_at": "2026-04-11T23:22:50.371Z",
+  "bundle_version": "10.0.0",
+  "model_version_label": "trust_model_v10.0",
+  "deployment_status": "candidate_bundle",
+  "required_rollout_stages": [
+    "5%",
+    "25%",
+    "50%",
+    "100%"
+  ],
+  "gate_results": {
+    "objective": {
+      "pass": true,
+      "checks": {
+        "champion_auc_pr_ok": true,
+        "champion_recall_p90_ok": true,
+        "champion_brier_ok": true,
+        "champion_ece_ok": true,
+        "challenger_auc_pr_ok": true,
+        "challenger_recall_p90_ok": true,
+        "challenger_brier_ok": true,
+        "challenger_ece_ok": true,
+        "business_loss_reduction_ok": true
+      },
+      "diagnostics": []
+    },
+    "phase7": {
+      "pass": true,
+      "reason": "phase7_backtest_completed",
+      "evaluated_segments": 4
+    },
+    "phase8": {
+      "pass": true,
+      "reason": "no_guardrail_breach",
+      "triggered_guardrails": []
+    }
+  },
+  "artifacts": {
+    "champion_model": {
+      "path": "D:\\Hisab\\backend\\artifacts\\trustChampionModel.v10.0.0.json",
+      "sha256": "87d4812d938ced78ebfacb74d766c03859aec762ecd785e11a57c0db1f243a83"
+    },
+    "challenger_model": {
+      "path": "D:\\Hisab\\backend\\artifacts\\trustChallengerModel.v10.0.0.json",
+      "sha256": "b4a8daeb120e62ceeb190c09619757caa463fecd890574af1e673adfc307c47b"
+    },
+    "backtest_report": {
+      "path": "D:\\Hisab\\backend\\artifacts\\trustBacktestReport.v10.0.0.json",
+      "sha256": "643a378a4c3fc0377fed98196940a0c5feef599de0295d86c1ef1993afc05a55"
+    },
+    "segment_decisions": {
+      "path": "D:\\Hisab\\backend\\artifacts\\trustSegmentPromotion.v10.0.0.json",
+      "sha256": "e3d6b9d1afbb92b8a1f8d939841fe7ec2cc1e9b9f80af1bba8120e5985fc3180"
+    }
+  }
+}

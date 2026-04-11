@@ -6,6 +6,8 @@ import CustomerRiskBadge from './CustomerRiskBadge';
 export default function CustomerListItem({ item, onEdit, onDelete }) {
   const totalDue = Number.isFinite(Number(item.total_due)) ? Math.max(0, Number(item.total_due)) : 0;
   const hasDue = totalDue > 0;
+  const trustScore = Number.isFinite(Number(item.trust_score)) ? Number(item.trust_score) : null;
+  const riskScore = Number.isFinite(Number(item.risk_score)) ? Number(item.risk_score) : null;
 
   return (
     <View style={styles.card}>
@@ -23,6 +25,9 @@ export default function CustomerListItem({ item, onEdit, onDelete }) {
       <Text style={[styles.due, !hasDue && styles.dueClear]}>Total Due: ৳{totalDue.toFixed(2)}</Text>
       <Text style={styles.meta}>Transactions: {Number(item.number_of_transactions || 0)}</Text>
       <Text style={styles.meta}>Late Payments: {Number(item.number_of_late_payments || 0)}</Text>
+      <Text style={styles.meta}>
+        Trust Score: {trustScore !== null ? `${trustScore}/100` : 'N/A'} | Risk Score: {riskScore !== null ? `${riskScore}/100` : 'N/A'}
+      </Text>
       <View style={styles.actionRow}>
         <TouchableOpacity style={styles.editButton} onPress={() => onEdit(item)}>
           <Text style={styles.editButtonText}>Edit</Text>
@@ -64,23 +69,25 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   badgeDue: {
-    color: '#B45309',
-    backgroundColor: '#FFF4E5',
+    color: UI_COLORS.textWarning,
+    backgroundColor: UI_COLORS.surfaceWarning,
   },
   badgeNoDue: {
-    color: '#166534',
-    backgroundColor: '#ECFDF3',
+    color: UI_COLORS.textSuccess,
+    backgroundColor: UI_COLORS.surfaceSuccess,
   },
   meta: { marginTop: 3, fontSize: 13, color: UI_COLORS.textSecondary },
   due: { marginTop: 6, fontSize: 14, fontWeight: '700', color: UI_COLORS.danger },
-  dueClear: { color: '#166534' },
+  dueClear: { color: UI_COLORS.textSuccess },
   actionRow: {
     marginTop: 10,
     flexDirection: 'row',
     gap: 8,
   },
   editButton: {
-    backgroundColor: '#E7EEFF',
+    backgroundColor: UI_COLORS.surfaceSubtle,
+    borderWidth: 1,
+    borderColor: UI_COLORS.borderSoft,
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 6,
@@ -91,7 +98,9 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   deleteButton: {
-    backgroundColor: '#FDECEC',
+    backgroundColor: UI_COLORS.surfaceDanger,
+    borderWidth: 1,
+    borderColor: UI_COLORS.borderDanger,
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 6,
@@ -102,3 +111,4 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 });
+

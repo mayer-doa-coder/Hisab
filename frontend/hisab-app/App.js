@@ -1,11 +1,11 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createDrawerNavigator } from '@react-navigation/drawer';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { registerRootComponent } from 'expo';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Platform, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppDataContext } from './context/AppDataContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -21,6 +21,7 @@ import {
   fetchCustomersBasic,
   fetchProducts,
   getCustomerRiskMetrics as dbGetCustomerRiskMetrics,
+  getCustomerFeatureSourceRows as dbGetCustomerFeatureSourceRows,
   getExpiredProducts as dbGetExpiredProducts,
   getExpiringSoonProducts as dbGetExpiringSoonProducts,
   getLowStockProducts as dbGetLowStockProducts,
@@ -45,6 +46,7 @@ import ProductListScreen from './screens/ProductListScreen';
 import StockMovementScreen from './screens/StockMovementScreen.js';
 import DashboardScreen from './screens/DashboardScreen';
 import AuditHistoryScreen from './screens/AuditHistoryScreen';
+import ProfileScreen from './screens/ProfileScreen';
 import AccountRecoveryScreen from './screens/auth/AccountRecoveryScreen';
 import LoginScreen from './screens/auth/LoginScreen';
 import PinLoginScreen from './screens/auth/PinLoginScreen';
@@ -53,15 +55,36 @@ import SetupPinScreen from './screens/auth/SetupPinScreen';
 import SignupScreen from './screens/auth/SignupScreen';
 import UpdatePasswordScreen from './screens/auth/UpdatePasswordScreen';
 import VerifyEmailScreen from './screens/auth/VerifyEmailScreen';
-import { applyCustomerRiskClassification, createCustomerRiskModel } from './services/customers/customerRiskEngine';
+import {
+  applyCustomerRiskClassification,
+  createCustomerRiskModel,
+  TRUST_MODEL_FEATURE_FLAGS,
+} from './services/customers/customerRiskEngine';
+import { createTrustRolloutController } from './services/customers/trustRolloutControl';
+import { createTrustMonitoringEngine } from './services/customers/trustMonitoringEngine';
+import { computeFeatureBatch } from './services/features/featureCalculator';
 import { createReorderPredictor } from './services/reorder/reorderSuggestionEngine.js';
+import { pushTrustMonitoringSnapshotOnline } from './services/backend/trustMonitoringApi';
+import { fetchCustomerTrustScoresOnline } from './services/backend/trustApi';
 import { runDataSync } from './services/sync/dataSync';
 import { UI_COLORS } from './constants/ui-theme';
+import { COLORS } from './theme/colors';
 
-const Tab = createBottomTabNavigator();
+const Drawer = createDrawerNavigator();
 const RootStack = createNativeStackNavigator();
 const AuthStack = createNativeStackNavigator();
 const MainStack = createNativeStackNavigator();
+
+const RISK_LEVEL_TOKEN_LABELS = Object.freeze({
+  LOW: 'Low Risk',
+  MEDIUM: 'Medium Risk',
+  HIGH: 'High Risk',
+});
+
+const toUiRiskLabel = (value) => {
+  const token = String(value || '').trim().toUpperCase();
+  return RISK_LEVEL_TOKEN_LABELS[token] || String(value || 'Low Risk');
+};
 
 const AppTheme = {
   ...DefaultTheme,
@@ -99,41 +122,40 @@ function BootLoading({
   );
 }
 
-function MainTabs() {
-  const insets = useSafeAreaInsets();
-
+function MainSidebarNavigator() {
   return (
-    <Tab.Navigator
+    <Drawer.Navigator
       initialRouteName="Dashboard"
       screenOptions={({ route }) => ({
         headerStyle: {
-          backgroundColor: UI_COLORS.textPrimary,
+          backgroundColor: COLORS.sidebarBackground,
         },
-        headerTintColor: UI_COLORS.surface,
+        headerTintColor: COLORS.sidebarActiveText,
         headerTitleStyle: {
           fontWeight: '700',
           letterSpacing: 0.2,
         },
-        tabBarStyle: {
-          height: 64 + Math.max(insets.bottom, 8),
-          borderTopWidth: 0,
-          elevation: 12,
-          shadowColor: UI_COLORS.textPrimary,
-          shadowOpacity: 0.08,
-          shadowRadius: 10,
-          shadowOffset: { width: 0, height: -3 },
-          paddingBottom: Math.max(insets.bottom, 8),
-          paddingTop: 8,
-          marginBottom: Platform.OS === 'android' ? 6 : 0,
-          backgroundColor: UI_COLORS.surface,
+        sceneStyle: {
+          backgroundColor: UI_COLORS.background,
         },
-        tabBarActiveTintColor: UI_COLORS.primary,
-        tabBarInactiveTintColor: '#94A3B8',
-        tabBarLabelStyle: {
+        drawerStyle: {
+          backgroundColor: COLORS.sidebarBackground,
+          width: 274,
+        },
+        drawerActiveBackgroundColor: COLORS.sidebarActiveBackground,
+        drawerActiveTintColor: COLORS.sidebarActiveText,
+        drawerInactiveTintColor: COLORS.sidebarText,
+        drawerLabelStyle: {
           fontSize: 12,
           fontWeight: '700',
+          letterSpacing: 0.2,
         },
-        tabBarIcon: ({ color, size }) => {
+        drawerItemStyle: {
+          borderRadius: 10,
+          marginHorizontal: 10,
+          marginVertical: 4,
+        },
+        drawerIcon: ({ color, size }) => {
           if (route.name === 'Products') {
             return <MaterialIcons name="inventory-2" size={size} color={color} />;
           }
@@ -162,18 +184,39 @@ function MainTabs() {
             return <MaterialIcons name="history" size={size} color={color} />;
           }
 
+          if (route.name === 'Profile') {
+            return <MaterialIcons name="person" size={size} color={color} />;
+          }
+
           return <MaterialIcons name="account-balance-wallet" size={size} color={color} />;
         },
       })}>
-      <Tab.Screen
+      <Drawer.Screen
         name="Dashboard"
         component={DashboardScreen}
-        options={{
+        options={({ navigation }) => ({
           title: 'Dashboard',
           headerTitle: 'Business Dashboard',
+          headerRight: () => (
+            <MaterialIcons
+              name="account-circle"
+              size={26}
+              color={COLORS.sidebarActiveText}
+              style={{ marginRight: 14 }}
+              onPress={() => navigation.navigate('Profile')}
+            />
+          ),
+        })}
+      />
+      <Drawer.Screen
+        name="Profile"
+        component={ProfileScreen}
+        options={{
+          title: 'Profile',
+          headerTitle: 'Profile & Settings',
         }}
       />
-      <Tab.Screen
+      <Drawer.Screen
         name="Audit"
         component={AuditHistoryScreen}
         options={{
@@ -181,7 +224,7 @@ function MainTabs() {
           headerTitle: 'Audit History',
         }}
       />
-      <Tab.Screen
+      <Drawer.Screen
         name="Products"
         component={ProductListScreen}
         options={{
@@ -189,7 +232,7 @@ function MainTabs() {
           headerTitle: 'Inventory Manager',
         }}
       />
-      <Tab.Screen
+      <Drawer.Screen
         name="Customers"
         component={CustomerListScreen}
         options={{
@@ -197,7 +240,7 @@ function MainTabs() {
           headerTitle: 'Customer Manager',
         }}
       />
-      <Tab.Screen
+      <Drawer.Screen
         name="Ledger"
         component={CustomerLedgerScreen}
         options={{
@@ -205,7 +248,7 @@ function MainTabs() {
           headerTitle: 'Customer Ledger',
         }}
       />
-      <Tab.Screen
+      <Drawer.Screen
         name="Baki"
         component={BakiListScreen}
         options={{
@@ -213,7 +256,7 @@ function MainTabs() {
           headerTitle: 'Baki List Manager',
         }}
       />
-      <Tab.Screen
+      <Drawer.Screen
         name="Movement"
         component={StockMovementScreen}
         options={{
@@ -221,7 +264,7 @@ function MainTabs() {
           headerTitle: 'Stock Movement',
         }}
       />
-      <Tab.Screen
+      <Drawer.Screen
         name="Details"
         component={ProductDetailsScreen}
         options={{
@@ -229,14 +272,14 @@ function MainTabs() {
           headerTitle: 'Product Details',
         }}
       />
-    </Tab.Navigator>
+    </Drawer.Navigator>
   );
 }
 
 function MainStackNavigator() {
   return (
     <MainStack.Navigator>
-      <MainStack.Screen name="MainTabs" component={MainTabs} options={{ headerShown: false }} />
+      <MainStack.Screen name="MainSidebar" component={MainSidebarNavigator} options={{ headerShown: false }} />
       <MainStack.Screen
         name="UpdatePassword"
         component={UpdatePasswordScreen}
@@ -283,7 +326,66 @@ function AuthStackNavigator() {
 
 function MainDataShell() {
   const { user, session, isOnline } = useAuth();
-  const customerRiskModel = useMemo(() => createCustomerRiskModel('rule-based'), []);
+  const trustRolloutController = useMemo(() => createTrustRolloutController({
+    config: {
+      enable_new_scoring: true,
+      rollout_percentage: 5,
+      rollout_stage: 'stage_1_canary',
+      challenger_enabled: true,
+      revert_target: 'champion',
+    },
+    logger: console.warn,
+  }), []);
+
+  const trustMonitoringEngine = useMemo(() => createTrustMonitoringEngine({
+    rolloutController: trustRolloutController,
+    guardrails: {
+      fallback_rate_max: 0.3,
+      brier_degradation_max: 0.02,
+      error_rate_max: 0.02,
+      calibration_shift_max: 0.05,
+      feature_mean_shift_max: 0.35,
+      feature_variance_shift_max: 0.5,
+      prediction_drift_psi_max: 0.25,
+      min_samples_for_guardrails: 40,
+      min_labeled_samples: 20,
+    },
+    baseline: {
+      performance: {
+        brier_score: 0.18,
+      },
+      prediction_histogram: new Array(10).fill(0.1),
+      feature_stats: {},
+    },
+    logger: console.warn,
+  }), [trustRolloutController]);
+
+  const trustRoutingFlags = useMemo(() => {
+    const rolloutState = trustRolloutController.getConfig();
+    return {
+      ...TRUST_MODEL_FEATURE_FLAGS,
+      enable_new_scoring: rolloutState.enable_new_scoring,
+      rollout_percentage: rolloutState.rollout_percentage,
+      use_challenger_model: rolloutState.challenger_enabled,
+      shadow_mode: false,
+    };
+  }, [trustRolloutController]);
+
+  const customerRiskModel = useMemo(() => createCustomerRiskModel('hybrid', {
+    featureFlags: trustRoutingFlags,
+    useChallengerModel: true,
+    rolloutController: trustRolloutController,
+    monitoringEngine: trustMonitoringEngine,
+    routingConfig: {
+      sparseHistoryThreshold: 3,
+      richHistoryThreshold: 12,
+      highVolatilityThreshold: 45,
+      logisticConfidenceMin: 0.1,
+      lightgbmConfidenceMin: 0.1,
+    },
+    logger: console.warn,
+    shadowLogger: console.warn,
+  }), [trustMonitoringEngine, trustRolloutController, trustRoutingFlags]);
   const reorderPredictor = useMemo(() => createReorderPredictor('rule-based'), []);
   const reorderRuleConfig = useMemo(
     () => ({
@@ -300,6 +402,7 @@ function MainDataShell() {
   const [refreshing, setRefreshing] = useState(false);
   const [syncingData, setSyncingData] = useState(false);
   const syncInFlightRef = useRef(false);
+  const lastMonitoringUploadMsRef = useRef(0);
   const [products, setProducts] = useState([]);
   const [expiringSoonProducts, setExpiringSoonProducts] = useState([]);
   const [expiredProducts, setExpiredProducts] = useState([]);
@@ -329,12 +432,13 @@ function MainDataShell() {
 
     const bakiHistoryRows = coreBakiResult.status === 'fulfilled' ? coreBakiResult.value : [];
 
-    const [expiringSoonResult, expiredResult, lowStockResult, salesResult, customerRiskResult] = await Promise.allSettled([
+    const [expiringSoonResult, expiredResult, lowStockResult, salesResult, customerRiskResult, featureSourceResult] = await Promise.allSettled([
       dbGetExpiringSoonProducts(7),
       dbGetExpiredProducts(),
       dbGetLowStockProducts(),
       dbGetProductSalesDailyAggregation({ days: reorderRuleConfig.windowDays }),
       dbGetCustomerRiskMetrics(),
+      dbGetCustomerFeatureSourceRows(),
     ]);
 
     const expiringSoonRows = expiringSoonResult.status === 'fulfilled' ? expiringSoonResult.value : [];
@@ -342,12 +446,73 @@ function MainDataShell() {
     const lowStockRows = lowStockResult.status === 'fulfilled' ? lowStockResult.value : [];
     const salesRows = salesResult.status === 'fulfilled' ? salesResult.value : [];
     const customerRiskRows = customerRiskResult.status === 'fulfilled' ? customerRiskResult.value : [];
+    const primaryPredictions = customerRiskRows
+      .filter((row) => row && Number.isFinite(Number(row.customer_id)))
+      .map((row) => ({
+        customer_id: Number(row.customer_id),
+        probability: row.default_probability ?? row.model_probability ?? row.ml_probability ?? null,
+        confidence: row.confidence_score ?? row.model_confidence ?? row.ml_confidence ?? null,
+      }))
+      .filter((row) => row.probability !== null || row.confidence !== null);
+    const featureSourceRows = featureSourceResult.status === 'fulfilled' ? featureSourceResult.value : [];
+
+    let featureBatch = null;
+    try {
+      featureBatch = computeFeatureBatch(featureSourceRows);
+    } catch (error) {
+      console.error('[APP] feature batch computation failed:', error);
+    }
 
     let enrichedCustomers = customerRows;
     try {
-      enrichedCustomers = applyCustomerRiskClassification(customerRows, customerRiskRows, customerRiskModel);
+      enrichedCustomers = applyCustomerRiskClassification(
+        customerRows,
+        customerRiskRows,
+        customerRiskModel,
+        featureBatch,
+        {
+          primaryPredictions,
+          monitoringEngine: trustMonitoringEngine,
+          autoComputeMonitoringSnapshot: true,
+        }
+      );
     } catch (error) {
       console.error('[APP] customer risk classification failed:', error);
+    }
+
+    if (isOnline && session?.access_token && enrichedCustomers.length > 0) {
+      try {
+        const onlineTrustByCustomerId = await fetchCustomerTrustScoresOnline({
+          accessToken: session.access_token,
+          customerIds: enrichedCustomers.map((row) => row.id),
+        });
+
+        enrichedCustomers = enrichedCustomers.map((row) => {
+          const onlineTrust = onlineTrustByCustomerId[String(row.id)];
+          if (!onlineTrust) {
+            return row;
+          }
+
+          return {
+            ...row,
+            trust_score: Number.isFinite(Number(onlineTrust.trust_score))
+              ? Number(onlineTrust.trust_score)
+              : Number(row.trust_score || 0),
+            risk_score: Number.isFinite(Number(onlineTrust.risk_score))
+              ? Number(onlineTrust.risk_score)
+              : Number(row.risk_score || 0),
+            risk_level: toUiRiskLabel(onlineTrust.risk_level || row.risk_level),
+            risk_level_token: String(onlineTrust.risk_level || '').trim().toUpperCase() || null,
+            risk_reasons: Array.isArray(onlineTrust.risk_reasons)
+              ? onlineTrust.risk_reasons
+              : Array.isArray(row.risk_reasons)
+                ? row.risk_reasons
+                : [],
+          };
+        });
+      } catch (error) {
+        console.warn('[APP] online trust scoring fetch failed:', error?.message || error);
+      }
     }
 
     let nextSuggestions = [];
@@ -368,7 +533,14 @@ function MainDataShell() {
     setCustomers(enrichedCustomers);
     setBakiRows(bakiHistoryRows);
     setReorderSuggestions(nextSuggestions);
-  }, [customerRiskModel, reorderPredictor, reorderRuleConfig]);
+  }, [
+    customerRiskModel,
+    isOnline,
+    reorderPredictor,
+    reorderRuleConfig,
+    session?.access_token,
+    trustMonitoringEngine,
+  ]);
 
   useEffect(() => {
     let disposed = false;
@@ -429,6 +601,11 @@ function MainDataShell() {
     syncInFlightRef.current = true;
     setSyncingData(true);
     try {
+      console.info('[SYNC][APP][TRIGGERED]', {
+        userId: Number(user.id),
+        reason: 'interval_or_foreground',
+      });
+
       const result = await runDataSync({
         userId: Number(user.id),
         accessToken: session.access_token,
@@ -436,6 +613,29 @@ function MainDataShell() {
 
       if (Number(result?.synced || 0) > 0 || Number(result?.appliedServerChanges || 0) > 0) {
         await loadAllData();
+      }
+
+      const now = Date.now();
+      if (now - lastMonitoringUploadMsRef.current >= 60 * 1000) {
+        const requestRows = trustMonitoringEngine.getRecentRequests();
+        if (requestRows.length > 0) {
+          const snapshot = trustMonitoringEngine.computeSnapshot();
+          await pushTrustMonitoringSnapshotOnline({
+            accessToken: session.access_token,
+            source: 'phase8_runtime_react_native',
+            appVersion: '1.0.0',
+            snapshot: {
+              ...snapshot,
+              baseline: trustMonitoringEngine.getBaseline(),
+              metadata: {
+                user_id: Number(user.id),
+                rollout_stage: trustRolloutController.getConfig().rollout_stage,
+                rollout_percentage: trustRolloutController.getConfig().rollout_percentage,
+              },
+            },
+          });
+          lastMonitoringUploadMsRef.current = now;
+        }
       }
 
       return result;
@@ -446,7 +646,7 @@ function MainDataShell() {
       syncInFlightRef.current = false;
       setSyncingData(false);
     }
-  }, [isOnline, loadAllData, session?.access_token, user?.id]);
+  }, [isOnline, loadAllData, session?.access_token, trustMonitoringEngine, trustRolloutController, user?.id]);
 
   useEffect(() => {
     if (!isOnline || !session?.access_token || !user?.id) {
@@ -543,18 +743,20 @@ function MainDataShell() {
     async ({ customerId, amount, note }) => {
       const saved = await dbAddBaki({ customerId, amount, note });
       await refreshAll();
+      await runOnlineSync();
       return saved;
     },
-    [refreshAll]
+    [refreshAll, runOnlineSync]
   );
 
   const addBakiPayment = useCallback(
     async ({ customerId, amount, note, paymentMethod }) => {
       const saved = await dbAddPayment({ customerId, amount, note, paymentMethod });
       await refreshAll();
+      await runOnlineSync();
       return saved;
     },
-    [refreshAll]
+    [refreshAll, runOnlineSync]
   );
 
   const getCustomerLedger = useCallback(async (customerId) => {
@@ -613,6 +815,12 @@ function MainDataShell() {
       getStockMovementCountInRange,
       getAuditLogs,
       runOnlineSync,
+      getTrustRolloutConfig: () => trustRolloutController.getConfig(),
+      setTrustRolloutStage: (stageKey) => trustRolloutController.setRolloutStage(stageKey),
+      setTrustRolloutPercentage: (percentage) => trustRolloutController.setRolloutPercentage(percentage),
+      getTrustRolloutEvents: () => trustRolloutController.getRecentEvents(),
+      getTrustMonitoringSnapshot: () => trustMonitoringEngine.computeSnapshot(),
+      getTrustGuardrailAlerts: () => trustMonitoringEngine.getRecentAlerts(),
     }),
     [
       booting,
@@ -645,6 +853,8 @@ function MainDataShell() {
       getStockMovementCountInRange,
       getAuditLogs,
       runOnlineSync,
+      trustMonitoringEngine,
+      trustRolloutController,
     ]
   );
 
