@@ -34,6 +34,11 @@ export default function SignupScreen({ navigation }) {
       return;
     }
 
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+      setMessage('Please enter a valid email address.');
+      return;
+    }
+
     if (!/^\d{4,6}$/.test(normalizedPin)) {
       setMessage('PIN must be 4 to 6 digits.');
       return;

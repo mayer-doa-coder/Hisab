@@ -92,8 +92,8 @@ export default function LoginScreen({ navigation }) {
         return;
       }
 
-      if (String(error?.code || '').toUpperCase() === 'EMAIL_NOT_REGISTERED') {
-        setMessage('Email is not registered.');
+      if (String(error?.code || '').toUpperCase() === 'EMAIL_NOT_REGISTERED' || String(error?.code || '').toUpperCase() === 'INVALID_CREDENTIALS') {
+        setMessage('Invalid email or PIN.');
       } else if (String(error?.code || '').toUpperCase() === 'PIN_LOCKED') {
         const retrySeconds = resolveRetrySeconds(error);
         if (retrySeconds > 0) {

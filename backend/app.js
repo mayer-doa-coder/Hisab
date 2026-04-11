@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
+const helmet = require('helmet');
 
 const authRoutes = require('./routes/authRoutes');
 const v1Routes = require('./routes/v1');
@@ -64,10 +65,17 @@ const domainMutationLimiter = createRateLimiter({
 
 const app = express();
 
+app.set('trust proxy', 1);
+
 app.use(requestContext);
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginEmbedderPolicy: false,
+}));
 app.use(securityHeaders);
 app.use(cors(buildCorsOptions()));
-app.use(express.json());
+app.use(express.json({ limit: '16kb' }));
+app.use(express.urlencoded({ extended: false, limit: '16kb' }));
 
 app.get('/', (req, res) => {
   res.json({

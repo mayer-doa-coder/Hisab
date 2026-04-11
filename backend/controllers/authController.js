@@ -11,10 +11,15 @@ const {
   sendVerificationCodeEmail,
   sendPinRecoveryEmail,
 } = require('../services/emailService');
+const {
+  normalizeEmail,
+  normalizePin,
+  normalizeDeviceId,
+  normalizeRole,
+  toBoolean,
+} = require('../utils/normalization');
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const MAX_FAILED_LOGINS = 5;
-const LOCK_DURATION_MS = 15 * 60 * 1000;
 const MAX_FAILED_PIN_ATTEMPTS = 5;
 const PIN_LOCK_DURATION_MS = Number(process.env.PIN_LOCK_DURATION_MS) || 60 * 60 * 1000;
 const EMAIL_VERIFICATION_WINDOW_MS = Number(process.env.EMAIL_VERIFICATION_WINDOW_MS) || 10 * 60 * 1000;
@@ -46,37 +51,9 @@ const formatRetryDuration = (totalSeconds) => {
   return `${minutes} ${minutes === 1 ? 'min' : 'mins'}`;
 };
 
-const normalizeEmail = (value) => String(value || '').trim().toLowerCase();
-const normalizePin = (value) => String(value || '').trim();
-const normalizeDeviceId = (value) => String(value || '').trim();
 const isProduction = process.env.NODE_ENV === 'production';
 
-const toBoolean = (value, fallback = false) => {
-  if (typeof value === 'boolean') {
-    return value;
-  }
-
-  if (typeof value === 'string') {
-    const normalized = value.trim().toLowerCase();
-    if (['true', '1', 'yes', 'y', 'on'].includes(normalized)) {
-      return true;
-    }
-    if (['false', '0', 'no', 'n', 'off'].includes(normalized)) {
-      return false;
-    }
-  }
-
-  if (typeof value === 'number') {
-    if (value === 1) {
-      return true;
-    }
-    if (value === 0) {
-      return false;
-    }
-  }
-
-  return fallback;
-};
+const AUTH_ENUMERATION_PROTECTION = toBoolean(process.env.AUTH_ENUMERATION_PROTECTION, true);
 
 const getRequestMeta = (req) => {
   const forwardedFor = String(req.headers?.['x-forwarded-for'] || '').split(',')[0].trim();
@@ -134,14 +111,20 @@ const getAccessSecret = () => process.env.JWT_SECRET;
 
 const getRefreshSecret = () => process.env.JWT_REFRESH_SECRET || process.env.REFRESH_TOKEN_SECRET || process.env.JWT_SECRET;
 
-const buildAccessToken = (userId, { authMethod = 'pin' } = {}) => {
+const buildAccessToken = (userId, { authMethod = 'pin', role = 'user' } = {}) => {
   const secret = getAccessSecret();
 
   if (!secret) {
     throw new Error('JWT_SECRET is not configured.');
   }
 
-  return jwt.sign({ user_id: String(userId), token_type: 'access', amr: authMethod, jti: crypto.randomUUID() }, secret, {
+  return jwt.sign({
+    user_id: String(userId),
+    role: normalizeRole(role),
+    token_type: 'access',
+    amr: authMethod,
+    jti: crypto.randomUUID(),
+  }, secret, {
     expiresIn: ACCESS_TOKEN_EXPIRES_IN,
   });
 };
@@ -327,6 +310,7 @@ const revokeAllUserRefreshTokens = async (userId) => {
 const toPublicUser = (userDoc) => ({
   id: String(userDoc._id),
   email: userDoc.email,
+  role: normalizeRole(userDoc.role),
   emailVerified: Boolean(userDoc.emailVerifiedAt),
   pinEnabled: Boolean(userDoc.pinSetAt),
   createdAt: userDoc.createdAt,
@@ -633,7 +617,7 @@ const verifyEmailCode = async (req, res) => {
     await user.save();
 
     await revokeAllUserRefreshTokens(user._id);
-    const accessToken = buildAccessToken(user._id, { authMethod: 'pin' });
+    const accessToken = buildAccessToken(user._id, { authMethod: 'pin', role: user.role });
     const refreshToken = buildRefreshToken(user._id, { rememberMe });
     await persistRefreshToken({ userId: user._id, refreshToken });
 
@@ -781,9 +765,9 @@ const loginWithPin = async (req, res) => {
       });
 
       return sendAuthError(req, res, {
-        statusCode: 404,
-        code: 'EMAIL_NOT_REGISTERED',
-        message: 'Email is not registered.',
+        statusCode: AUTH_ENUMERATION_PROTECTION ? 401 : 404,
+        code: AUTH_ENUMERATION_PROTECTION ? 'INVALID_CREDENTIALS' : 'EMAIL_NOT_REGISTERED',
+        message: AUTH_ENUMERATION_PROTECTION ? 'Invalid email or PIN.' : 'Email is not registered.',
       });
     }
 
@@ -924,7 +908,7 @@ const loginWithPin = async (req, res) => {
     await user.save();
 
     await revokeAllUserRefreshTokens(user._id);
-    const accessToken = buildAccessToken(user._id, { authMethod: 'pin' });
+    const accessToken = buildAccessToken(user._id, { authMethod: 'pin', role: user.role });
     const refreshToken = buildRefreshToken(user._id, { rememberMe });
     await persistRefreshToken({ userId: user._id, refreshToken });
 
@@ -1090,7 +1074,7 @@ const refreshToken = async (req, res) => {
     }
 
     const rememberMe = toBoolean(decoded?.remember_me, false);
-    const nextAccessToken = buildAccessToken(user._id, { authMethod: 'refresh' });
+    const nextAccessToken = buildAccessToken(user._id, { authMethod: 'refresh', role: user.role });
     const nextRefreshToken = buildRefreshToken(user._id, { rememberMe });
 
     await persistRefreshToken({
@@ -1120,10 +1104,8 @@ const requestPinRecovery = async (req, res) => {
     const normalizedEmail = normalizeEmail(req.body?.email);
 
     if (!normalizedEmail || !EMAIL_REGEX.test(normalizedEmail)) {
-      return sendAuthError(req, res, {
-        statusCode: 404,
-        code: 'EMAIL_NOT_REGISTERED',
-        message: 'Email is not registered.',
+      return res.status(200).json({
+        message: 'If the account exists, PIN recovery instructions were generated.',
       });
     }
 
@@ -1138,10 +1120,8 @@ const requestPinRecovery = async (req, res) => {
         },
       });
 
-      return sendAuthError(req, res, {
-        statusCode: 404,
-        code: 'EMAIL_NOT_REGISTERED',
-        message: 'Email is not registered.',
+      return res.status(200).json({
+        message: 'If the account exists, PIN recovery instructions were generated.',
       });
     }
 
@@ -1187,7 +1167,7 @@ const requestPinRecovery = async (req, res) => {
     }
 
     return res.status(200).json({
-      message: 'PIN recovery instructions were generated.',
+      message: 'If the account exists, PIN recovery instructions were generated.',
       ...(process.env.NODE_ENV !== 'production' ? { resetToken: rawResetToken, resetTokenExpiresAt: expiresAt } : {}),
       ...(process.env.NODE_ENV !== 'production' ? {
         emailDelivery: {
