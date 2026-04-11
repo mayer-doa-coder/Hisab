@@ -65,6 +65,7 @@ import { createTrustMonitoringEngine } from './services/customers/trustMonitorin
 import { computeFeatureBatch } from './services/features/featureCalculator';
 import { createReorderPredictor } from './services/reorder/reorderSuggestionEngine.js';
 import { pushTrustMonitoringSnapshotOnline } from './services/backend/trustMonitoringApi';
+import { fetchCustomerTrustScoresOnline } from './services/backend/trustApi';
 import { runDataSync } from './services/sync/dataSync';
 import { UI_COLORS } from './constants/ui-theme';
 import { COLORS } from './theme/colors';
@@ -73,6 +74,17 @@ const Drawer = createDrawerNavigator();
 const RootStack = createNativeStackNavigator();
 const AuthStack = createNativeStackNavigator();
 const MainStack = createNativeStackNavigator();
+
+const RISK_LEVEL_TOKEN_LABELS = Object.freeze({
+  LOW: 'Low Risk',
+  MEDIUM: 'Medium Risk',
+  HIGH: 'High Risk',
+});
+
+const toUiRiskLabel = (value) => {
+  const token = String(value || '').trim().toUpperCase();
+  return RISK_LEVEL_TOKEN_LABELS[token] || String(value || 'Low Risk');
+};
 
 const AppTheme = {
   ...DefaultTheme,
@@ -468,6 +480,41 @@ function MainDataShell() {
       console.error('[APP] customer risk classification failed:', error);
     }
 
+    if (isOnline && session?.access_token && enrichedCustomers.length > 0) {
+      try {
+        const onlineTrustByCustomerId = await fetchCustomerTrustScoresOnline({
+          accessToken: session.access_token,
+          customerIds: enrichedCustomers.map((row) => row.id),
+        });
+
+        enrichedCustomers = enrichedCustomers.map((row) => {
+          const onlineTrust = onlineTrustByCustomerId[String(row.id)];
+          if (!onlineTrust) {
+            return row;
+          }
+
+          return {
+            ...row,
+            trust_score: Number.isFinite(Number(onlineTrust.trust_score))
+              ? Number(onlineTrust.trust_score)
+              : Number(row.trust_score || 0),
+            risk_score: Number.isFinite(Number(onlineTrust.risk_score))
+              ? Number(onlineTrust.risk_score)
+              : Number(row.risk_score || 0),
+            risk_level: toUiRiskLabel(onlineTrust.risk_level || row.risk_level),
+            risk_level_token: String(onlineTrust.risk_level || '').trim().toUpperCase() || null,
+            risk_reasons: Array.isArray(onlineTrust.risk_reasons)
+              ? onlineTrust.risk_reasons
+              : Array.isArray(row.risk_reasons)
+                ? row.risk_reasons
+                : [],
+          };
+        });
+      } catch (error) {
+        console.warn('[APP] online trust scoring fetch failed:', error?.message || error);
+      }
+    }
+
     let nextSuggestions = [];
     try {
       nextSuggestions = reorderPredictor.predict({
@@ -486,7 +533,14 @@ function MainDataShell() {
     setCustomers(enrichedCustomers);
     setBakiRows(bakiHistoryRows);
     setReorderSuggestions(nextSuggestions);
-  }, [customerRiskModel, reorderPredictor, reorderRuleConfig, trustMonitoringEngine]);
+  }, [
+    customerRiskModel,
+    isOnline,
+    reorderPredictor,
+    reorderRuleConfig,
+    session?.access_token,
+    trustMonitoringEngine,
+  ]);
 
   useEffect(() => {
     let disposed = false;

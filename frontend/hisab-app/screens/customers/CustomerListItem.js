@@ -6,6 +6,8 @@ import CustomerRiskBadge from './CustomerRiskBadge';
 export default function CustomerListItem({ item, onEdit, onDelete }) {
   const totalDue = Number.isFinite(Number(item.total_due)) ? Math.max(0, Number(item.total_due)) : 0;
   const hasDue = totalDue > 0;
+  const trustScore = Number.isFinite(Number(item.trust_score)) ? Number(item.trust_score) : null;
+  const riskScore = Number.isFinite(Number(item.risk_score)) ? Number(item.risk_score) : null;
 
   return (
     <View style={styles.card}>
@@ -23,6 +25,9 @@ export default function CustomerListItem({ item, onEdit, onDelete }) {
       <Text style={[styles.due, !hasDue && styles.dueClear]}>Total Due: ৳{totalDue.toFixed(2)}</Text>
       <Text style={styles.meta}>Transactions: {Number(item.number_of_transactions || 0)}</Text>
       <Text style={styles.meta}>Late Payments: {Number(item.number_of_late_payments || 0)}</Text>
+      <Text style={styles.meta}>
+        Trust Score: {trustScore !== null ? `${trustScore}/100` : 'N/A'} | Risk Score: {riskScore !== null ? `${riskScore}/100` : 'N/A'}
+      </Text>
       <View style={styles.actionRow}>
         <TouchableOpacity style={styles.editButton} onPress={() => onEdit(item)}>
           <Text style={styles.editButtonText}>Edit</Text>
