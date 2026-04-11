@@ -1046,6 +1046,108 @@ export const getCustomerRiskMetrics = () =>
 	)
 	);
 
+export const getCustomerFeatureSourceRows = ({
+	lookbackDays = 60,
+	onTimeDelayDays = 7,
+	lateDelayDays = 30,
+} = {}) => {
+	const normalizedLookbackDays = Math.max(1, Math.trunc(Number(lookbackDays) || 60));
+	const normalizedOnTimeDelayDays = Math.max(0, Number(onTimeDelayDays) || 7);
+	const normalizedLateDelayDays = Math.max(normalizedOnTimeDelayDays, Number(lateDelayDays) || 30);
+	const lookbackModifier = `-${normalizedLookbackDays} days`;
+
+	return getActiveScopedUserId().then((userId) =>
+		db.getAllAsync(
+			`WITH tx_agg AS (
+				SELECT
+					customer_id,
+					COALESCE(SUM(
+						CASE
+							WHEN type = 'credit' THEN amount_cents
+							WHEN type = 'payment' THEN -amount_cents
+							ELSE 0
+						END
+					), 0) AS due_cents,
+					MAX(created_at) AS last_transaction_at
+				FROM baki_transactions
+				WHERE user_id = ?
+				GROUP BY customer_id
+			),
+			window_tx_agg AS (
+				SELECT
+					customer_id,
+					COUNT(*) AS transaction_depth_60d
+				FROM baki_transactions
+				WHERE user_id = ?
+					AND type IN ('credit', 'payment')
+					AND datetime(COALESCE(created_at, datetime('now'))) >= datetime('now', ?)
+				GROUP BY customer_id
+			),
+			payment_events AS (
+				SELECT
+					p.customer_id,
+					p.created_at AS payment_created_at,
+					MAX(
+						0,
+						julianday(COALESCE(p.created_at, datetime('now'))) -
+						julianday(
+							COALESCE(
+								(
+									SELECT MAX(c2.created_at)
+									FROM baki_transactions c2
+									WHERE c2.user_id = p.user_id
+										AND c2.customer_id = p.customer_id
+										AND c2.type = 'credit'
+										AND c2.created_at <= p.created_at
+								),
+								p.created_at
+							)
+						)
+					) AS payment_delay_days
+				FROM baki_transactions p
+				WHERE p.user_id = ?
+					AND p.type = 'payment'
+			),
+			window_pay_agg AS (
+				SELECT
+					customer_id,
+					COUNT(*) AS payment_count_60d,
+					SUM(CASE WHEN payment_delay_days <= ? THEN 1 ELSE 0 END) AS on_time_payment_count_60d,
+					SUM(CASE WHEN payment_delay_days > ? THEN 1 ELSE 0 END) AS late_count_60d,
+					AVG(payment_delay_days) AS avg_delay_days_60d,
+					SUM(payment_delay_days * payment_delay_days) AS delay_sum_sq_60d
+				FROM payment_events
+				WHERE datetime(COALESCE(payment_created_at, datetime('now'))) >= datetime('now', ?)
+				GROUP BY customer_id
+			)
+			SELECT
+				c.id AS customer_id,
+				ROUND(MAX(COALESCE(tx_agg.due_cents, 0), 0) / 100.0, 2) AS due_amount_raw,
+				COALESCE(window_tx_agg.transaction_depth_60d, 0) AS transaction_depth_60d,
+				COALESCE(window_pay_agg.payment_count_60d, 0) AS payment_count_60d,
+				COALESCE(window_pay_agg.on_time_payment_count_60d, 0) AS on_time_payment_count_60d,
+				COALESCE(window_pay_agg.late_count_60d, 0) AS late_count_60d,
+				COALESCE(window_pay_agg.avg_delay_days_60d, 0) AS avg_delay_days_60d,
+				COALESCE(window_pay_agg.delay_sum_sq_60d, 0) AS delay_sum_sq_60d,
+				tx_agg.last_transaction_at AS last_transaction_at
+			FROM customers c
+			LEFT JOIN tx_agg ON tx_agg.customer_id = c.id
+			LEFT JOIN window_tx_agg ON window_tx_agg.customer_id = c.id
+			LEFT JOIN window_pay_agg ON window_pay_agg.customer_id = c.id
+			WHERE c.user_id = ?
+			ORDER BY c.id DESC;`,
+			userId,
+			userId,
+			lookbackModifier,
+			userId,
+			normalizedOnTimeDelayDays,
+			normalizedLateDelayDays,
+			lookbackModifier,
+			userId
+		)
+	);
+};
+
 export const getCustomerTotalDue = async (customerId) => {
 	const userId = await getActiveScopedUserId();
 	const normalizedCustomerId = Number(customerId);

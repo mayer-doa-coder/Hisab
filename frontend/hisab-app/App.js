@@ -21,6 +21,7 @@ import {
   fetchCustomersBasic,
   fetchProducts,
   getCustomerRiskMetrics as dbGetCustomerRiskMetrics,
+  getCustomerFeatureSourceRows as dbGetCustomerFeatureSourceRows,
   getExpiredProducts as dbGetExpiredProducts,
   getExpiringSoonProducts as dbGetExpiringSoonProducts,
   getLowStockProducts as dbGetLowStockProducts,
@@ -53,8 +54,16 @@ import SetupPinScreen from './screens/auth/SetupPinScreen';
 import SignupScreen from './screens/auth/SignupScreen';
 import UpdatePasswordScreen from './screens/auth/UpdatePasswordScreen';
 import VerifyEmailScreen from './screens/auth/VerifyEmailScreen';
-import { applyCustomerRiskClassification, createCustomerRiskModel } from './services/customers/customerRiskEngine';
+import {
+  applyCustomerRiskClassification,
+  createCustomerRiskModel,
+  TRUST_MODEL_FEATURE_FLAGS,
+} from './services/customers/customerRiskEngine';
+import { createTrustRolloutController } from './services/customers/trustRolloutControl';
+import { createTrustMonitoringEngine } from './services/customers/trustMonitoringEngine';
+import { computeFeatureBatch } from './services/features/featureCalculator';
 import { createReorderPredictor } from './services/reorder/reorderSuggestionEngine.js';
+import { pushTrustMonitoringSnapshotOnline } from './services/backend/trustMonitoringApi';
 import { runDataSync } from './services/sync/dataSync';
 import { UI_COLORS } from './constants/ui-theme';
 
@@ -283,7 +292,66 @@ function AuthStackNavigator() {
 
 function MainDataShell() {
   const { user, session, isOnline } = useAuth();
-  const customerRiskModel = useMemo(() => createCustomerRiskModel('rule-based'), []);
+  const trustRolloutController = useMemo(() => createTrustRolloutController({
+    config: {
+      enable_new_scoring: true,
+      rollout_percentage: 5,
+      rollout_stage: 'stage_1_canary',
+      challenger_enabled: true,
+      revert_target: 'champion',
+    },
+    logger: console.warn,
+  }), []);
+
+  const trustMonitoringEngine = useMemo(() => createTrustMonitoringEngine({
+    rolloutController: trustRolloutController,
+    guardrails: {
+      fallback_rate_max: 0.3,
+      brier_degradation_max: 0.02,
+      error_rate_max: 0.02,
+      calibration_shift_max: 0.05,
+      feature_mean_shift_max: 0.35,
+      feature_variance_shift_max: 0.5,
+      prediction_drift_psi_max: 0.25,
+      min_samples_for_guardrails: 40,
+      min_labeled_samples: 20,
+    },
+    baseline: {
+      performance: {
+        brier_score: 0.18,
+      },
+      prediction_histogram: new Array(10).fill(0.1),
+      feature_stats: {},
+    },
+    logger: console.warn,
+  }), [trustRolloutController]);
+
+  const trustRoutingFlags = useMemo(() => {
+    const rolloutState = trustRolloutController.getConfig();
+    return {
+      ...TRUST_MODEL_FEATURE_FLAGS,
+      enable_new_scoring: rolloutState.enable_new_scoring,
+      rollout_percentage: rolloutState.rollout_percentage,
+      use_challenger_model: rolloutState.challenger_enabled,
+      shadow_mode: false,
+    };
+  }, [trustRolloutController]);
+
+  const customerRiskModel = useMemo(() => createCustomerRiskModel('hybrid', {
+    featureFlags: trustRoutingFlags,
+    useChallengerModel: true,
+    rolloutController: trustRolloutController,
+    monitoringEngine: trustMonitoringEngine,
+    routingConfig: {
+      sparseHistoryThreshold: 3,
+      richHistoryThreshold: 12,
+      highVolatilityThreshold: 45,
+      logisticConfidenceMin: 0.1,
+      lightgbmConfidenceMin: 0.1,
+    },
+    logger: console.warn,
+    shadowLogger: console.warn,
+  }), [trustMonitoringEngine, trustRolloutController, trustRoutingFlags]);
   const reorderPredictor = useMemo(() => createReorderPredictor('rule-based'), []);
   const reorderRuleConfig = useMemo(
     () => ({
@@ -300,6 +368,7 @@ function MainDataShell() {
   const [refreshing, setRefreshing] = useState(false);
   const [syncingData, setSyncingData] = useState(false);
   const syncInFlightRef = useRef(false);
+  const lastMonitoringUploadMsRef = useRef(0);
   const [products, setProducts] = useState([]);
   const [expiringSoonProducts, setExpiringSoonProducts] = useState([]);
   const [expiredProducts, setExpiredProducts] = useState([]);
@@ -329,12 +398,13 @@ function MainDataShell() {
 
     const bakiHistoryRows = coreBakiResult.status === 'fulfilled' ? coreBakiResult.value : [];
 
-    const [expiringSoonResult, expiredResult, lowStockResult, salesResult, customerRiskResult] = await Promise.allSettled([
+    const [expiringSoonResult, expiredResult, lowStockResult, salesResult, customerRiskResult, featureSourceResult] = await Promise.allSettled([
       dbGetExpiringSoonProducts(7),
       dbGetExpiredProducts(),
       dbGetLowStockProducts(),
       dbGetProductSalesDailyAggregation({ days: reorderRuleConfig.windowDays }),
       dbGetCustomerRiskMetrics(),
+      dbGetCustomerFeatureSourceRows(),
     ]);
 
     const expiringSoonRows = expiringSoonResult.status === 'fulfilled' ? expiringSoonResult.value : [];
@@ -342,10 +412,36 @@ function MainDataShell() {
     const lowStockRows = lowStockResult.status === 'fulfilled' ? lowStockResult.value : [];
     const salesRows = salesResult.status === 'fulfilled' ? salesResult.value : [];
     const customerRiskRows = customerRiskResult.status === 'fulfilled' ? customerRiskResult.value : [];
+    const primaryPredictions = customerRiskRows
+      .filter((row) => row && Number.isFinite(Number(row.customer_id)))
+      .map((row) => ({
+        customer_id: Number(row.customer_id),
+        probability: row.default_probability ?? row.model_probability ?? row.ml_probability ?? null,
+        confidence: row.confidence_score ?? row.model_confidence ?? row.ml_confidence ?? null,
+      }))
+      .filter((row) => row.probability !== null || row.confidence !== null);
+    const featureSourceRows = featureSourceResult.status === 'fulfilled' ? featureSourceResult.value : [];
+
+    let featureBatch = null;
+    try {
+      featureBatch = computeFeatureBatch(featureSourceRows);
+    } catch (error) {
+      console.error('[APP] feature batch computation failed:', error);
+    }
 
     let enrichedCustomers = customerRows;
     try {
-      enrichedCustomers = applyCustomerRiskClassification(customerRows, customerRiskRows, customerRiskModel);
+      enrichedCustomers = applyCustomerRiskClassification(
+        customerRows,
+        customerRiskRows,
+        customerRiskModel,
+        featureBatch,
+        {
+          primaryPredictions,
+          monitoringEngine: trustMonitoringEngine,
+          autoComputeMonitoringSnapshot: true,
+        }
+      );
     } catch (error) {
       console.error('[APP] customer risk classification failed:', error);
     }
@@ -368,7 +464,7 @@ function MainDataShell() {
     setCustomers(enrichedCustomers);
     setBakiRows(bakiHistoryRows);
     setReorderSuggestions(nextSuggestions);
-  }, [customerRiskModel, reorderPredictor, reorderRuleConfig]);
+  }, [customerRiskModel, reorderPredictor, reorderRuleConfig, trustMonitoringEngine]);
 
   useEffect(() => {
     let disposed = false;
@@ -438,6 +534,29 @@ function MainDataShell() {
         await loadAllData();
       }
 
+      const now = Date.now();
+      if (now - lastMonitoringUploadMsRef.current >= 60 * 1000) {
+        const requestRows = trustMonitoringEngine.getRecentRequests();
+        if (requestRows.length > 0) {
+          const snapshot = trustMonitoringEngine.computeSnapshot();
+          await pushTrustMonitoringSnapshotOnline({
+            accessToken: session.access_token,
+            source: 'phase8_runtime_react_native',
+            appVersion: '1.0.0',
+            snapshot: {
+              ...snapshot,
+              baseline: trustMonitoringEngine.getBaseline(),
+              metadata: {
+                user_id: Number(user.id),
+                rollout_stage: trustRolloutController.getConfig().rollout_stage,
+                rollout_percentage: trustRolloutController.getConfig().rollout_percentage,
+              },
+            },
+          });
+          lastMonitoringUploadMsRef.current = now;
+        }
+      }
+
       return result;
     } catch (error) {
       console.warn('[APP] data sync skipped or failed:', error?.message || error);
@@ -446,7 +565,7 @@ function MainDataShell() {
       syncInFlightRef.current = false;
       setSyncingData(false);
     }
-  }, [isOnline, loadAllData, session?.access_token, user?.id]);
+  }, [isOnline, loadAllData, session?.access_token, trustMonitoringEngine, trustRolloutController, user?.id]);
 
   useEffect(() => {
     if (!isOnline || !session?.access_token || !user?.id) {
@@ -613,6 +732,12 @@ function MainDataShell() {
       getStockMovementCountInRange,
       getAuditLogs,
       runOnlineSync,
+      getTrustRolloutConfig: () => trustRolloutController.getConfig(),
+      setTrustRolloutStage: (stageKey) => trustRolloutController.setRolloutStage(stageKey),
+      setTrustRolloutPercentage: (percentage) => trustRolloutController.setRolloutPercentage(percentage),
+      getTrustRolloutEvents: () => trustRolloutController.getRecentEvents(),
+      getTrustMonitoringSnapshot: () => trustMonitoringEngine.computeSnapshot(),
+      getTrustGuardrailAlerts: () => trustMonitoringEngine.getRecentAlerts(),
     }),
     [
       booting,
@@ -645,6 +770,8 @@ function MainDataShell() {
       getStockMovementCountInRange,
       getAuditLogs,
       runOnlineSync,
+      trustMonitoringEngine,
+      trustRolloutController,
     ]
   );
 

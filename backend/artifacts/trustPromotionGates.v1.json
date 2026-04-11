@@ -1,0 +1,43 @@
+{
+  "gate_set": "trust_segment_promotion",
+  "version": "1.0.0",
+  "status": "LOCKED",
+  "requires_review_to_change": true,
+  "review_policy": "Any threshold change requires ML + Product Analytics sign-off and a new gate version.",
+  "business_policy": {
+    "high_risk_threshold": 0.7,
+    "missed_good_cost_rate": 0.05,
+    "exposure_feature": "due_amount"
+  },
+  "global": {
+    "min_windows_required": 3,
+    "min_consistent_pass_ratio": 0.6,
+    "min_positive_labels_per_window": 1
+  },
+  "segments": {
+    "default": {
+      "min_auc_pr_gain": 0.02,
+      "min_recall_gain": 0.02,
+      "max_brier_degradation": 0.01,
+      "max_ece_degradation": 0.01,
+      "min_business_gain_pct": 0.1,
+      "max_false_positive_increase": 0.05
+    },
+    "rich_volatile": {
+      "min_auc_pr_gain": 0.015,
+      "min_recall_gain": 0.02,
+      "max_brier_degradation": 0.01,
+      "max_ece_degradation": 0.01,
+      "min_business_gain_pct": 0.1,
+      "max_false_positive_increase": 0.06
+    },
+    "sparse_history": {
+      "min_auc_pr_gain": 0.01,
+      "min_recall_gain": 0.015,
+      "max_brier_degradation": 0.008,
+      "max_ece_degradation": 0.008,
+      "min_business_gain_pct": 0.05,
+      "max_false_positive_increase": 0.03
+    }
+  }
+}

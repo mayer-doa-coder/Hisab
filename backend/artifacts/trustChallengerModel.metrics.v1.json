@@ -1,0 +1,84 @@
+{
+  "model_name": "hisab_trust_challenger",
+  "version": "1.0.0",
+  "dataset_source": "synthetic_seed_1337",
+  "challenger_metrics": {
+    "auc_pr": 0.987072,
+    "recall_at_precision_90": 0.985294,
+    "brier_raw": 0.062945,
+    "brier_calibrated": 0.034547,
+    "ece_calibrated": 0.004813
+  },
+  "champion_metrics": {
+    "auc_pr": 0.850981,
+    "recall_at_precision_90": 0.441176,
+    "brier_calibrated": 0.166757,
+    "ece_calibrated": 0.062197
+  },
+  "comparison_vs_champion": {
+    "delta_auc_pr": 0.136091,
+    "delta_recall_at_precision_90": 0.544118,
+    "delta_brier": 0.13221,
+    "estimated_loss_reduction_vs_champion": 0.929615
+  },
+  "segment_analysis": {
+    "irregular_payment_patterns": {
+      "samples": 233,
+      "champion": {
+        "auc_pr": 0.863716,
+        "brier": 0.164983,
+        "recall_at_precision_90": 0.465116
+      },
+      "challenger": {
+        "auc_pr": 0.988665,
+        "brier": 0.030811,
+        "recall_at_precision_90": 0.992248
+      }
+    },
+    "high_volatility_users": {
+      "samples": 65,
+      "champion": {
+        "auc_pr": 0.865084,
+        "brier": 0.157196,
+        "recall_at_precision_90": 0.578947
+      },
+      "challenger": {
+        "auc_pr": 0.970533,
+        "brier": 0.045142,
+        "recall_at_precision_90": 1.0
+      }
+    }
+  },
+  "stability": {
+    "folds": 5,
+    "fold_metrics": [
+      {
+        "auc_pr": 0.837992,
+        "brier": 0.205409,
+        "recall_at_precision_90": 0.461538
+      },
+      {
+        "auc_pr": 0.676399,
+        "brier": 0.276193,
+        "recall_at_precision_90": 0.071429
+      },
+      {
+        "auc_pr": 0.775221,
+        "brier": 0.187447,
+        "recall_at_precision_90": 0.384615
+      },
+      {
+        "auc_pr": 0.810028,
+        "brier": 0.212259,
+        "recall_at_precision_90": 0.37931
+      },
+      {
+        "auc_pr": 0.779358,
+        "brier": 0.213288,
+        "recall_at_precision_90": 0.333333
+      }
+    ],
+    "auc_pr_std": 0.05465,
+    "brier_std": 0.030098
+  }
+}

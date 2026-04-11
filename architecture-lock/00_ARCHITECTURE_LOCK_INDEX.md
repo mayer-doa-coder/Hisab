@@ -27,6 +27,22 @@ This folder contains the frozen architecture and execution baseline for Phase 0.
 - File: `05_QA_TEST_MATRIX_FINAL.md`
 - Covers: functional, edge, offline, sync conflict, ownership isolation, and basic voice validation tests
 
+6. Trust Rollout Guardrails Lock
+- File: `08_TRUST_ROLLOUT_GUARDRAILS_V1.md`
+- Covers: staged rollout, deterministic bucketing, monitoring metrics, drift detection, guardrails, and auto-revert protocol
+
+7. Trust Continuous Optimization Lock
+- File: `09_TRUST_CONTINUOUS_OPTIMIZATION_V1.md`
+- Covers: monthly recalibration, quarterly retraining, drift-triggered emergency updates, versioning, and automation schedule
+
+8. Trust Inference Architecture Policy Lock
+- File: `10_TRUST_INFERENCE_ARCHITECTURE_POLICY_V1.md`
+- Covers: final Option A architecture choice, governance boundaries, and future hybrid scalability plan
+
+9. Trust Production Readiness Checklist
+- File: `11_TRUST_PRODUCTION_READINESS_CHECKLIST_V1.md`
+- Covers: executable readiness checks for monitoring, gates, promotion, rollback, and frontend trust tests
+
 ## Integration Alignment Notes
 
 Frontend-backend-database connectivity guardrails are locked in this pack:
