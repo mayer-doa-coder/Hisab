@@ -1,6 +1,9 @@
-import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { UI_COLORS } from '../../constants/ui-theme';
+import { AppButton, AppCard, AppInput } from '../../components/ui';
+import { SPACING } from '../../theme/spacing';
+import { TYPOGRAPHY } from '../../theme/typography';
 
 export default function CustomerForm({
   editingCustomerId,
@@ -15,10 +18,10 @@ export default function CustomerForm({
   saving,
 }) {
   return (
-    <View>
+    <AppCard style={styles.formWrap}>
       <View style={styles.formGroup}>
         <Text style={styles.label}>Customer Name *</Text>
-        <TextInput
+        <AppInput
           value={name}
           onChangeText={setName}
           placeholder="Enter customer name"
@@ -29,7 +32,7 @@ export default function CustomerForm({
 
       <View style={styles.formGroup}>
         <Text style={styles.label}>Phone</Text>
-        <TextInput
+        <AppInput
           value={phone}
           onChangeText={setPhone}
           placeholder="Enter phone number"
@@ -40,7 +43,7 @@ export default function CustomerForm({
 
       <View style={styles.formGroup}>
         <Text style={styles.label}>Address</Text>
-        <TextInput
+        <AppInput
           value={address}
           onChangeText={setAddress}
           placeholder="Optional"
@@ -48,53 +51,26 @@ export default function CustomerForm({
         />
       </View>
 
-      <TouchableOpacity style={[styles.button, saving && styles.buttonDisabled]} onPress={onSave} disabled={saving}>
-        <Text style={styles.buttonText}>{saving ? 'Saving...' : editingCustomerId ? 'Update Customer' : 'Save Customer'}</Text>
-      </TouchableOpacity>
+      <AppButton
+        style={styles.button}
+        title={saving ? 'Saving...' : editingCustomerId ? 'Update Customer' : 'Save Customer'}
+        onPress={onSave}
+        disabled={saving}
+      />
 
       {editingCustomerId ? (
-        <TouchableOpacity style={styles.secondaryButton} onPress={onCancel}>
-          <Text style={styles.secondaryButtonText}>Cancel Edit</Text>
-        </TouchableOpacity>
+        <AppButton title="Cancel Edit" onPress={onCancel} variant="secondary" />
       ) : null}
-    </View>
+    </AppCard>
   );
 }
 
 const styles = StyleSheet.create({
-  formGroup: { gap: 6 },
-  label: { fontSize: 14, fontWeight: '600', color: UI_COLORS.textPrimary },
-  input: {
-    borderWidth: 1,
-    borderColor: UI_COLORS.border,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 16,
-    color: UI_COLORS.textPrimary,
-    backgroundColor: UI_COLORS.surface,
-  },
+  formWrap: { gap: SPACING.sm },
+  formGroup: { gap: SPACING.xs },
+  label: { ...TYPOGRAPHY.body, fontWeight: '600', color: UI_COLORS.textPrimary },
+  input: {},
   button: {
-    marginTop: 8,
-    backgroundColor: UI_COLORS.primary,
-    borderRadius: 10,
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  buttonDisabled: { opacity: 0.7 },
-  buttonText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  secondaryButton: {
-    marginTop: 8,
-    borderWidth: 1,
-    borderColor: UI_COLORS.border,
-    borderRadius: 10,
-    paddingVertical: 11,
-    alignItems: 'center',
-    backgroundColor: UI_COLORS.surface,
-  },
-  secondaryButtonText: {
-    color: UI_COLORS.textPrimary,
-    fontSize: 14,
-    fontWeight: '700',
+    marginTop: SPACING.sm,
   },
 });

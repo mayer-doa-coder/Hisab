@@ -64,23 +64,25 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   badgeDue: {
-    color: '#B45309',
-    backgroundColor: '#FFF4E5',
+    color: UI_COLORS.textWarning,
+    backgroundColor: UI_COLORS.surfaceWarning,
   },
   badgeNoDue: {
-    color: '#166534',
-    backgroundColor: '#ECFDF3',
+    color: UI_COLORS.textSuccess,
+    backgroundColor: UI_COLORS.surfaceSuccess,
   },
   meta: { marginTop: 3, fontSize: 13, color: UI_COLORS.textSecondary },
   due: { marginTop: 6, fontSize: 14, fontWeight: '700', color: UI_COLORS.danger },
-  dueClear: { color: '#166534' },
+  dueClear: { color: UI_COLORS.textSuccess },
   actionRow: {
     marginTop: 10,
     flexDirection: 'row',
     gap: 8,
   },
   editButton: {
-    backgroundColor: '#E7EEFF',
+    backgroundColor: UI_COLORS.surfaceSubtle,
+    borderWidth: 1,
+    borderColor: UI_COLORS.borderSoft,
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 6,
@@ -91,7 +93,9 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   deleteButton: {
-    backgroundColor: '#FDECEC',
+    backgroundColor: UI_COLORS.surfaceDanger,
+    borderWidth: 1,
+    borderColor: UI_COLORS.borderDanger,
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 6,
@@ -102,3 +106,4 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 });
+

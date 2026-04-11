@@ -1,7 +1,4 @@
-import { useEffect, useRef } from 'react';
 import {
-  Animated,
-  Easing,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -11,69 +8,26 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { UI_COLORS } from '../../constants/ui-theme';
+import { AppCard } from '../ui';
+import { SPACING } from '../../theme/spacing';
+import { TYPOGRAPHY } from '../../theme/typography';
+
 export default function AuthScene({ eyebrow = 'Hisab Secure', title, subtitle, children }) {
-  const drift = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(drift, {
-          toValue: 1,
-          duration: 4800,
-          easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true,
-        }),
-        Animated.timing(drift, {
-          toValue: 0,
-          duration: 4800,
-          easing: Easing.inOut(Easing.sin),
-          useNativeDriver: true,
-        }),
-      ])
-    );
-
-    loop.start();
-    return () => {
-      loop.stop();
-    };
-  }, [drift]);
-
-  const topBlobShift = drift.interpolate({
-    inputRange: [0, 1],
-    outputRange: [-16, 10],
-  });
-
-  const sideBlobShift = drift.interpolate({
-    inputRange: [0, 1],
-    outputRange: [18, -14],
-  });
-
-  const stripeShift = drift.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, 28],
-  });
-
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View pointerEvents="none" style={styles.backdropLayer}>
-        <Animated.View style={[styles.blobWarm, { transform: [{ translateY: topBlobShift }] }]} />
-        <Animated.View style={[styles.blobCool, { transform: [{ translateX: sideBlobShift }] }]} />
-        <Animated.View style={[styles.blobSun, { transform: [{ translateY: sideBlobShift }] }]} />
-        <Animated.View style={[styles.ribbon, { transform: [{ translateX: stripeShift }, { rotate: '-14deg' }] }]} />
-      </View>
-
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex}>
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <View style={styles.glassCard}>
+          <AppCard style={styles.card}>
             <Text style={styles.eyebrow}>{eyebrow}</Text>
             <Text style={styles.title}>{title}</Text>
             <Text style={styles.subtitle}>{subtitle}</Text>
             <View style={styles.formColumn}>{children}</View>
-          </View>
+          </AppCard>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -82,107 +36,101 @@ export default function AuthScene({ eyebrow = 'Hisab Secure', title, subtitle, c
 
 export const AUTH_FORM_STYLES = StyleSheet.create({
   input: {
+    minHeight: 50,
     borderWidth: 1,
-    borderColor: '#E5E9EF',
+    borderColor: UI_COLORS.border,
     borderRadius: 10,
-    backgroundColor: 'rgba(255,255,255,0.86)',
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    color: '#1A1C1E',
-    fontSize: 15,
-    fontWeight: '600',
+    backgroundColor: UI_COLORS.surface,
+    color: UI_COLORS.textPrimary,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+    ...TYPOGRAPHY.body,
   },
   primaryButton: {
-    marginTop: 14,
-    borderRadius: 10,
+    marginTop: SPACING.md,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#375DFB',
-    backgroundColor: '#2F66E5',
+    borderColor: UI_COLORS.accent,
+    backgroundColor: UI_COLORS.accent,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 13,
-    minHeight: 48,
-    shadowColor: '#375DFB',
-    shadowOpacity: 0.35,
-    shadowRadius: 7,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
+    paddingVertical: SPACING.md,
+    minHeight: 50,
   },
   primaryButtonDisabled: {
-    opacity: 0.75,
+    opacity: 0.7,
   },
   primaryButtonText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '700',
+    ...TYPOGRAPHY.button,
+    color: UI_COLORS.onAccent,
   },
   secondaryButton: {
-    marginTop: 8,
-    borderRadius: 10,
+    marginTop: SPACING.sm,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#D8E1F1',
-    backgroundColor: 'rgba(255,255,255,0.7)',
+    borderColor: UI_COLORS.primary,
+    backgroundColor: UI_COLORS.surface,
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 46,
-    paddingVertical: 10,
+    paddingVertical: SPACING.sm,
   },
   secondaryButtonText: {
-    color: '#1D4ED8',
-    fontSize: 13,
+    ...TYPOGRAPHY.body,
+    color: UI_COLORS.primary,
     fontWeight: '700',
   },
   linkButton: {
-    marginTop: 8,
+    marginTop: SPACING.sm,
     alignItems: 'center',
   },
   linkText: {
-    color: '#4D81E7',
-    fontSize: 12,
+    ...TYPOGRAPHY.small,
+    color: UI_COLORS.primary,
     fontWeight: '700',
   },
   checkboxRow: {
-    marginTop: 8,
+    marginTop: SPACING.sm,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: SPACING.sm,
   },
   checkbox: {
-    width: 16,
-    height: 16,
+    width: 18,
+    height: 18,
     borderRadius: 4,
     borderWidth: 1,
-    borderColor: '#9AA6B2',
+    borderColor: UI_COLORS.border,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.6)',
+    backgroundColor: UI_COLORS.surface,
   },
   checkboxActive: {
-    backgroundColor: '#375DFB',
-    borderColor: '#375DFB',
+    backgroundColor: UI_COLORS.primary,
+    borderColor: UI_COLORS.primary,
   },
   checkboxTick: {
-    color: '#FFFFFF',
+    color: UI_COLORS.surface,
     fontSize: 10,
     fontWeight: '900',
   },
   checkboxText: {
-    color: '#6C7278',
-    fontSize: 12,
+    ...TYPOGRAPHY.small,
+    color: UI_COLORS.textSecondary,
     fontWeight: '600',
   },
   noticeStrip: {
-    marginTop: 6,
+    marginTop: SPACING.xs,
     borderWidth: 1,
-    borderColor: '#FECACA',
-    backgroundColor: 'rgba(254,226,226,0.84)',
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderRadius: 8,
+    borderColor: UI_COLORS.border,
+    backgroundColor: UI_COLORS.surfaceSoft,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.sm,
+    borderRadius: 10,
   },
   noticeText: {
-    color: '#991B1B',
-    fontSize: 12,
+    ...TYPOGRAPHY.small,
+    color: UI_COLORS.textPrimary,
     fontWeight: '700',
   },
 });
@@ -190,102 +138,42 @@ export const AUTH_FORM_STYLES = StyleSheet.create({
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#E9DAC6',
+    backgroundColor: UI_COLORS.background,
   },
   flex: {
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: 16,
-    paddingTop: 24,
-    paddingBottom: 24,
+    paddingHorizontal: SPACING.lg,
+    paddingTop: SPACING.xl,
+    paddingBottom: SPACING.xl,
     flexGrow: 1,
     justifyContent: 'center',
   },
-  glassCard: {
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.9)',
-    backgroundColor: 'rgba(255,255,255,0.6)',
-    paddingHorizontal: 22,
-    paddingTop: 22,
-    paddingBottom: 20,
-    shadowColor: '#8C93A3',
-    shadowOpacity: 0.2,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 4,
-    overflow: 'hidden',
-  },
-  backdropLayer: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  blobWarm: {
-    position: 'absolute',
-    width: 520,
-    height: 520,
-    borderRadius: 260,
-    backgroundColor: '#E5D0B4',
-    top: -290,
-    left: -180,
-    opacity: 0.7,
-  },
-  blobCool: {
-    position: 'absolute',
-    width: 780,
-    height: 780,
-    borderRadius: 390,
-    backgroundColor: '#C5B7EB',
-    bottom: -520,
-    right: -410,
-    opacity: 0.9,
-  },
-  blobSun: {
-    position: 'absolute',
-    width: 250,
-    height: 250,
-    borderRadius: 125,
-    backgroundColor: '#D6C4F0',
-    top: 140,
-    left: -150,
-    opacity: 0.45,
-  },
-  ribbon: {
-    position: 'absolute',
-    width: 480,
-    height: 60,
-    backgroundColor: '#AEB6FF',
-    opacity: 0.09,
-    top: 245,
-    left: -120,
-    borderRadius: 30,
+  card: {
+    borderRadius: 18,
   },
   eyebrow: {
-    marginTop: 2,
+    ...TYPOGRAPHY.small,
     textAlign: 'center',
-    fontSize: 12,
-    color: '#4D81E7',
-    letterSpacing: 0.2,
-    fontWeight: '600',
+    color: UI_COLORS.textSecondary,
+    letterSpacing: 0.9,
     textTransform: 'uppercase',
   },
   title: {
-    marginTop: 6,
+    ...TYPOGRAPHY.h1,
+    marginTop: SPACING.sm,
     textAlign: 'center',
-    fontSize: 42,
-    lineHeight: 46,
-    color: '#111827',
-    fontWeight: '800',
+    color: UI_COLORS.textPrimary,
   },
   subtitle: {
-    marginTop: 10,
+    ...TYPOGRAPHY.body,
+    marginTop: SPACING.sm,
     textAlign: 'center',
-    color: '#6C7278',
-    fontSize: 13,
-    lineHeight: 18,
+    color: UI_COLORS.textSecondary,
   },
   formColumn: {
-    marginTop: 20,
-    gap: 9,
+    marginTop: SPACING.lg,
+    gap: SPACING.sm,
   },
 });

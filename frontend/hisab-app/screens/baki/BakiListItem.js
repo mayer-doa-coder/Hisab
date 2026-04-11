@@ -52,17 +52,18 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     overflow: 'hidden',
   },
-  paidBadge: { backgroundColor: '#E8F8EF', color: '#166534' },
-  unpaidBadge: { backgroundColor: '#FDECEC', color: UI_COLORS.danger },
+  paidBadge: { backgroundColor: UI_COLORS.surfaceSuccess, color: UI_COLORS.textSuccess },
+  unpaidBadge: { backgroundColor: UI_COLORS.surfaceDanger, color: UI_COLORS.textDanger },
   meta: { marginTop: 4, fontSize: 13, color: UI_COLORS.textSecondary },
   date: { marginTop: 5, fontSize: 12, color: UI_COLORS.textMuted },
   actionRow: { marginTop: 10, flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   paidButton: {
-    backgroundColor: '#E8F8EF',
+    backgroundColor: UI_COLORS.primary,
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 6,
   },
-  paidButtonText: { color: '#166534', fontSize: 12, fontWeight: '700' },
+  paidButtonText: { color: UI_COLORS.textOnPrimary, fontSize: 12, fontWeight: '700' },
   disabledButton: { opacity: 0.5 },
 });
+

@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 
 import AuthScene, { AUTH_FORM_STYLES } from '../../components/auth/AuthScene';
+import { UI_COLORS } from '../../constants/ui-theme';
 import { useAuth } from '../../context/AuthContext';
 
 export default function SignupScreen({ navigation }) {
@@ -34,11 +35,6 @@ export default function SignupScreen({ navigation }) {
       return;
     }
 
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
-      setMessage('Please enter a valid email address.');
-      return;
-    }
-
     if (!/^\d{4,6}$/.test(normalizedPin)) {
       setMessage('PIN must be 4 to 6 digits.');
       return;
@@ -57,14 +53,12 @@ export default function SignupScreen({ navigation }) {
       if (result?.verificationRequired) {
         const delivery = result?.emailDelivery || null;
         if (delivery && delivery.delivered === false && !delivery.transportConfigured) {
-          setMessage('Email service is not configured. Use the dev code on next screen.');
+          setMessage('Email service is not configured. Please contact support.');
         }
 
         navigation.navigate('VerifyEmail', {
           email: result.email || normalizedEmail,
           rememberMe,
-          verificationCode: result.verificationCode || null,
-          verificationCodeExpiresAt: result.verificationCodeExpiresAt || null,
           emailDelivery: delivery,
         });
       }
@@ -87,7 +81,6 @@ export default function SignupScreen({ navigation }) {
         placeholder="Email"
         autoCapitalize="none"
         keyboardType="email-address"
-        placeholderTextColor="#607D94"
         style={AUTH_FORM_STYLES.input}
       />
 
@@ -104,7 +97,6 @@ export default function SignupScreen({ navigation }) {
         keyboardType="number-pad"
         maxLength={6}
         secureTextEntry
-        placeholderTextColor="#607D94"
         style={AUTH_FORM_STYLES.input}
       />
 
@@ -115,7 +107,6 @@ export default function SignupScreen({ navigation }) {
         keyboardType="number-pad"
         maxLength={6}
         secureTextEntry
-        placeholderTextColor="#607D94"
         style={AUTH_FORM_STYLES.input}
       />
 
@@ -131,7 +122,7 @@ export default function SignupScreen({ navigation }) {
         onPress={handleSignup}
         disabled={loading}
       >
-        {loading ? <ActivityIndicator size="small" color="#FFFFFF" /> : <Text style={AUTH_FORM_STYLES.primaryButtonText}>Create Account</Text>}
+        {loading ? <ActivityIndicator size="small" color={UI_COLORS.onAccent} /> : <Text style={AUTH_FORM_STYLES.primaryButtonText}>Create Account</Text>}
       </TouchableOpacity>
 
       <TouchableOpacity style={AUTH_FORM_STYLES.linkButton} onPress={() => navigation.goBack()}>

@@ -40,12 +40,14 @@ const styles = StyleSheet.create({
   },
   badgeWrap: {
     alignSelf: 'flex-start',
-    backgroundColor: '#FFF4E5',
+    backgroundColor: UI_COLORS.surfaceWarning,
+    borderWidth: 1,
+    borderColor: UI_COLORS.borderWarning,
     borderRadius: 99,
     paddingHorizontal: 10,
     paddingVertical: 5,
   },
-  badgeText: { color: '#B45309', fontSize: 12, fontWeight: '700' },
+  badgeText: { color: UI_COLORS.textWarning, fontSize: 12, fontWeight: '700' },
   sectionHeading: {
     marginTop: 4,
     fontSize: 14,
@@ -55,10 +57,10 @@ const styles = StyleSheet.create({
   emptyText: { color: UI_COLORS.textMuted, fontSize: 13 },
   rowCard: {
     borderWidth: 1,
-    borderColor: '#FCD34D',
+    borderColor: UI_COLORS.borderWarning,
     borderRadius: 10,
     padding: 10,
-    backgroundColor: '#FFFBEB',
+    backgroundColor: UI_COLORS.surfaceWarning,
   },
   rowTitle: {
     fontSize: 14,
@@ -71,3 +73,4 @@ const styles = StyleSheet.create({
     color: UI_COLORS.textSecondary,
   },
 });
+

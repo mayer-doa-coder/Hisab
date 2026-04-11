@@ -249,13 +249,13 @@ const styles = StyleSheet.create({
   filterToggle: {
     marginTop: 8,
     alignSelf: 'flex-start',
-    backgroundColor: '#F1F5F9',
+    backgroundColor: UI_COLORS.surfaceMuted,
     borderRadius: 99,
     paddingHorizontal: 12,
     paddingVertical: 7,
   },
   filterToggleActive: {
-    backgroundColor: '#FFF4E5',
+    backgroundColor: UI_COLORS.surfaceWarning,
   },
   filterToggleText: {
     color: UI_COLORS.textSecondary,
@@ -263,7 +263,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   filterToggleTextActive: {
-    color: '#B45309',
+    color: UI_COLORS.textWarning,
   },
   headerRow: {
     marginTop: 16,
@@ -274,7 +274,9 @@ const styles = StyleSheet.create({
   },
   sectionTitle: { fontSize: 19, fontWeight: '700', color: UI_COLORS.textPrimary },
   refreshButton: {
-    backgroundColor: '#E7EEFF',
+    backgroundColor: UI_COLORS.surfaceSubtle,
+    borderWidth: 1,
+    borderColor: UI_COLORS.borderSoft,
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 6,
@@ -282,3 +284,4 @@ const styles = StyleSheet.create({
   refreshText: { color: UI_COLORS.primary, fontSize: 12, fontWeight: '600' },
   emptyText: { fontSize: 14, color: UI_COLORS.textMuted },
 });
+

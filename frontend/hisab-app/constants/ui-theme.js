@@ -1,10 +1,37 @@
+import { BRAND, COLORS } from '../theme/colors';
+import { SPACING } from '../theme/spacing';
+import { TYPOGRAPHY } from '../theme/typography';
+
 export const UI_COLORS = {
-  background: '#F4F7FF',
-  surface: '#FFFFFF',
-  textPrimary: '#0F172A',
-  textSecondary: '#475569',
-  textMuted: '#64748B',
-  border: '#E2E8F0',
-  primary: '#2563EB',
-  danger: '#B91C1C',
+  background: COLORS.background,
+  surface: COLORS.surface,
+  surfaceSoft: COLORS.surfaceSoft,
+  surfaceMuted: COLORS.surfaceMuted,
+  surfaceSubtle: COLORS.surfaceSubtle,
+  surfaceRaised: COLORS.surfaceRaised,
+  surfaceInfo: COLORS.surfaceInfo,
+  surfaceSuccess: COLORS.surfaceSuccess,
+  surfaceWarning: COLORS.surfaceWarning,
+  surfaceDanger: COLORS.surfaceDanger,
+  textPrimary: COLORS.textPrimary,
+  textSecondary: COLORS.textSecondary,
+  textMuted: COLORS.textMuted,
+  textSuccess: COLORS.textSuccess,
+  textWarning: COLORS.textWarning,
+  textDanger: COLORS.textDanger,
+  border: COLORS.border,
+  borderSoft: COLORS.borderSoft,
+  borderInfo: COLORS.borderInfo,
+  borderSuccess: COLORS.borderSuccess,
+  borderWarning: COLORS.borderWarning,
+  borderDanger: COLORS.borderDanger,
+  primary: COLORS.primary,
+  accent: COLORS.accent,
+  danger: COLORS.danger,
+  textOnPrimary: COLORS.textOnPrimary,
+  onAccent: COLORS.onAccent,
 };
+
+export const UI_BRAND = BRAND;
+export const UI_TYPOGRAPHY = TYPOGRAPHY;
+export const UI_SPACING = SPACING;

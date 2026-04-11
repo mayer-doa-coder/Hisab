@@ -106,7 +106,7 @@ export default function UpdatePasswordScreen() {
           />
 
           <TouchableOpacity style={[styles.button, loading && styles.buttonDisabled]} onPress={handleUpdatePin} disabled={loading}>
-            {loading ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.buttonText}>Update PIN</Text>}
+            {loading ? <ActivityIndicator size="small" color={UI_COLORS.onAccent} /> : <Text style={styles.buttonText}>Update PIN</Text>}
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
@@ -150,14 +150,14 @@ const styles = StyleSheet.create({
   },
   inlineNotice: {
     borderLeftWidth: 3,
-    borderColor: '#B91C1C',
-    backgroundColor: '#FEE2E2',
+    borderColor: UI_COLORS.primary,
+    backgroundColor: UI_COLORS.surfaceSoft,
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 8,
   },
   inlineNoticeText: {
-    color: '#7F1D1D',
+    color: UI_COLORS.textPrimary,
     fontSize: 12,
     fontWeight: '700',
   },
@@ -174,8 +174,9 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   buttonText: {
-    color: '#fff',
+    color: UI_COLORS.onAccent,
     fontSize: 15,
     fontWeight: '700',
   },
 });
+

@@ -427,8 +427,6 @@ export function AuthProvider({ children }) {
       return {
         verificationRequired: true,
         email: signupPayload?.email || email,
-        verificationCode: signupPayload?.verificationCode || null,
-        verificationCodeExpiresAt: signupPayload?.verificationCodeExpiresAt || null,
         emailDelivery: signupPayload?.emailDelivery || null,
       };
     }

@@ -128,12 +128,12 @@ const styles = StyleSheet.create({
   },
   rangeChip: {
     borderRadius: 99,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: UI_COLORS.surfaceMuted,
     paddingHorizontal: 10,
     paddingVertical: 6,
   },
   rangeChipActive: {
-    backgroundColor: '#E7EEFF',
+    backgroundColor: UI_COLORS.surfaceSubtle,
   },
   rangeChipText: {
     fontSize: 12,
@@ -156,20 +156,20 @@ const styles = StyleSheet.create({
     minHeight: 76,
   },
   primaryCard: {
-    borderColor: '#C7D7FF',
-    backgroundColor: '#F5F8FF',
+    borderColor: UI_COLORS.borderInfo,
+    backgroundColor: UI_COLORS.surfaceInfo,
   },
   successCard: {
-    borderColor: '#BBF7D0',
-    backgroundColor: '#ECFDF3',
+    borderColor: UI_COLORS.borderSuccess,
+    backgroundColor: UI_COLORS.surfaceSuccess,
   },
   warningCard: {
-    borderColor: '#FDE68A',
-    backgroundColor: '#FEF9C3',
+    borderColor: UI_COLORS.borderWarning,
+    backgroundColor: UI_COLORS.surfaceWarning,
   },
   dangerCard: {
-    borderColor: '#FECACA',
-    backgroundColor: '#FEF2F2',
+    borderColor: UI_COLORS.borderDanger,
+    backgroundColor: UI_COLORS.surfaceDanger,
   },
   kpiTopRow: {
     flexDirection: 'row',
@@ -190,3 +190,4 @@ const styles = StyleSheet.create({
     color: UI_COLORS.textPrimary,
   },
 });
+
