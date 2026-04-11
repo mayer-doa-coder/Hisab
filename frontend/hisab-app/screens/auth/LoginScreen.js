@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 
 import AuthScene, { AUTH_FORM_STYLES } from '../../components/auth/AuthScene';
+import { UI_COLORS } from '../../constants/ui-theme';
 import { useAuth } from '../../context/AuthContext';
 
 const formatRetryDuration = (totalSeconds) => {
@@ -85,8 +86,6 @@ export default function LoginScreen({ navigation }) {
         navigation.navigate('VerifyEmail', {
           email: normalizedEmail,
           rememberMe,
-          verificationCode: error?.details?.verificationCode || null,
-          verificationCodeExpiresAt: error?.details?.verificationCodeExpiresAt || null,
           emailDelivery: error?.details?.emailDelivery || null,
         });
         return;
@@ -128,7 +127,6 @@ export default function LoginScreen({ navigation }) {
         keyboardType="number-pad"
         maxLength={6}
         secureTextEntry
-        placeholderTextColor="#607D94"
         style={AUTH_FORM_STYLES.input}
       />
 
@@ -144,7 +142,7 @@ export default function LoginScreen({ navigation }) {
         onPress={handleLogin}
         disabled={loading}
       >
-        {loading ? <ActivityIndicator size="small" color="#FFFFFF" /> : <Text style={AUTH_FORM_STYLES.primaryButtonText}>Log In</Text>}
+        {loading ? <ActivityIndicator size="small" color={UI_COLORS.onAccent} /> : <Text style={AUTH_FORM_STYLES.primaryButtonText}>Log In</Text>}
       </TouchableOpacity>
 
       <TouchableOpacity style={AUTH_FORM_STYLES.linkButton} onPress={() => navigation.navigate('AccountRecovery')}>

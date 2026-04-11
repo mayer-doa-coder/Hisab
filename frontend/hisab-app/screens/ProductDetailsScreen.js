@@ -206,8 +206,10 @@ const styles = StyleSheet.create({
   rowTitle: { fontSize: 16, fontWeight: '700', color: UI_COLORS.textPrimary },
   lowStockBadge: {
     fontSize: 10,
-    color: '#B45309',
-    backgroundColor: '#FFF4E5',
+    color: UI_COLORS.textWarning,
+    backgroundColor: UI_COLORS.surfaceWarning,
+    borderWidth: 1,
+    borderColor: UI_COLORS.borderWarning,
     borderRadius: 99,
     paddingHorizontal: 7,
     paddingVertical: 3,
@@ -223,7 +225,9 @@ const styles = StyleSheet.create({
   },
   sectionTitle: { fontSize: 19, fontWeight: '700', color: UI_COLORS.textPrimary },
   refreshButton: {
-    backgroundColor: '#E7EEFF',
+    backgroundColor: UI_COLORS.surfaceSubtle,
+    borderWidth: 1,
+    borderColor: UI_COLORS.borderSoft,
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 6,

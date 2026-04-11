@@ -37,6 +37,57 @@ const buildConnectionOptions = () => {
   };
 };
 
+const ensureProductSkuIndex = async () => {
+  const collection = mongoose.connection.collection('products');
+  const desiredName = 'userId_1_sku_1';
+  const desiredOptions = {
+    name: desiredName,
+    unique: true,
+    partialFilterExpression: {
+      sku: { $type: 'string', $ne: '' },
+    },
+  };
+
+  let indexes = [];
+  try {
+    indexes = await collection.indexes();
+  } catch (error) {
+    console.warn(`[DB] Unable to inspect product indexes: ${error?.message || error}`);
+    return;
+  }
+
+  const existing = indexes.find((index) => index.name === desiredName);
+  const hasDesiredPartial = Boolean(
+    existing
+      && existing.unique === true
+      && existing.partialFilterExpression
+      && existing.partialFilterExpression.sku
+      && existing.partialFilterExpression.sku.$type === 'string'
+      && existing.partialFilterExpression.sku.$ne === ''
+  );
+
+  if (hasDesiredPartial) {
+    return;
+  }
+
+  if (existing) {
+    try {
+      await collection.dropIndex(desiredName);
+      console.log('[DB] Dropped legacy products SKU index.');
+    } catch (error) {
+      console.warn(`[DB] Failed to drop legacy products SKU index: ${error?.message || error}`);
+      return;
+    }
+  }
+
+  try {
+    await collection.createIndex({ userId: 1, sku: 1 }, desiredOptions);
+    console.log('[DB] Ensured products SKU partial unique index.');
+  } catch (error) {
+    console.warn(`[DB] Failed to create products SKU partial unique index: ${error?.message || error}`);
+  }
+};
+
 const connectDB = async () => {
   const mongoUri = String(process.env.MONGO_URI || '').trim();
   if (!mongoUri) {
@@ -57,6 +108,7 @@ const connectDB = async () => {
     try {
       await mongoose.connect(mongoUri, options);
       console.log('MongoDB connected');
+      await ensureProductSkuIndex();
       return mongoose.connection;
     } catch (error) {
       lastError = error;

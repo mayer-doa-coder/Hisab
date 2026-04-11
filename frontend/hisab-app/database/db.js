@@ -1283,6 +1283,15 @@ const insertBakiTransaction = async ({ customerId, type, amount, note = null, pa
 			},
 		});
 
+		console.info('[BAKI][LOCAL_CREATE]', {
+			userId,
+			localId,
+			clientRefId,
+			type: normalizedType,
+			amount: fromMoneyCents(amountCents),
+			customerId: normalizedCustomerId,
+		});
+
 		void logAudit({
 			userId,
 			entityType: 'baki_transaction',

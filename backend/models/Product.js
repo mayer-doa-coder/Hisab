@@ -17,7 +17,7 @@ const productSchema = new mongoose.Schema(
     sku: {
       type: String,
       trim: true,
-      default: null,
+      default: undefined,
     },
     unit: {
       type: String,
@@ -81,7 +81,15 @@ const productSchema = new mongoose.Schema(
   }
 );
 
-productSchema.index({ userId: 1, sku: 1 }, { unique: true, sparse: true });
+productSchema.index(
+  { userId: 1, sku: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      sku: { $type: 'string', $ne: '' },
+    },
+  }
+);
 productSchema.index({ userId: 1, clientRefId: 1 }, { unique: true, sparse: true });
 
 module.exports = mongoose.model('Product', productSchema);

@@ -192,19 +192,21 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     borderRadius: 99,
+    borderWidth: 1,
+    borderColor: UI_COLORS.borderSoft,
     paddingHorizontal: 10,
     paddingVertical: 6,
   },
   summaryBaki: {
-    backgroundColor: '#FFF4E5',
-    color: '#B45309',
+    backgroundColor: UI_COLORS.surfaceWarning,
+    color: UI_COLORS.textWarning,
   },
   summaryPayment: {
-    backgroundColor: '#ECFDF3',
-    color: '#166534',
+    backgroundColor: UI_COLORS.surfaceSuccess,
+    color: UI_COLORS.textSuccess,
   },
   summaryDue: {
-    backgroundColor: '#EEF3FF',
+    backgroundColor: UI_COLORS.surfaceInfo,
     color: UI_COLORS.primary,
   },
   riskCard: {
@@ -244,12 +246,12 @@ const styles = StyleSheet.create({
   },
   filterChip: {
     borderRadius: 99,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: UI_COLORS.surfaceMuted,
     paddingHorizontal: 10,
     paddingVertical: 7,
   },
   filterChipActive: {
-    backgroundColor: '#E7EEFF',
+    backgroundColor: UI_COLORS.surfaceSubtle,
   },
   filterText: {
     fontSize: 12,
@@ -268,7 +270,9 @@ const styles = StyleSheet.create({
   },
   sectionTitle: { fontSize: 19, fontWeight: '700', color: UI_COLORS.textPrimary },
   refreshButton: {
-    backgroundColor: '#E7EEFF',
+    backgroundColor: UI_COLORS.surfaceSubtle,
+    borderWidth: 1,
+    borderColor: UI_COLORS.borderSoft,
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 6,

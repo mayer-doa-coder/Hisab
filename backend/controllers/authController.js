@@ -190,12 +190,11 @@ const createOtpCode = (length = EMAIL_VERIFICATION_CODE_LENGTH) => {
   return String(crypto.randomInt(0, max)).padStart(length, '0');
 };
 
-const createVerificationDetails = ({ email, code = null, expiresAt = null, cooldownSeconds = null, delivery = null } = {}) => ({
+const createVerificationDetails = ({ email, expiresAt = null, cooldownSeconds = null, delivery = null } = {}) => ({
   verificationRequired: true,
   email,
   verificationCodeExpiresAt: expiresAt ? new Date(expiresAt).toISOString() : null,
   resendAvailableInSeconds: Number.isFinite(Number(cooldownSeconds)) ? Number(cooldownSeconds) : 0,
-  ...(code && !isProduction ? { verificationCode: code } : {}),
   ...(delivery ? {
     emailDelivery: {
       delivered: Boolean(delivery?.delivered),
@@ -1188,7 +1187,6 @@ const requestPinRecovery = async (req, res) => {
 
     return res.status(200).json({
       message: 'PIN recovery instructions were generated.',
-      ...(process.env.NODE_ENV !== 'production' ? { resetToken: rawResetToken, resetTokenExpiresAt: expiresAt } : {}),
       ...(process.env.NODE_ENV !== 'production' ? {
         emailDelivery: {
           delivered: Boolean(delivery?.delivered),

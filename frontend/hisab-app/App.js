@@ -1,11 +1,11 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createDrawerNavigator } from '@react-navigation/drawer';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { registerRootComponent } from 'expo';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Platform, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppDataContext } from './context/AppDataContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -46,6 +46,7 @@ import ProductListScreen from './screens/ProductListScreen';
 import StockMovementScreen from './screens/StockMovementScreen.js';
 import DashboardScreen from './screens/DashboardScreen';
 import AuditHistoryScreen from './screens/AuditHistoryScreen';
+import ProfileScreen from './screens/ProfileScreen';
 import AccountRecoveryScreen from './screens/auth/AccountRecoveryScreen';
 import LoginScreen from './screens/auth/LoginScreen';
 import PinLoginScreen from './screens/auth/PinLoginScreen';
@@ -66,8 +67,9 @@ import { createReorderPredictor } from './services/reorder/reorderSuggestionEngi
 import { pushTrustMonitoringSnapshotOnline } from './services/backend/trustMonitoringApi';
 import { runDataSync } from './services/sync/dataSync';
 import { UI_COLORS } from './constants/ui-theme';
+import { COLORS } from './theme/colors';
 
-const Tab = createBottomTabNavigator();
+const Drawer = createDrawerNavigator();
 const RootStack = createNativeStackNavigator();
 const AuthStack = createNativeStackNavigator();
 const MainStack = createNativeStackNavigator();
@@ -108,41 +110,40 @@ function BootLoading({
   );
 }
 
-function MainTabs() {
-  const insets = useSafeAreaInsets();
-
+function MainSidebarNavigator() {
   return (
-    <Tab.Navigator
+    <Drawer.Navigator
       initialRouteName="Dashboard"
       screenOptions={({ route }) => ({
         headerStyle: {
-          backgroundColor: UI_COLORS.textPrimary,
+          backgroundColor: COLORS.sidebarBackground,
         },
-        headerTintColor: UI_COLORS.surface,
+        headerTintColor: COLORS.sidebarActiveText,
         headerTitleStyle: {
           fontWeight: '700',
           letterSpacing: 0.2,
         },
-        tabBarStyle: {
-          height: 64 + Math.max(insets.bottom, 8),
-          borderTopWidth: 0,
-          elevation: 12,
-          shadowColor: UI_COLORS.textPrimary,
-          shadowOpacity: 0.08,
-          shadowRadius: 10,
-          shadowOffset: { width: 0, height: -3 },
-          paddingBottom: Math.max(insets.bottom, 8),
-          paddingTop: 8,
-          marginBottom: Platform.OS === 'android' ? 6 : 0,
-          backgroundColor: UI_COLORS.surface,
+        sceneStyle: {
+          backgroundColor: UI_COLORS.background,
         },
-        tabBarActiveTintColor: UI_COLORS.primary,
-        tabBarInactiveTintColor: '#94A3B8',
-        tabBarLabelStyle: {
+        drawerStyle: {
+          backgroundColor: COLORS.sidebarBackground,
+          width: 274,
+        },
+        drawerActiveBackgroundColor: COLORS.sidebarActiveBackground,
+        drawerActiveTintColor: COLORS.sidebarActiveText,
+        drawerInactiveTintColor: COLORS.sidebarText,
+        drawerLabelStyle: {
           fontSize: 12,
           fontWeight: '700',
+          letterSpacing: 0.2,
         },
-        tabBarIcon: ({ color, size }) => {
+        drawerItemStyle: {
+          borderRadius: 10,
+          marginHorizontal: 10,
+          marginVertical: 4,
+        },
+        drawerIcon: ({ color, size }) => {
           if (route.name === 'Products') {
             return <MaterialIcons name="inventory-2" size={size} color={color} />;
           }
@@ -171,18 +172,39 @@ function MainTabs() {
             return <MaterialIcons name="history" size={size} color={color} />;
           }
 
+          if (route.name === 'Profile') {
+            return <MaterialIcons name="person" size={size} color={color} />;
+          }
+
           return <MaterialIcons name="account-balance-wallet" size={size} color={color} />;
         },
       })}>
-      <Tab.Screen
+      <Drawer.Screen
         name="Dashboard"
         component={DashboardScreen}
-        options={{
+        options={({ navigation }) => ({
           title: 'Dashboard',
           headerTitle: 'Business Dashboard',
+          headerRight: () => (
+            <MaterialIcons
+              name="account-circle"
+              size={26}
+              color={COLORS.sidebarActiveText}
+              style={{ marginRight: 14 }}
+              onPress={() => navigation.navigate('Profile')}
+            />
+          ),
+        })}
+      />
+      <Drawer.Screen
+        name="Profile"
+        component={ProfileScreen}
+        options={{
+          title: 'Profile',
+          headerTitle: 'Profile & Settings',
         }}
       />
-      <Tab.Screen
+      <Drawer.Screen
         name="Audit"
         component={AuditHistoryScreen}
         options={{
@@ -190,7 +212,7 @@ function MainTabs() {
           headerTitle: 'Audit History',
         }}
       />
-      <Tab.Screen
+      <Drawer.Screen
         name="Products"
         component={ProductListScreen}
         options={{
@@ -198,7 +220,7 @@ function MainTabs() {
           headerTitle: 'Inventory Manager',
         }}
       />
-      <Tab.Screen
+      <Drawer.Screen
         name="Customers"
         component={CustomerListScreen}
         options={{
@@ -206,7 +228,7 @@ function MainTabs() {
           headerTitle: 'Customer Manager',
         }}
       />
-      <Tab.Screen
+      <Drawer.Screen
         name="Ledger"
         component={CustomerLedgerScreen}
         options={{
@@ -214,7 +236,7 @@ function MainTabs() {
           headerTitle: 'Customer Ledger',
         }}
       />
-      <Tab.Screen
+      <Drawer.Screen
         name="Baki"
         component={BakiListScreen}
         options={{
@@ -222,7 +244,7 @@ function MainTabs() {
           headerTitle: 'Baki List Manager',
         }}
       />
-      <Tab.Screen
+      <Drawer.Screen
         name="Movement"
         component={StockMovementScreen}
         options={{
@@ -230,7 +252,7 @@ function MainTabs() {
           headerTitle: 'Stock Movement',
         }}
       />
-      <Tab.Screen
+      <Drawer.Screen
         name="Details"
         component={ProductDetailsScreen}
         options={{
@@ -238,14 +260,14 @@ function MainTabs() {
           headerTitle: 'Product Details',
         }}
       />
-    </Tab.Navigator>
+    </Drawer.Navigator>
   );
 }
 
 function MainStackNavigator() {
   return (
     <MainStack.Navigator>
-      <MainStack.Screen name="MainTabs" component={MainTabs} options={{ headerShown: false }} />
+      <MainStack.Screen name="MainSidebar" component={MainSidebarNavigator} options={{ headerShown: false }} />
       <MainStack.Screen
         name="UpdatePassword"
         component={UpdatePasswordScreen}
@@ -525,6 +547,11 @@ function MainDataShell() {
     syncInFlightRef.current = true;
     setSyncingData(true);
     try {
+      console.info('[SYNC][APP][TRIGGERED]', {
+        userId: Number(user.id),
+        reason: 'interval_or_foreground',
+      });
+
       const result = await runDataSync({
         userId: Number(user.id),
         accessToken: session.access_token,
@@ -662,18 +689,20 @@ function MainDataShell() {
     async ({ customerId, amount, note }) => {
       const saved = await dbAddBaki({ customerId, amount, note });
       await refreshAll();
+      await runOnlineSync();
       return saved;
     },
-    [refreshAll]
+    [refreshAll, runOnlineSync]
   );
 
   const addBakiPayment = useCallback(
     async ({ customerId, amount, note, paymentMethod }) => {
       const saved = await dbAddPayment({ customerId, amount, note, paymentMethod });
       await refreshAll();
+      await runOnlineSync();
       return saved;
     },
-    [refreshAll]
+    [refreshAll, runOnlineSync]
   );
 
   const getCustomerLedger = useCallback(async (customerId) => {

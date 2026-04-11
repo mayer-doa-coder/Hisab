@@ -67,7 +67,9 @@ const styles = StyleSheet.create({
   },
   badgeWrap: {
     alignSelf: 'flex-start',
-    backgroundColor: '#E7EEFF',
+    backgroundColor: UI_COLORS.surfaceSubtle,
+    borderWidth: 1,
+    borderColor: UI_COLORS.borderSoft,
     borderRadius: 99,
     paddingHorizontal: 10,
     paddingVertical: 5,
@@ -86,12 +88,12 @@ const styles = StyleSheet.create({
     padding: 10,
   },
   rowCardWarning: {
-    borderColor: '#FCD34D',
-    backgroundColor: '#FFFBEB',
+    borderColor: UI_COLORS.borderWarning,
+    backgroundColor: UI_COLORS.surfaceWarning,
   },
   rowCardDanger: {
-    borderColor: '#FCA5A5',
-    backgroundColor: '#FEF2F2',
+    borderColor: UI_COLORS.borderDanger,
+    backgroundColor: UI_COLORS.surfaceDanger,
   },
   rowTitle: {
     fontSize: 14,
@@ -104,3 +106,4 @@ const styles = StyleSheet.create({
     color: UI_COLORS.textSecondary,
   },
 });
+

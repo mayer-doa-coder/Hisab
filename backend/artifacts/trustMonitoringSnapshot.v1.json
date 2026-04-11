@@ -1,39 +1,88 @@
 {
   "schema_version": "1.0.0",
-  "source": "phase9_smoke_test",
-  "ingested_at": "2026-04-10T23:31:32.646Z",
-  "generated_at": "2026-04-10T23:31:32.561Z",
-  "snapshot_version": 0,
-  "request_count": 0,
-  "fallback_rate": 0.45,
+  "source": "phase8_runtime_react_native",
+  "ingested_at": "2026-04-11T04:19:18.504Z",
+  "generated_at": "2026-04-11T04:19:16.505Z",
+  "snapshot_version": 5,
+  "request_count": 1,
+  "fallback_rate": 1,
   "error_rate": 0,
-  "latency_ms_p95": 0,
-  "rollout_observed_percentage": 0,
-  "business_loss_increase_pct": 0.22,
+  "latency_ms_p95": 9,
+  "rollout_observed_percentage": 100,
+  "business_loss_increase_pct": null,
   "metrics": {
     "auc_pr": null,
     "recall_at_precision_90": null,
     "brier_score": null,
-    "brier_baseline": 0.15,
-    "brier_degradation": 0.05,
-    "calibration_shift": 0.09
+    "brier_baseline": 0.18,
+    "brier_degradation": null,
+    "calibration_shift": null
   },
-  "prediction_drift_psi": 0.35,
-  "prediction_histogram": [],
+  "prediction_drift_psi": 12.43385588583866,
+  "prediction_histogram": [
+    1,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
   "feature_drift": {
     "due_amount": {
-      "mean_shift": 0.8,
-      "variance_shift": 0.7,
-      "sample_count": 0
+      "mean_shift": 0,
+      "variance_shift": 1,
+      "sample_count": 1
+    },
+    "late_count": {
+      "mean_shift": 0,
+      "variance_shift": 1,
+      "sample_count": 1
+    },
+    "avg_delay_days": {
+      "mean_shift": 0,
+      "variance_shift": 1,
+      "sample_count": 1
+    },
+    "transaction_depth": {
+      "mean_shift": 0,
+      "variance_shift": 1,
+      "sample_count": 1
+    },
+    "recency_days": {
+      "mean_shift": 0,
+      "variance_shift": 1,
+      "sample_count": 1
+    },
+    "payment_consistency": {
+      "mean_shift": 0,
+      "variance_shift": 1,
+      "sample_count": 1
+    },
+    "payment_volatility": {
+      "mean_shift": 0,
+      "variance_shift": 1,
+      "sample_count": 1
     }
   },
-  "segment_summary": {},
+  "segment_summary": {
+    "sparse_history": {
+      "request_count": 1,
+      "fallback_count": 1,
+      "error_count": 0,
+      "fallback_rate": 1,
+      "error_rate": 0
+    }
+  },
   "triggered_guardrails": [],
   "alerts_recent": [],
   "metadata": {
-    "app_version": null,
-    "user_id": null,
-    "rollout_stage": null,
-    "rollout_percentage": null
+    "app_version": "1.0.0",
+    "user_id": "69d9ca4361ba86616f019e14",
+    "rollout_stage": "stage_1_canary",
+    "rollout_percentage": 5
   }
 }

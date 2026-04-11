@@ -1,7 +1,10 @@
 import { Picker } from '@react-native-picker/picker';
-import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { UI_COLORS } from '../../constants/ui-theme';
+import { AppButton, AppCard, AppInput } from '../../components/ui';
+import { SPACING } from '../../theme/spacing';
+import { TYPOGRAPHY } from '../../theme/typography';
 
 export default function BakiEntryForm({
   customers,
@@ -16,7 +19,7 @@ export default function BakiEntryForm({
   refreshing,
 }) {
   return (
-    <View style={styles.formWrap}>
+    <AppCard style={styles.formWrap}>
       <Text style={styles.formTitle}>Add Credit</Text>
 
       <Text style={styles.label}>Customer *</Text>
@@ -34,7 +37,7 @@ export default function BakiEntryForm({
       </View>
 
       <Text style={styles.label}>Credit Amount *</Text>
-      <TextInput
+      <AppInput
         value={amount}
         onChangeText={setAmount}
         placeholder="Enter credit amount"
@@ -43,46 +46,32 @@ export default function BakiEntryForm({
       />
 
       <Text style={styles.label}>Note</Text>
-      <TextInput
+      <AppInput
         value={note}
         onChangeText={setNote}
         placeholder="Optional note"
         style={styles.input}
       />
 
-      <TouchableOpacity
-        style={[styles.button, (saving || refreshing) && styles.buttonDisabled]}
+      <AppButton
+        title={saving ? 'Saving...' : 'Add Credit'}
         onPress={onSave}
         disabled={saving || refreshing || !customerId}
-      >
-        <Text style={styles.buttonText}>{saving ? 'Saving...' : 'Add Credit'}</Text>
-      </TouchableOpacity>
-    </View>
+        style={styles.button}
+      />
+    </AppCard>
   );
 }
 
 const styles = StyleSheet.create({
   formWrap: {
-    borderWidth: 1,
-    borderColor: UI_COLORS.border,
     borderRadius: 12,
-    backgroundColor: UI_COLORS.surface,
-    padding: 12,
-    gap: 8,
-    marginBottom: 10,
+    gap: SPACING.sm,
+    marginBottom: SPACING.sm,
   },
-  formTitle: { fontSize: 16, fontWeight: '700', color: UI_COLORS.textPrimary },
-  label: { fontSize: 13, fontWeight: '600', color: UI_COLORS.textPrimary },
-  input: {
-    borderWidth: 1,
-    borderColor: UI_COLORS.border,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 15,
-    color: UI_COLORS.textPrimary,
-    backgroundColor: UI_COLORS.surface,
-  },
+  formTitle: { ...TYPOGRAPHY.subheading, fontWeight: '700', color: UI_COLORS.textPrimary },
+  label: { ...TYPOGRAPHY.body, fontWeight: '600', color: UI_COLORS.textPrimary },
+  input: {},
   pickerContainer: {
     borderWidth: 1,
     borderColor: UI_COLORS.border,
@@ -95,12 +84,6 @@ const styles = StyleSheet.create({
     color: UI_COLORS.textPrimary,
   },
   button: {
-    marginTop: 8,
-    backgroundColor: UI_COLORS.primary,
-    borderRadius: 10,
-    paddingVertical: 12,
-    alignItems: 'center',
+    marginTop: SPACING.sm,
   },
-  buttonDisabled: { opacity: 0.6 },
-  buttonText: { color: '#fff', fontSize: 15, fontWeight: '700' },
 });

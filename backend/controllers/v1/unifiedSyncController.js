@@ -44,6 +44,8 @@ const asSyncError = (status, message, conflict = null) => ({
   conflict,
 });
 
+const isMongoDuplicateKeyError = (error) => Number(error?.code) === 11000;
+
 const nowIso = () => new Date().toISOString();
 
 const toObjectIdString = (value) => {
@@ -211,6 +213,74 @@ const parseRequiredIdempotencyKey = (change) => {
   }
 
   return idempotencyKey;
+};
+
+const buildReferenceCandidates = (...values) => {
+  const candidates = [];
+  const seen = new Set();
+
+  for (const raw of values) {
+    const normalized = normalizeTrimmedString(raw);
+    if (!normalized || seen.has(normalized)) {
+      continue;
+    }
+
+    seen.add(normalized);
+    candidates.push(normalized);
+  }
+
+  return candidates;
+};
+
+const resolveFirstReference = async ({ resolver, userId, candidates }) => {
+  for (const value of candidates) {
+    const resolved = await resolver({ userId, value });
+    if (resolved) {
+      return resolved;
+    }
+  }
+
+  return null;
+};
+
+const resolveCustomerReferenceFromPayload = async ({ userId, payload = {} }) => {
+  const legacyLocalCustomerId = Number(payload.customerId);
+  const legacyClientRef = Number.isInteger(legacyLocalCustomerId) && legacyLocalCustomerId > 0
+    ? `local:customer:${legacyLocalCustomerId}`
+    : null;
+
+  const candidates = buildReferenceCandidates(
+    payload.customerServerId,
+    payload.customerClientRefId,
+    legacyClientRef,
+    payload.customerId
+  );
+
+  return resolveFirstReference({
+    resolver: resolveCustomerReference,
+    userId,
+    candidates,
+  });
+};
+
+const resolveProductReferenceFromPayload = async ({ userId, payload = {} }) => {
+  const legacyLocalProductId = Number(payload.productId);
+  const legacyClientRef = Number.isInteger(legacyLocalProductId) && legacyLocalProductId > 0
+    ? `local:product:${legacyLocalProductId}`
+    : null;
+
+  const candidates = buildReferenceCandidates(
+    payload.productServerId,
+    payload.productClientRefId,
+    legacyClientRef,
+    payload.productId
+  );
+
+  return resolveFirstReference({
+    resolver: resolveProductReference,
+    userId,
+    candidates,
+  });
 };
 
 const resolveCustomerReference = async ({ userId, value }) => {
@@ -512,8 +582,7 @@ const applyBakiEntryChange = async ({ userId, change }) => {
     };
   }
 
-  const customerRef = normalizeTrimmedString(payload.customerId || payload.customerServerId || payload.customerClientRefId);
-  const customer = await resolveCustomerReference({ userId, value: customerRef });
+  const customer = await resolveCustomerReferenceFromPayload({ userId, payload });
   if (!customer) {
     return asSyncError('rejected_business_rule', 'Referenced customer was not found for baki entry.');
   }
@@ -537,20 +606,52 @@ const applyBakiEntryChange = async ({ userId, change }) => {
 
   const runningDue = type === 'credit' ? currentDue + amount : Math.max(0, currentDue - amount);
 
-  const created = await BakiEntry.create({
+  if (!changeId) {
+    return asSyncError('rejected_validation', 'baki_entry upsert requires a stable id.');
+  }
+
+  const upsertFilter = { userId, clientRefId: changeId };
+  const upsertResult = await BakiEntry.updateOne(
+    upsertFilter,
+    {
+      $setOnInsert: {
+        userId,
+        clientRefId: changeId,
+        customerId: customer._id,
+        customerClientRefId: customer.clientRefId || null,
+        type,
+        amount,
+        runningDue,
+        paymentMethod: type === 'payment' ? normalizeTrimmedString(payload.paymentMethod) || 'cash' : null,
+        note: normalizeTrimmedString(payload.note) || null,
+        occurredAt: parseOptionalDate(payload.occurredAt) || new Date(),
+        serverVersion: 1,
+        version: 1,
+        lastClientMutationAt: clientMutationAt,
+      },
+    },
+    { upsert: true }
+  );
+
+  const created = await BakiEntry.findOne(upsertFilter);
+  if (!created) {
+    return asSyncError('rejected_business_rule', 'Unable to persist baki entry on server.');
+  }
+
+  if (!upsertResult?.upsertedCount) {
+    return {
+      status: 'applied',
+      serverVersion: Number(created.serverVersion || created.version || 1),
+      serverId: String(created._id),
+    };
+  }
+
+  console.info('[SYNC][BAKI][UPSERT]', {
     userId,
-    clientRefId: changeId || null,
-    customerId: customer._id,
-    customerClientRefId: customer.clientRefId || null,
+    clientRefId: changeId,
+    serverId: String(created._id),
     type,
     amount,
-    runningDue,
-    paymentMethod: type === 'payment' ? normalizeTrimmedString(payload.paymentMethod) || 'cash' : null,
-    note: normalizeTrimmedString(payload.note) || null,
-    occurredAt: parseOptionalDate(payload.occurredAt) || new Date(),
-    serverVersion: 1,
-    version: 1,
-    lastClientMutationAt: clientMutationAt,
   });
 
   const serialized = serializeBakiEntry(created);
@@ -618,8 +719,7 @@ const applyInventoryMovementChange = async ({ userId, change }) => {
     };
   }
 
-  const productRef = normalizeTrimmedString(payload.productId || payload.productServerId || payload.productClientRefId);
-  const product = await resolveProductReference({ userId, value: productRef });
+  const product = await resolveProductReferenceFromPayload({ userId, payload });
   if (!product) {
     return asSyncError('rejected_business_rule', 'Referenced product was not found for movement.');
   }
@@ -762,9 +862,17 @@ const applyTransactionChange = async ({ userId, change }) => {
   }
 
   let customer = null;
-  const customerRef = normalizeTrimmedString(payload.customerId || payload.customerServerId || payload.customerClientRefId);
-  if (customerRef) {
-    customer = await resolveCustomerReference({ userId, value: customerRef });
+  const customerRefCandidates = buildReferenceCandidates(
+    payload.customerServerId,
+    payload.customerClientRefId,
+    payload.customerId
+  );
+  if (customerRefCandidates.length > 0) {
+    customer = await resolveFirstReference({
+      resolver: resolveCustomerReference,
+      userId,
+      candidates: customerRefCandidates,
+    });
     if (!customer) {
       return asSyncError('rejected_business_rule', 'Referenced customer was not found for transaction.');
     }
@@ -816,11 +924,11 @@ const applyChange = async ({ userId, change }) => {
     return applyCustomerChange({ userId, change });
   }
 
-  if (entity === 'baki_entry') {
+  if (entity === 'baki_entry' || entity === 'baki' || entity === 'baki_transaction') {
     return applyBakiEntryChange({ userId, change });
   }
 
-  if (entity === 'inventory_movement') {
+  if (entity === 'inventory_movement' || entity === 'stock_movement') {
     return applyInventoryMovementChange({ userId, change });
   }
 
@@ -972,6 +1080,20 @@ const syncUnified = asyncHandler(async (req, res) => {
     throw badRequest('lastSyncAt must be a valid ISO date.');
   }
 
+  const changeEntitySummary = changes.reduce((summary, row) => {
+    const entity = normalizeEntity(row?.entity) || 'unknown';
+    summary[entity] = (summary[entity] || 0) + 1;
+    return summary;
+  }, {});
+
+  console.info('[SYNC][REQUEST]', {
+    userId,
+    clientId,
+    lastSyncAt,
+    changesCount: changes.length,
+    changeEntitySummary,
+  });
+
   const ack = [];
 
   for (const change of changes) {
@@ -989,6 +1111,18 @@ const syncUnified = asyncHandler(async (req, res) => {
         conflict: result.conflict || null,
         message: result.message || null,
       });
+
+      if (entity === 'baki_entry' || entity === 'baki' || entity === 'baki_transaction' || result.status !== 'applied') {
+        console.info('[SYNC][ACK]', {
+          userId,
+          entity,
+          id,
+          status: result.status,
+          serverId: result.serverId || null,
+          serverVersion: result.serverVersion || null,
+          message: result.message || null,
+        });
+      }
     } catch (error) {
       if (error?.code === 'IDEMPOTENCY_KEY_REUSED_WITH_DIFFERENT_PAYLOAD') {
         ack.push({
@@ -999,6 +1133,26 @@ const syncUnified = asyncHandler(async (req, res) => {
           serverId: null,
           conflict: null,
           message: 'Idempotency key was reused with a different payload.',
+        });
+        continue;
+      }
+
+      if (entity === 'product' && isMongoDuplicateKeyError(error)) {
+        ack.push({
+          id,
+          entity,
+          status: 'rejected_validation',
+          serverVersion: null,
+          serverId: null,
+          conflict: null,
+          message: 'Product SKU must be unique per user when provided.',
+        });
+
+        console.warn('[SYNC][ACK][PRODUCT_DUPLICATE_KEY]', {
+          userId,
+          id,
+          code: error?.code,
+          message: error?.message || null,
         });
         continue;
       }
@@ -1019,6 +1173,15 @@ const syncUnified = asyncHandler(async (req, res) => {
   });
 
   const serverTime = nowIso();
+
+  console.info('[SYNC][RESPONSE]', {
+    userId,
+    clientId,
+    ackCount: ack.length,
+    serverChangesCount: serverDelta.items.length,
+    hasMoreServerChanges: serverDelta.hasMore,
+    serverTime,
+  });
 
   return success(req, res, {
     clientId,

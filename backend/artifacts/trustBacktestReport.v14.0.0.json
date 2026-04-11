@@ -1,0 +1,1463 @@
+{
+  "metadata": {
+    "phase": "phase_7",
+    "script_version": "1.0.0",
+    "generated_at": "2026-04-11T03:42:20.256470Z",
+    "dataset_source": "synthetic_seed_1337",
+    "total_rows": 260,
+    "window_count": 5,
+    "temporal_sorting": "ascending_by_score_time",
+    "leakage_prevention": "Each window trains on past rows and tests only on future rows."
+  },
+  "rolling_window_config": {
+    "train_size": 140,
+    "test_size": 40,
+    "step_size": 20,
+    "min_segment_samples_per_window": 12
+  },
+  "segment_thresholds": {
+    "sparse_history_max_depth": 3,
+    "rich_history_min_depth": 12,
+    "high_volatility_min": 45,
+    "high_due_amount_min": 5000,
+    "high_delay_min_days": 20
+  },
+  "promotion_gates": {
+    "gate_set": "trust_segment_promotion",
+    "version": "1.0.0",
+    "status": "LOCKED",
+    "requires_review_to_change": true,
+    "review_policy": "Any threshold change requires ML + Product Analytics sign-off and a new gate version.",
+    "business_policy": {
+      "high_risk_threshold": 0.7,
+      "missed_good_cost_rate": 0.05,
+      "exposure_feature": "due_amount"
+    },
+    "global": {
+      "min_windows_required": 3,
+      "min_consistent_pass_ratio": 0.6,
+      "min_positive_labels_per_window": 1
+    },
+    "segments": {
+      "default": {
+        "min_auc_pr_gain": 0.02,
+        "min_recall_gain": 0.02,
+        "max_brier_degradation": 0.01,
+        "max_ece_degradation": 0.01,
+        "min_business_gain_pct": 0.1,
+        "max_false_positive_increase": 0.05
+      },
+      "rich_volatile": {
+        "min_auc_pr_gain": 0.015,
+        "min_recall_gain": 0.02,
+        "max_brier_degradation": 0.01,
+        "max_ece_degradation": 0.01,
+        "min_business_gain_pct": 0.1,
+        "max_false_positive_increase": 0.06
+      },
+      "sparse_history": {
+        "min_auc_pr_gain": 0.01,
+        "min_recall_gain": 0.015,
+        "max_brier_degradation": 0.008,
+        "max_ece_degradation": 0.008,
+        "min_business_gain_pct": 0.05,
+        "max_false_positive_increase": 0.03
+      }
+    }
+  },
+  "windows": [
+    {
+      "window_id": 1,
+      "train_range": {
+        "start_index": 0,
+        "end_index": 139,
+        "start_time": "2025-01-01T00:00:00Z",
+        "end_time": "2025-05-20T00:00:00Z"
+      },
+      "test_range": {
+        "start_index": 140,
+        "end_index": 179,
+        "start_time": "2025-05-21T00:00:00Z",
+        "end_time": "2025-06-29T00:00:00Z"
+      },
+      "segment_results": {
+        "sparse_history": {
+          "segment": "sparse_history",
+          "evaluated": false,
+          "reason": "INSUFFICIENT_SAMPLES",
+          "sample_count": 4
+        },
+        "normal_history": {
+          "segment": "normal_history",
+          "evaluated": true,
+          "sample_count": 19,
+          "positives": 10,
+          "negatives": 9,
+          "champion": {
+            "metrics": {
+              "auc_pr": 0.980909,
+              "recall_at_precision_90": 1.0,
+              "brier_calibrated": 0.104455,
+              "ece_calibrated": 0.219074
+            },
+            "business": {
+              "high_risk_flags": 8,
+              "prevented_bad_debt": 47862.38,
+              "leaked_bad_debt": 115.16,
+              "missed_good_customers": 0,
+              "missed_good_exposure": 0.0,
+              "opportunity_cost": 0.0,
+              "net_business_value": 47862.38,
+              "false_positive_rate": 0.0
+            }
+          },
+          "challenger": {
+            "metrics": {
+              "auc_pr": 0.907341,
+              "recall_at_precision_90": 0.6,
+              "brier_calibrated": 0.219344,
+              "ece_calibrated": 0.268253
+            },
+            "business": {
+              "high_risk_flags": 13,
+              "prevented_bad_debt": 47862.38,
+              "leaked_bad_debt": 115.16,
+              "missed_good_customers": 5,
+              "missed_good_exposure": 20764.4,
+              "opportunity_cost": 1038.22,
+              "net_business_value": 46824.16,
+              "false_positive_rate": 0.555556
+            }
+          },
+          "deltas": {
+            "delta_auc_pr": -0.073568,
+            "delta_recall_at_precision_90": -0.4,
+            "delta_brier": 0.114889,
+            "delta_ece": 0.049179,
+            "business_gain_pct": -0.021692,
+            "false_positive_rate_increase": 0.555556
+          },
+          "window_gate_checks": {
+            "stat_lift_ok": false,
+            "calibration_ok": false,
+            "business_ok": false,
+            "window_pass": false
+          }
+        },
+        "rich_volatile": {
+          "segment": "rich_volatile",
+          "evaluated": true,
+          "sample_count": 17,
+          "positives": 10,
+          "negatives": 7,
+          "champion": {
+            "metrics": {
+              "auc_pr": 0.812053,
+              "recall_at_precision_90": 0.2,
+              "brier_calibrated": 0.196353,
+              "ece_calibrated": 0.260683
+            },
+            "business": {
+              "high_risk_flags": 6,
+              "prevented_bad_debt": 36067.53,
+              "leaked_bad_debt": 13875.68,
+              "missed_good_customers": 1,
+              "missed_good_exposure": 3661.33,
+              "opportunity_cost": 183.07,
+              "net_business_value": 35884.46,
+              "false_positive_rate": 0.142857
+            }
+          },
+          "challenger": {
+            "metrics": {
+              "auc_pr": 0.842727,
+              "recall_at_precision_90": 0.4,
+              "brier_calibrated": 0.276072,
+              "ece_calibrated": 0.310487
+            },
+            "business": {
+              "high_risk_flags": 7,
+              "prevented_bad_debt": 45367.68,
+              "leaked_bad_debt": 4575.53,
+              "missed_good_customers": 1,
+              "missed_good_exposure": 3661.33,
+              "opportunity_cost": 183.07,
+              "net_business_value": 45184.61,
+              "false_positive_rate": 0.142857
+            }
+          },
+          "deltas": {
+            "delta_auc_pr": 0.030674,
+            "delta_recall_at_precision_90": 0.2,
+            "delta_brier": 0.079719,
+            "delta_ece": 0.049804,
+            "business_gain_pct": 0.259169,
+            "false_positive_rate_increase": 0.0
+          },
+          "window_gate_checks": {
+            "stat_lift_ok": true,
+            "calibration_ok": false,
+            "business_ok": true,
+            "window_pass": false
+          }
+        },
+        "high_due_amount": {
+          "segment": "high_due_amount",
+          "evaluated": true,
+          "sample_count": 13,
+          "positives": 10,
+          "negatives": 3,
+          "champion": {
+            "metrics": {
+              "auc_pr": 0.990909,
+              "recall_at_precision_90": 1.0,
+              "brier_calibrated": 0.089739,
+              "ece_calibrated": 0.196297
+            },
+            "business": {
+              "high_risk_flags": 9,
+              "prevented_bad_debt": 76203.34,
+              "leaked_bad_debt": 9300.15,
+              "missed_good_customers": 0,
+              "missed_good_exposure": 0.0,
+              "opportunity_cost": 0.0,
+              "net_business_value": 76203.34,
+              "false_positive_rate": 0.0
+            }
+          },
+          "challenger": {
+            "metrics": {
+              "auc_pr": 0.949722,
+              "recall_at_precision_90": 0.9,
+              "brier_calibrated": 0.179201,
+              "ece_calibrated": 0.202487
+            },
+            "business": {
+              "high_risk_flags": 11,
+              "prevented_bad_debt": 79693.4,
+              "leaked_bad_debt": 5810.09,
+              "missed_good_customers": 2,
+              "missed_good_exposure": 14452.88,
+              "opportunity_cost": 722.64,
+              "net_business_value": 78970.76,
+              "false_positive_rate": 0.666667
+            }
+          },
+          "deltas": {
+            "delta_auc_pr": -0.041187,
+            "delta_recall_at_precision_90": -0.1,
+            "delta_brier": 0.089462,
+            "delta_ece": 0.00619,
+            "business_gain_pct": 0.036316,
+            "false_positive_rate_increase": 0.666667
+          },
+          "window_gate_checks": {
+            "stat_lift_ok": false,
+            "calibration_ok": false,
+            "business_ok": false,
+            "window_pass": false
+          }
+        },
+        "high_delay": {
+          "segment": "high_delay",
+          "evaluated": true,
+          "sample_count": 15,
+          "positives": 7,
+          "negatives": 8,
+          "champion": {
+            "metrics": {
+              "auc_pr": 0.821521,
+              "recall_at_precision_90": 0.428571,
+              "brier_calibrated": 0.203318,
+              "ece_calibrated": 0.204212
+            },
+            "business": {
+              "high_risk_flags": 5,
+              "prevented_bad_debt": 20918.38,
+              "leaked_bad_debt": 11291.01,
+              "missed_good_customers": 1,
+              "missed_good_exposure": 3661.33,
+              "opportunity_cost": 183.07,
+              "net_business_value": 20735.31,
+              "false_positive_rate": 0.125
+            }
+          },
+          "challenger": {
+            "metrics": {
+              "auc_pr": 0.752207,
+              "recall_at_precision_90": 0.428571,
+              "brier_calibrated": 0.309616,
+              "ece_calibrated": 0.389436
+            },
+            "business": {
+              "high_risk_flags": 8,
+              "prevented_bad_debt": 30158.54,
+              "leaked_bad_debt": 2050.85,
+              "missed_good_customers": 4,
+              "missed_good_exposure": 17690.24,
+              "opportunity_cost": 884.51,
+              "net_business_value": 29274.03,
+              "false_positive_rate": 0.5
+            }
+          },
+          "deltas": {
+            "delta_auc_pr": -0.069314,
+            "delta_recall_at_precision_90": 0.0,
+            "delta_brier": 0.106298,
+            "delta_ece": 0.185224,
+            "business_gain_pct": 0.411796,
+            "false_positive_rate_increase": 0.375
+          },
+          "window_gate_checks": {
+            "stat_lift_ok": false,
+            "calibration_ok": false,
+            "business_ok": false,
+            "window_pass": false
+          }
+        }
+      }
+    },
+    {
+      "window_id": 2,
+      "train_range": {
+        "start_index": 20,
+        "end_index": 159,
+        "start_time": "2025-01-21T00:00:00Z",
+        "end_time": "2025-06-09T00:00:00Z"
+      },
+      "test_range": {
+        "start_index": 160,
+        "end_index": 199,
+        "start_time": "2025-06-10T00:00:00Z",
+        "end_time": "2025-07-19T00:00:00Z"
+      },
+      "segment_results": {
+        "sparse_history": {
+          "segment": "sparse_history",
+          "evaluated": false,
+          "reason": "INSUFFICIENT_SAMPLES",
+          "sample_count": 4
+        },
+        "normal_history": {
+          "segment": "normal_history",
+          "evaluated": true,
+          "sample_count": 19,
+          "positives": 12,
+          "negatives": 7,
+          "champion": {
+            "metrics": {
+              "auc_pr": 0.965242,
+              "recall_at_precision_90": 0.916667,
+              "brier_calibrated": 0.100232,
+              "ece_calibrated": 0.146638
+            },
+            "business": {
+              "high_risk_flags": 8,
+              "prevented_bad_debt": 47894.08,
+              "leaked_bad_debt": 5421.29,
+              "missed_good_customers": 0,
+              "missed_good_exposure": 0.0,
+              "opportunity_cost": 0.0,
+              "net_business_value": 47894.08,
+              "false_positive_rate": 0.0
+            }
+          },
+          "challenger": {
+            "metrics": {
+              "auc_pr": 0.892106,
+              "recall_at_precision_90": 0.416667,
+              "brier_calibrated": 0.168028,
+              "ece_calibrated": 0.198767
+            },
+            "business": {
+              "high_risk_flags": 8,
+              "prevented_bad_debt": 40157.76,
+              "leaked_bad_debt": 13157.61,
+              "missed_good_customers": 1,
+              "missed_good_exposure": 2822.82,
+              "opportunity_cost": 141.14,
+              "net_business_value": 40016.62,
+              "false_positive_rate": 0.142857
+            }
+          },
+          "deltas": {
+            "delta_auc_pr": -0.073136,
+            "delta_recall_at_precision_90": -0.5,
+            "delta_brier": 0.067796,
+            "delta_ece": 0.052129,
+            "business_gain_pct": -0.164477,
+            "false_positive_rate_increase": 0.142857
+          },
+          "window_gate_checks": {
+            "stat_lift_ok": false,
+            "calibration_ok": false,
+            "business_ok": false,
+            "window_pass": false
+          }
+        },
+        "rich_volatile": {
+          "segment": "rich_volatile",
+          "evaluated": true,
+          "sample_count": 17,
+          "positives": 9,
+          "negatives": 8,
+          "champion": {
+            "metrics": {
+              "auc_pr": 0.77937,
+              "recall_at_precision_90": 0.111111,
+              "brier_calibrated": 0.197142,
+              "ece_calibrated": 0.258127
+            },
+            "business": {
+              "high_risk_flags": 6,
+              "prevented_bad_debt": 33893.24,
+              "leaked_bad_debt": 13445.17,
+              "missed_good_customers": 1,
+              "missed_good_exposure": 3661.33,
+              "opportunity_cost": 183.07,
+              "net_business_value": 33710.17,
+              "false_positive_rate": 0.125
+            }
+          },
+          "challenger": {
+            "metrics": {
+              "auc_pr": 0.723374,
+              "recall_at_precision_90": 0.222222,
+              "brier_calibrated": 0.330812,
+              "ece_calibrated": 0.364292
+            },
+            "business": {
+              "high_risk_flags": 3,
+              "prevented_bad_debt": 14096.96,
+              "leaked_bad_debt": 33241.45,
+              "missed_good_customers": 1,
+              "missed_good_exposure": 3661.33,
+              "opportunity_cost": 183.07,
+              "net_business_value": 13913.89,
+              "false_positive_rate": 0.125
+            }
+          },
+          "deltas": {
+            "delta_auc_pr": -0.055996,
+            "delta_recall_at_precision_90": 0.111111,
+            "delta_brier": 0.13367,
+            "delta_ece": 0.106165,
+            "business_gain_pct": -0.587249,
+            "false_positive_rate_increase": 0.0
+          },
+          "window_gate_checks": {
+            "stat_lift_ok": true,
+            "calibration_ok": false,
+            "business_ok": false,
+            "window_pass": false
+          }
+        },
+        "high_due_amount": {
+          "segment": "high_due_amount",
+          "evaluated": false,
+          "reason": "INSUFFICIENT_SAMPLES",
+          "sample_count": 11
+        },
+        "high_delay": {
+          "segment": "high_delay",
+          "evaluated": true,
+          "sample_count": 18,
+          "positives": 8,
+          "negatives": 10,
+          "champion": {
+            "metrics": {
+              "auc_pr": 0.733681,
+              "recall_at_precision_90": 0.25,
+              "brier_calibrated": 0.235522,
+              "ece_calibrated": 0.237152
+            },
+            "business": {
+              "high_risk_flags": 5,
+              "prevented_bad_debt": 19956.66,
+              "leaked_bad_debt": 10878.75,
+              "missed_good_customers": 1,
+              "missed_good_exposure": 3661.33,
+              "opportunity_cost": 183.07,
+              "net_business_value": 19773.59,
+              "false_positive_rate": 0.1
+            }
+          },
+          "challenger": {
+            "metrics": {
+              "auc_pr": 0.617181,
+              "recall_at_precision_90": 0.25,
+              "brier_calibrated": 0.335135,
+              "ece_calibrated": 0.358368
+            },
+            "business": {
+              "high_risk_flags": 6,
+              "prevented_bad_debt": 14922.66,
+              "leaked_bad_debt": 15912.75,
+              "missed_good_customers": 3,
+              "missed_good_exposure": 6773.77,
+              "opportunity_cost": 338.69,
+              "net_business_value": 14583.97,
+              "false_positive_rate": 0.3
+            }
+          },
+          "deltas": {
+            "delta_auc_pr": -0.1165,
+            "delta_recall_at_precision_90": 0.0,
+            "delta_brier": 0.099613,
+            "delta_ece": 0.121216,
+            "business_gain_pct": -0.262452,
+            "false_positive_rate_increase": 0.2
+          },
+          "window_gate_checks": {
+            "stat_lift_ok": false,
+            "calibration_ok": false,
+            "business_ok": false,
+            "window_pass": false
+          }
+        }
+      }
+    },
+    {
+      "window_id": 3,
+      "train_range": {
+        "start_index": 40,
+        "end_index": 179,
+        "start_time": "2025-02-10T00:00:00Z",
+        "end_time": "2025-06-29T00:00:00Z"
+      },
+      "test_range": {
+        "start_index": 180,
+        "end_index": 219,
+        "start_time": "2025-06-30T00:00:00Z",
+        "end_time": "2025-08-08T00:00:00Z"
+      },
+      "segment_results": {
+        "sparse_history": {
+          "segment": "sparse_history",
+          "evaluated": false,
+          "reason": "INSUFFICIENT_SAMPLES",
+          "sample_count": 2
+        },
+        "normal_history": {
+          "segment": "normal_history",
+          "evaluated": true,
+          "sample_count": 24,
+          "positives": 14,
+          "negatives": 10,
+          "champion": {
+            "metrics": {
+              "auc_pr": 0.887682,
+              "recall_at_precision_90": 0.785714,
+              "brier_calibrated": 0.131314,
+              "ece_calibrated": 0.157041
+            },
+            "business": {
+              "high_risk_flags": 10,
+              "prevented_bad_debt": 56145.81,
+              "leaked_bad_debt": 20869.98,
+              "missed_good_customers": 1,
+              "missed_good_exposure": 9467.65,
+              "opportunity_cost": 473.38,
+              "net_business_value": 55672.43,
+              "false_positive_rate": 0.1
+            }
+          },
+          "challenger": {
+            "metrics": {
+              "auc_pr": 0.865743,
+              "recall_at_precision_90": 0.785714,
+              "brier_calibrated": 0.140094,
+              "ece_calibrated": 0.156075
+            },
+            "business": {
+              "high_risk_flags": 11,
+              "prevented_bad_debt": 68366.28,
+              "leaked_bad_debt": 8649.51,
+              "missed_good_customers": 1,
+              "missed_good_exposure": 9467.65,
+              "opportunity_cost": 473.38,
+              "net_business_value": 67892.9,
+              "false_positive_rate": 0.1
+            }
+          },
+          "deltas": {
+            "delta_auc_pr": -0.021939,
+            "delta_recall_at_precision_90": 0.0,
+            "delta_brier": 0.00878,
+            "delta_ece": -0.000966,
+            "business_gain_pct": 0.219507,
+            "false_positive_rate_increase": 0.0
+          },
+          "window_gate_checks": {
+            "stat_lift_ok": false,
+            "calibration_ok": true,
+            "business_ok": true,
+            "window_pass": false
+          }
+        },
+        "rich_volatile": {
+          "segment": "rich_volatile",
+          "evaluated": true,
+          "sample_count": 14,
+          "positives": 9,
+          "negatives": 5,
+          "champion": {
+            "metrics": {
+              "auc_pr": 0.92328,
+              "recall_at_precision_90": 0.777778,
+              "brier_calibrated": 0.18008,
+              "ece_calibrated": 0.263291
+            },
+            "business": {
+              "high_risk_flags": 5,
+              "prevented_bad_debt": 42569.75,
+              "leaked_bad_debt": 18417.57,
+              "missed_good_customers": 0,
+              "missed_good_exposure": 0.0,
+              "opportunity_cost": 0.0,
+              "net_business_value": 42569.75,
+              "false_positive_rate": 0.0
+            }
+          },
+          "challenger": {
+            "metrics": {
+              "auc_pr": 0.875,
+              "recall_at_precision_90": 0.444444,
+              "brier_calibrated": 0.244867,
+              "ece_calibrated": 0.297048
+            },
+            "business": {
+              "high_risk_flags": 6,
+              "prevented_bad_debt": 46191.86,
+              "leaked_bad_debt": 14795.46,
+              "missed_good_customers": 1,
+              "missed_good_exposure": 6574.04,
+              "opportunity_cost": 328.7,
+              "net_business_value": 45863.16,
+              "false_positive_rate": 0.2
+            }
+          },
+          "deltas": {
+            "delta_auc_pr": -0.04828,
+            "delta_recall_at_precision_90": -0.333334,
+            "delta_brier": 0.064787,
+            "delta_ece": 0.033757,
+            "business_gain_pct": 0.077365,
+            "false_positive_rate_increase": 0.2
+          },
+          "window_gate_checks": {
+            "stat_lift_ok": false,
+            "calibration_ok": false,
+            "business_ok": false,
+            "window_pass": false
+          }
+        },
+        "high_due_amount": {
+          "segment": "high_due_amount",
+          "evaluated": true,
+          "sample_count": 16,
+          "positives": 14,
+          "negatives": 2,
+          "champion": {
+            "metrics": {
+              "auc_pr": 0.921912,
+              "recall_at_precision_90": 0.928571,
+              "brier_calibrated": 0.149691,
+              "ece_calibrated": 0.262121
+            },
+            "business": {
+              "high_risk_flags": 11,
+              "prevented_bad_debt": 90530.33,
+              "leaked_bad_debt": 32551.77,
+              "missed_good_customers": 1,
+              "missed_good_exposure": 9467.65,
+              "opportunity_cost": 473.38,
+              "net_business_value": 90056.95,
+              "false_positive_rate": 0.5
+            }
+          },
+          "challenger": {
+            "metrics": {
+              "auc_pr": 0.87019,
+              "recall_at_precision_90": 0.642857,
+              "brier_calibrated": 0.199359,
+              "ece_calibrated": 0.204556
+            },
+            "business": {
+              "high_risk_flags": 13,
+              "prevented_bad_debt": 104199.62,
+              "leaked_bad_debt": 18882.48,
+              "missed_good_customers": 2,
+              "missed_good_exposure": 16041.69,
+              "opportunity_cost": 802.08,
+              "net_business_value": 103397.54,
+              "false_positive_rate": 1.0
+            }
+          },
+          "deltas": {
+            "delta_auc_pr": -0.051722,
+            "delta_recall_at_precision_90": -0.285714,
+            "delta_brier": 0.049668,
+            "delta_ece": -0.057565,
+            "business_gain_pct": 0.148135,
+            "false_positive_rate_increase": 0.5
+          },
+          "window_gate_checks": {
+            "stat_lift_ok": false,
+            "calibration_ok": false,
+            "business_ok": false,
+            "window_pass": false
+          }
+        },
+        "high_delay": {
+          "segment": "high_delay",
+          "evaluated": true,
+          "sample_count": 16,
+          "positives": 8,
+          "negatives": 8,
+          "champion": {
+            "metrics": {
+              "auc_pr": 0.710615,
+              "recall_at_precision_90": 0.0,
+              "brier_calibrated": 0.197627,
+              "ece_calibrated": 0.313833
+            },
+            "business": {
+              "high_risk_flags": 7,
+              "prevented_bad_debt": 31130.73,
+              "leaked_bad_debt": 2182.92,
+              "missed_good_customers": 1,
+              "missed_good_exposure": 9467.65,
+              "opportunity_cost": 473.38,
+              "net_business_value": 30657.35,
+              "false_positive_rate": 0.125
+            }
+          },
+          "challenger": {
+            "metrics": {
+              "auc_pr": 0.537432,
+              "recall_at_precision_90": 0.0,
+              "brier_calibrated": 0.304967,
+              "ece_calibrated": 0.315582
+            },
+            "business": {
+              "high_risk_flags": 6,
+              "prevented_bad_debt": 24383.47,
+              "leaked_bad_debt": 8930.18,
+              "missed_good_customers": 3,
+              "missed_good_exposure": 16331.31,
+              "opportunity_cost": 816.57,
+              "net_business_value": 23566.9,
+              "false_positive_rate": 0.375
+            }
+          },
+          "deltas": {
+            "delta_auc_pr": -0.173183,
+            "delta_recall_at_precision_90": 0.0,
+            "delta_brier": 0.10734,
+            "delta_ece": 0.001749,
+            "business_gain_pct": -0.231281,
+            "false_positive_rate_increase": 0.25
+          },
+          "window_gate_checks": {
+            "stat_lift_ok": false,
+            "calibration_ok": false,
+            "business_ok": false,
+            "window_pass": false
+          }
+        }
+      }
+    },
+    {
+      "window_id": 4,
+      "train_range": {
+        "start_index": 60,
+        "end_index": 199,
+        "start_time": "2025-03-02T00:00:00Z",
+        "end_time": "2025-07-19T00:00:00Z"
+      },
+      "test_range": {
+        "start_index": 200,
+        "end_index": 239,
+        "start_time": "2025-07-20T00:00:00Z",
+        "end_time": "2025-08-28T00:00:00Z"
+      },
+      "segment_results": {
+        "sparse_history": {
+          "segment": "sparse_history",
+          "evaluated": false,
+          "reason": "INSUFFICIENT_SAMPLES",
+          "sample_count": 3
+        },
+        "normal_history": {
+          "segment": "normal_history",
+          "evaluated": true,
+          "sample_count": 24,
+          "positives": 11,
+          "negatives": 13,
+          "champion": {
+            "metrics": {
+              "auc_pr": 0.708884,
+              "recall_at_precision_90": 0.181818,
+              "brier_calibrated": 0.232864,
+              "ece_calibrated": 0.236184
+            },
+            "business": {
+              "high_risk_flags": 9,
+              "prevented_bad_debt": 44973.79,
+              "leaked_bad_debt": 9369.68,
+              "missed_good_customers": 3,
+              "missed_good_exposure": 28093.47,
+              "opportunity_cost": 1404.67,
+              "net_business_value": 43569.12,
+              "false_positive_rate": 0.230769
+            }
+          },
+          "challenger": {
+            "metrics": {
+              "auc_pr": 0.772063,
+              "recall_at_precision_90": 0.181818,
+              "brier_calibrated": 0.263014,
+              "ece_calibrated": 0.294613
+            },
+            "business": {
+              "high_risk_flags": 13,
+              "prevented_bad_debt": 52455.53,
+              "leaked_bad_debt": 1887.94,
+              "missed_good_customers": 5,
+              "missed_good_exposure": 36701.65,
+              "opportunity_cost": 1835.08,
+              "net_business_value": 50620.45,
+              "false_positive_rate": 0.384615
+            }
+          },
+          "deltas": {
+            "delta_auc_pr": 0.063179,
+            "delta_recall_at_precision_90": 0.0,
+            "delta_brier": 0.03015,
+            "delta_ece": 0.058429,
+            "business_gain_pct": 0.161842,
+            "false_positive_rate_increase": 0.153846
+          },
+          "window_gate_checks": {
+            "stat_lift_ok": true,
+            "calibration_ok": false,
+            "business_ok": false,
+            "window_pass": false
+          }
+        },
+        "rich_volatile": {
+          "segment": "rich_volatile",
+          "evaluated": true,
+          "sample_count": 13,
+          "positives": 7,
+          "negatives": 6,
+          "champion": {
+            "metrics": {
+              "auc_pr": 0.896259,
+              "recall_at_precision_90": 0.571429,
+              "brier_calibrated": 0.14581,
+              "ece_calibrated": 0.240436
+            },
+            "business": {
+              "high_risk_flags": 5,
+              "prevented_bad_debt": 42322.56,
+              "leaked_bad_debt": 20998.83,
+              "missed_good_customers": 1,
+              "missed_good_exposure": 9596.18,
+              "opportunity_cost": 479.81,
+              "net_business_value": 41842.75,
+              "false_positive_rate": 0.166667
+            }
+          },
+          "challenger": {
+            "metrics": {
+              "auc_pr": 0.859524,
+              "recall_at_precision_90": 0.571429,
+              "brier_calibrated": 0.24695,
+              "ece_calibrated": 0.296278
+            },
+            "business": {
+              "high_risk_flags": 6,
+              "prevented_bad_debt": 50978.67,
+              "leaked_bad_debt": 12342.72,
+              "missed_good_customers": 1,
+              "missed_good_exposure": 9596.18,
+              "opportunity_cost": 479.81,
+              "net_business_value": 50498.86,
+              "false_positive_rate": 0.166667
+            }
+          },
+          "deltas": {
+            "delta_auc_pr": -0.036735,
+            "delta_recall_at_precision_90": 0.0,
+            "delta_brier": 0.10114,
+            "delta_ece": 0.055842,
+            "business_gain_pct": 0.206872,
+            "false_positive_rate_increase": 0.0
+          },
+          "window_gate_checks": {
+            "stat_lift_ok": false,
+            "calibration_ok": false,
+            "business_ok": true,
+            "window_pass": false
+          }
+        },
+        "high_due_amount": {
+          "segment": "high_due_amount",
+          "evaluated": true,
+          "sample_count": 20,
+          "positives": 15,
+          "negatives": 5,
+          "champion": {
+            "metrics": {
+              "auc_pr": 0.878527,
+              "recall_at_precision_90": 0.6,
+              "brier_calibrated": 0.213085,
+              "ece_calibrated": 0.176203
+            },
+            "business": {
+              "high_risk_flags": 15,
+              "prevented_bad_debt": 104923.22,
+              "leaked_bad_debt": 27579.46,
+              "missed_good_customers": 4,
+              "missed_good_exposure": 37689.65,
+              "opportunity_cost": 1884.48,
+              "net_business_value": 103038.74,
+              "false_positive_rate": 0.8
+            }
+          },
+          "challenger": {
+            "metrics": {
+              "auc_pr": 0.885921,
+              "recall_at_precision_90": 0.733333,
+              "brier_calibrated": 0.312092,
+              "ece_calibrated": 0.325283
+            },
+            "business": {
+              "high_risk_flags": 18,
+              "prevented_bad_debt": 120159.96,
+              "leaked_bad_debt": 12342.72,
+              "missed_good_customers": 5,
+              "missed_good_exposure": 44318.55,
+              "opportunity_cost": 2215.93,
+              "net_business_value": 117944.03,
+              "false_positive_rate": 1.0
+            }
+          },
+          "deltas": {
+            "delta_auc_pr": 0.007394,
+            "delta_recall_at_precision_90": 0.133333,
+            "delta_brier": 0.099007,
+            "delta_ece": 0.14908,
+            "business_gain_pct": 0.144657,
+            "false_positive_rate_increase": 0.2
+          },
+          "window_gate_checks": {
+            "stat_lift_ok": true,
+            "calibration_ok": false,
+            "business_ok": false,
+            "window_pass": false
+          }
+        },
+        "high_delay": {
+          "segment": "high_delay",
+          "evaluated": true,
+          "sample_count": 13,
+          "positives": 5,
+          "negatives": 8,
+          "champion": {
+            "metrics": {
+              "auc_pr": 0.78619,
+              "recall_at_precision_90": 0.2,
+              "brier_calibrated": 0.156579,
+              "ece_calibrated": 0.213774
+            },
+            "business": {
+              "high_risk_flags": 5,
+              "prevented_bad_debt": 32032.33,
+              "leaked_bad_debt": 1150.65,
+              "missed_good_customers": 1,
+              "missed_good_exposure": 9467.65,
+              "opportunity_cost": 473.38,
+              "net_business_value": 31558.95,
+              "false_positive_rate": 0.125
+            }
+          },
+          "challenger": {
+            "metrics": {
+              "auc_pr": 0.805195,
+              "recall_at_precision_90": 0.6,
+              "brier_calibrated": 0.263009,
+              "ece_calibrated": 0.253942
+            },
+            "business": {
+              "high_risk_flags": 5,
+              "prevented_bad_debt": 30771.28,
+              "leaked_bad_debt": 2411.7,
+              "missed_good_customers": 2,
+              "missed_good_exposure": 16096.55,
+              "opportunity_cost": 804.83,
+              "net_business_value": 29966.45,
+              "false_positive_rate": 0.25
+            }
+          },
+          "deltas": {
+            "delta_auc_pr": 0.019005,
+            "delta_recall_at_precision_90": 0.4,
+            "delta_brier": 0.10643,
+            "delta_ece": 0.040168,
+            "business_gain_pct": -0.050461,
+            "false_positive_rate_increase": 0.125
+          },
+          "window_gate_checks": {
+            "stat_lift_ok": true,
+            "calibration_ok": false,
+            "business_ok": false,
+            "window_pass": false
+          }
+        }
+      }
+    },
+    {
+      "window_id": 5,
+      "train_range": {
+        "start_index": 80,
+        "end_index": 219,
+        "start_time": "2025-03-22T00:00:00Z",
+        "end_time": "2025-08-08T00:00:00Z"
+      },
+      "test_range": {
+        "start_index": 220,
+        "end_index": 259,
+        "start_time": "2025-08-09T00:00:00Z",
+        "end_time": "2025-09-17T00:00:00Z"
+      },
+      "segment_results": {
+        "sparse_history": {
+          "segment": "sparse_history",
+          "evaluated": false,
+          "reason": "INSUFFICIENT_SAMPLES",
+          "sample_count": 2
+        },
+        "normal_history": {
+          "segment": "normal_history",
+          "evaluated": true,
+          "sample_count": 23,
+          "positives": 9,
+          "negatives": 14,
+          "champion": {
+            "metrics": {
+              "auc_pr": 0.752422,
+              "recall_at_precision_90": 0.333333,
+              "brier_calibrated": 0.219362,
+              "ece_calibrated": 0.236393
+            },
+            "business": {
+              "high_risk_flags": 8,
+              "prevented_bad_debt": 21932.48,
+              "leaked_bad_debt": 5299.6,
+              "missed_good_customers": 3,
+              "missed_good_exposure": 19960.14,
+              "opportunity_cost": 998.01,
+              "net_business_value": 20934.47,
+              "false_positive_rate": 0.214286
+            }
+          },
+          "challenger": {
+            "metrics": {
+              "auc_pr": 0.635937,
+              "recall_at_precision_90": 0.222222,
+              "brier_calibrated": 0.304302,
+              "ece_calibrated": 0.317032
+            },
+            "business": {
+              "high_risk_flags": 13,
+              "prevented_bad_debt": 23691.78,
+              "leaked_bad_debt": 3540.3,
+              "missed_good_customers": 6,
+              "missed_good_exposure": 33767.13,
+              "opportunity_cost": 1688.36,
+              "net_business_value": 22003.42,
+              "false_positive_rate": 0.428571
+            }
+          },
+          "deltas": {
+            "delta_auc_pr": -0.116485,
+            "delta_recall_at_precision_90": -0.111111,
+            "delta_brier": 0.08494,
+            "delta_ece": 0.080639,
+            "business_gain_pct": 0.051062,
+            "false_positive_rate_increase": 0.214285
+          },
+          "window_gate_checks": {
+            "stat_lift_ok": false,
+            "calibration_ok": false,
+            "business_ok": false,
+            "window_pass": false
+          }
+        },
+        "rich_volatile": {
+          "segment": "rich_volatile",
+          "evaluated": true,
+          "sample_count": 15,
+          "positives": 7,
+          "negatives": 8,
+          "champion": {
+            "metrics": {
+              "auc_pr": 0.868707,
+              "recall_at_precision_90": 0.571429,
+              "brier_calibrated": 0.182328,
+              "ece_calibrated": 0.262964
+            },
+            "business": {
+              "high_risk_flags": 6,
+              "prevented_bad_debt": 26780.48,
+              "leaked_bad_debt": 8792.79,
+              "missed_good_customers": 2,
+              "missed_good_exposure": 10941.11,
+              "opportunity_cost": 547.06,
+              "net_business_value": 26233.42,
+              "false_positive_rate": 0.25
+            }
+          },
+          "challenger": {
+            "metrics": {
+              "auc_pr": 0.820068,
+              "recall_at_precision_90": 0.285714,
+              "brier_calibrated": 0.20681,
+              "ece_calibrated": 0.274586
+            },
+            "business": {
+              "high_risk_flags": 8,
+              "prevented_bad_debt": 34222.64,
+              "leaked_bad_debt": 1350.63,
+              "missed_good_customers": 2,
+              "missed_good_exposure": 13393.91,
+              "opportunity_cost": 669.7,
+              "net_business_value": 33552.94,
+              "false_positive_rate": 0.25
+            }
+          },
+          "deltas": {
+            "delta_auc_pr": -0.048639,
+            "delta_recall_at_precision_90": -0.285715,
+            "delta_brier": 0.024482,
+            "delta_ece": 0.011622,
+            "business_gain_pct": 0.279015,
+            "false_positive_rate_increase": 0.0
+          },
+          "window_gate_checks": {
+            "stat_lift_ok": false,
+            "calibration_ok": false,
+            "business_ok": true,
+            "window_pass": false
+          }
+        },
+        "high_due_amount": {
+          "segment": "high_due_amount",
+          "evaluated": true,
+          "sample_count": 14,
+          "positives": 8,
+          "negatives": 6,
+          "champion": {
+            "metrics": {
+              "auc_pr": 0.965909,
+              "recall_at_precision_90": 0.875,
+              "brier_calibrated": 0.207972,
+              "ece_calibrated": 0.267893
+            },
+            "business": {
+              "high_risk_flags": 10,
+              "prevented_bad_debt": 60187.42,
+              "leaked_bad_debt": 5074.87,
+              "missed_good_customers": 3,
+              "missed_good_exposure": 28222.0,
+              "opportunity_cost": 1411.1,
+              "net_business_value": 58776.32,
+              "false_positive_rate": 0.5
+            }
+          },
+          "challenger": {
+            "metrics": {
+              "auc_pr": 0.872756,
+              "recall_at_precision_90": 0.625,
+              "brier_calibrated": 0.344448,
+              "ece_calibrated": 0.362577
+            },
+            "business": {
+              "high_risk_flags": 13,
+              "prevented_bad_debt": 65262.29,
+              "leaked_bad_debt": 0.0,
+              "missed_good_customers": 5,
+              "missed_good_exposure": 40720.16,
+              "opportunity_cost": 2036.01,
+              "net_business_value": 63226.28,
+              "false_positive_rate": 0.833333
+            }
+          },
+          "deltas": {
+            "delta_auc_pr": -0.093153,
+            "delta_recall_at_precision_90": -0.25,
+            "delta_brier": 0.136476,
+            "delta_ece": 0.094684,
+            "business_gain_pct": 0.07571,
+            "false_positive_rate_increase": 0.333333
+          },
+          "window_gate_checks": {
+            "stat_lift_ok": false,
+            "calibration_ok": false,
+            "business_ok": false,
+            "window_pass": false
+          }
+        },
+        "high_delay": {
+          "segment": "high_delay",
+          "evaluated": true,
+          "sample_count": 17,
+          "positives": 7,
+          "negatives": 10,
+          "champion": {
+            "metrics": {
+              "auc_pr": 0.957143,
+              "recall_at_precision_90": 0.857143,
+              "brier_calibrated": 0.12637,
+              "ece_calibrated": 0.229924
+            },
+            "business": {
+              "high_risk_flags": 7,
+              "prevented_bad_debt": 31560.16,
+              "leaked_bad_debt": 1847.62,
+              "missed_good_customers": 1,
+              "missed_good_exposure": 1344.93,
+              "opportunity_cost": 67.25,
+              "net_business_value": 31492.91,
+              "false_positive_rate": 0.1
+            }
+          },
+          "challenger": {
+            "metrics": {
+              "auc_pr": 0.79966,
+              "recall_at_precision_90": 0.285714,
+              "brier_calibrated": 0.187687,
+              "ece_calibrated": 0.28216
+            },
+            "business": {
+              "high_risk_flags": 7,
+              "prevented_bad_debt": 29867.48,
+              "leaked_bad_debt": 3540.3,
+              "missed_good_customers": 2,
+              "missed_good_exposure": 12498.16,
+              "opportunity_cost": 624.91,
+              "net_business_value": 29242.57,
+              "false_positive_rate": 0.2
+            }
+          },
+          "deltas": {
+            "delta_auc_pr": -0.157483,
+            "delta_recall_at_precision_90": -0.571429,
+            "delta_brier": 0.061317,
+            "delta_ece": 0.052236,
+            "business_gain_pct": -0.071455,
+            "false_positive_rate_increase": 0.1
+          },
+          "window_gate_checks": {
+            "stat_lift_ok": false,
+            "calibration_ok": false,
+            "business_ok": false,
+            "window_pass": false
+          }
+        }
+      }
+    }
+  ],
+  "segment_summary": {
+    "sparse_history": {
+      "segment": "sparse_history",
+      "evaluated_windows": 0,
+      "skipped_windows": 5,
+      "promotion_decision": {
+        "status": "KEEP_CHAMPION",
+        "promoted": false,
+        "reason": "No eligible windows for evaluation."
+      }
+    },
+    "normal_history": {
+      "segment": "normal_history",
+      "evaluated_windows": 5,
+      "skipped_windows": 0,
+      "window_pass_count": 0,
+      "window_pass_ratio": 0.0,
+      "aggregate_deltas": {
+        "avg_delta_auc_pr": -0.04439,
+        "avg_delta_recall_at_precision_90": -0.202222,
+        "avg_delta_brier": 0.061311,
+        "avg_delta_ece": 0.047882,
+        "avg_business_gain_pct": 0.049248,
+        "avg_false_positive_rate_increase": 0.213309
+      },
+      "gate_checks": {
+        "has_enough_windows": true,
+        "is_stable": false,
+        "aggregate_stat_lift_ok": false,
+        "aggregate_calibration_ok": false,
+        "aggregate_business_ok": false
+      },
+      "promotion_decision": {
+        "status": "KEEP_CHAMPION",
+        "promoted": false,
+        "reason": "Window-level lift is not consistent enough. Statistical lift thresholds are not met. Calibration degradation exceeds gate limits. Business gain thresholds are not met.",
+        "applied_gate": {
+          "min_auc_pr_gain": 0.02,
+          "min_recall_gain": 0.02,
+          "max_brier_degradation": 0.01,
+          "max_ece_degradation": 0.01,
+          "min_business_gain_pct": 0.1,
+          "max_false_positive_increase": 0.05
+        }
+      }
+    },
+    "rich_volatile": {
+      "segment": "rich_volatile",
+      "evaluated_windows": 5,
+      "skipped_windows": 0,
+      "window_pass_count": 0,
+      "window_pass_ratio": 0.0,
+      "aggregate_deltas": {
+        "avg_delta_auc_pr": -0.031795,
+        "avg_delta_recall_at_precision_90": -0.061588,
+        "avg_delta_brier": 0.08076,
+        "avg_delta_ece": 0.051438,
+        "avg_business_gain_pct": 0.047034,
+        "avg_false_positive_rate_increase": 0.04
+      },
+      "gate_checks": {
+        "has_enough_windows": true,
+        "is_stable": false,
+        "aggregate_stat_lift_ok": false,
+        "aggregate_calibration_ok": false,
+        "aggregate_business_ok": false
+      },
+      "promotion_decision": {
+        "status": "KEEP_CHAMPION",
+        "promoted": false,
+        "reason": "Window-level lift is not consistent enough. Statistical lift thresholds are not met. Calibration degradation exceeds gate limits. Business gain thresholds are not met.",
+        "applied_gate": {
+          "min_auc_pr_gain": 0.015,
+          "min_recall_gain": 0.02,
+          "max_brier_degradation": 0.01,
+          "max_ece_degradation": 0.01,
+          "min_business_gain_pct": 0.1,
+          "max_false_positive_increase": 0.06
+        }
+      }
+    },
+    "high_due_amount": {
+      "segment": "high_due_amount",
+      "evaluated_windows": 4,
+      "skipped_windows": 1,
+      "window_pass_count": 0,
+      "window_pass_ratio": 0.0,
+      "aggregate_deltas": {
+        "avg_delta_auc_pr": -0.044667,
+        "avg_delta_recall_at_precision_90": -0.125595,
+        "avg_delta_brier": 0.093653,
+        "avg_delta_ece": 0.048097,
+        "avg_business_gain_pct": 0.101205,
+        "avg_false_positive_rate_increase": 0.425
+      },
+      "gate_checks": {
+        "has_enough_windows": true,
+        "is_stable": false,
+        "aggregate_stat_lift_ok": false,
+        "aggregate_calibration_ok": false,
+        "aggregate_business_ok": false
+      },
+      "promotion_decision": {
+        "status": "KEEP_CHAMPION",
+        "promoted": false,
+        "reason": "Window-level lift is not consistent enough. Statistical lift thresholds are not met. Calibration degradation exceeds gate limits. Business gain thresholds are not met.",
+        "applied_gate": {
+          "min_auc_pr_gain": 0.02,
+          "min_recall_gain": 0.02,
+          "max_brier_degradation": 0.01,
+          "max_ece_degradation": 0.01,
+          "min_business_gain_pct": 0.1,
+          "max_false_positive_increase": 0.05
+        }
+      }
+    },
+    "high_delay": {
+      "segment": "high_delay",
+      "evaluated_windows": 5,
+      "skipped_windows": 0,
+      "window_pass_count": 0,
+      "window_pass_ratio": 0.0,
+      "aggregate_deltas": {
+        "avg_delta_auc_pr": -0.099495,
+        "avg_delta_recall_at_precision_90": -0.034286,
+        "avg_delta_brier": 0.0962,
+        "avg_delta_ece": 0.080119,
+        "avg_business_gain_pct": -0.040771,
+        "avg_false_positive_rate_increase": 0.21
+      },
+      "gate_checks": {
+        "has_enough_windows": true,
+        "is_stable": false,
+        "aggregate_stat_lift_ok": false,
+        "aggregate_calibration_ok": false,
+        "aggregate_business_ok": false
+      },
+      "promotion_decision": {
+        "status": "KEEP_CHAMPION",
+        "promoted": false,
+        "reason": "Window-level lift is not consistent enough. Statistical lift thresholds are not met. Calibration degradation exceeds gate limits. Business gain thresholds are not met.",
+        "applied_gate": {
+          "min_auc_pr_gain": 0.02,
+          "min_recall_gain": 0.02,
+          "max_brier_degradation": 0.01,
+          "max_ece_degradation": 0.01,
+          "min_business_gain_pct": 0.1,
+          "max_false_positive_increase": 0.05
+        }
+      }
+    }
+  },
+  "promotion_decisions": {
+    "sparse_history": {
+      "status": "KEEP_CHAMPION",
+      "promoted": false,
+      "reason": "No eligible windows for evaluation.",
+      "evaluated_windows": 0,
+      "window_pass_ratio": 0
+    },
+    "normal_history": {
+      "status": "KEEP_CHAMPION",
+      "promoted": false,
+      "reason": "Window-level lift is not consistent enough. Statistical lift thresholds are not met. Calibration degradation exceeds gate limits. Business gain thresholds are not met.",
+      "evaluated_windows": 5,
+      "window_pass_ratio": 0.0
+    },
+    "rich_volatile": {
+      "status": "KEEP_CHAMPION",
+      "promoted": false,
+      "reason": "Window-level lift is not consistent enough. Statistical lift thresholds are not met. Calibration degradation exceeds gate limits. Business gain thresholds are not met.",
+      "evaluated_windows": 5,
+      "window_pass_ratio": 0.0
+    },
+    "high_due_amount": {
+      "status": "KEEP_CHAMPION",
+      "promoted": false,
+      "reason": "Window-level lift is not consistent enough. Statistical lift thresholds are not met. Calibration degradation exceeds gate limits. Business gain thresholds are not met.",
+      "evaluated_windows": 4,
+      "window_pass_ratio": 0.0
+    },
+    "high_delay": {
+      "status": "KEEP_CHAMPION",
+      "promoted": false,
+      "reason": "Window-level lift is not consistent enough. Statistical lift thresholds are not met. Calibration degradation exceeds gate limits. Business gain thresholds are not met.",
+      "evaluated_windows": 5,
+      "window_pass_ratio": 0.0
+    }
+  }
+}

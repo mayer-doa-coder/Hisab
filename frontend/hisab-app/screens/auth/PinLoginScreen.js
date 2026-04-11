@@ -1,16 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import {
   ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
+import AuthScene, { AUTH_FORM_STYLES } from '../../components/auth/AuthScene';
 import { UI_COLORS } from '../../constants/ui-theme';
 import { useAuth } from '../../context/AuthContext';
 
@@ -49,63 +46,32 @@ const resolveRetrySeconds = (error) => {
   return Math.max(0, Math.ceil((lockUntilMs - Date.now()) / 1000));
 };
 
-const buildPinLockedMessage = (error) => {
-  const retrySeconds = resolveRetrySeconds(error);
-  if (retrySeconds > 0) {
-    return `PIN login is temporarily blocked. Try again in ${formatRetryDuration(retrySeconds)}.`;
-  }
-
-  return error?.message || 'PIN login is temporarily blocked. Try again later.';
-};
-
-const mapPinError = (error) => {
-  const code = String(error?.code || '').trim().toUpperCase();
-
-  if (code === 'INVALID_PIN') {
-    return 'Wrong PIN. Please try again.';
-  }
-
-  if (code === 'PIN_LOCKED') {
-    return buildPinLockedMessage(error);
-  }
-
-  if (code === 'PIN_DEVICE_NOT_TRUSTED') {
-    return 'PIN login works only on your trusted device.';
-  }
-
-  if (code === 'PIN_NOT_CONFIGURED') {
-    return 'PIN is not set yet for this account.';
-  }
-
-  if (code === 'EMAIL_NOT_REGISTERED') {
-    return 'Email is not registered.';
-  }
-
-  if (code === 'EMAIL_NOT_VERIFIED') {
-    return 'Email is not verified. Verify email first, then use PIN.';
-  }
-
-  return error?.message || 'Unable to login with PIN.';
-};
-
 export default function PinLoginScreen({ navigation }) {
-  const { authDeviceProfile, loginWithPin } = useAuth();
+  const { loginWithPin, authDeviceProfile } = useAuth();
+
   const [email, setEmail] = useState(String(authDeviceProfile?.preferredEmail || '').trim());
   const [pin, setPin] = useState('');
   const [rememberMe, setRememberMe] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
 
-  useEffect(() => {
-    setEmail(String(authDeviceProfile?.preferredEmail || '').trim());
-  }, [authDeviceProfile?.preferredEmail]);
-
-  const handlePinLogin = async () => {
-    if (submitting) {
+  const handleLogin = async () => {
+    if (loading) {
       return;
     }
 
+    const normalizedEmail = String(email || '').trim();
     const normalizedPin = String(pin || '').trim();
+
+    if (!normalizedEmail) {
+      setMessage('Email is required.');
+      return;
+    }
+
+    if (!normalizedPin) {
+      setMessage('PIN is required.');
+      return;
+    }
 
     if (!/^\d{4,6}$/.test(normalizedPin)) {
       setMessage('PIN must be 4 to 6 digits.');
@@ -114,180 +80,93 @@ export default function PinLoginScreen({ navigation }) {
 
     try {
       setMessage('');
-      setSubmitting(true);
+      setLoading(true);
       await loginWithPin({
+        email: normalizedEmail,
         pin: normalizedPin,
-        email,
         rememberMe,
       });
     } catch (error) {
-      setMessage(mapPinError(error));
+      if (String(error?.code || '').toUpperCase() === 'EMAIL_NOT_VERIFIED') {
+        navigation.navigate('VerifyEmail', {
+          email: normalizedEmail,
+          rememberMe,
+          emailDelivery: error?.details?.emailDelivery || null,
+        });
+        return;
+      }
+
+      if (String(error?.code || '').toUpperCase() === 'EMAIL_NOT_REGISTERED') {
+        setMessage('Email is not registered.');
+      } else if (String(error?.code || '').toUpperCase() === 'PIN_LOCKED') {
+        const retrySeconds = resolveRetrySeconds(error);
+        if (retrySeconds > 0) {
+          setMessage(`PIN login is temporarily blocked. Try again in ${formatRetryDuration(retrySeconds)}.`);
+        } else {
+          setMessage(error?.message || 'PIN login is temporarily blocked. Try again later.');
+        }
+      } else {
+        setMessage(error?.message || 'PIN login failed.');
+      }
     } finally {
-      setSubmitting(false);
+      setLoading(false);
     }
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex}>
-        <View style={styles.container}>
-          <Text style={styles.title}>Quick PIN Login</Text>
-          <Text style={styles.subtitle}>Use PIN for faster sign in.</Text>
+    <AuthScene
+      eyebrow="Hisab Access"
+      title="PIN Login"
+      subtitle="Use your email and PIN"
+    >
+      <TextInput
+        value={email}
+        onChangeText={setEmail}
+        placeholder="Email"
+        autoCapitalize="none"
+        keyboardType="email-address"
+        style={AUTH_FORM_STYLES.input}
+      />
 
-          <TextInput
-            value={email}
-            onChangeText={setEmail}
-            placeholder="Email"
-            autoCapitalize="none"
-            keyboardType="email-address"
-            style={styles.input}
-          />
-
-          <TextInput
-            value={pin}
-            onChangeText={setPin}
-            placeholder="PIN"
-            keyboardType="number-pad"
-            secureTextEntry
-            maxLength={6}
-            style={styles.input}
-          />
-
-          {message ? (
-            <View style={styles.inlineNotice}>
-              <Text style={styles.inlineNoticeText}>{message}</Text>
-            </View>
-          ) : null}
-
-          <TouchableOpacity style={styles.rememberRow} onPress={() => setRememberMe((prev) => !prev)}>
-            <View style={[styles.checkbox, rememberMe && styles.checkboxActive]}>
-              {rememberMe ? <Text style={styles.checkboxTick}>✓</Text> : null}
-            </View>
-            <Text style={styles.rememberText}>Remember me</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.primaryButton, submitting && styles.buttonDisabled]}
-            onPress={handlePinLogin}
-            disabled={submitting}
-          >
-            {submitting ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.primaryButtonText}>Login with PIN</Text>}
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.secondaryButton} onPress={() => navigation.navigate('Login')}>
-            <Text style={styles.secondaryButtonText}>Use Main Login</Text>
-          </TouchableOpacity>
+      {message ? (
+        <View style={AUTH_FORM_STYLES.noticeStrip}>
+          <Text style={AUTH_FORM_STYLES.noticeText}>{message}</Text>
         </View>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+      ) : null}
+
+      <TextInput
+        value={pin}
+        onChangeText={setPin}
+        placeholder="PIN"
+        keyboardType="number-pad"
+        maxLength={6}
+        secureTextEntry
+        style={AUTH_FORM_STYLES.input}
+      />
+
+      <TouchableOpacity style={AUTH_FORM_STYLES.checkboxRow} onPress={() => setRememberMe((prev) => !prev)}>
+        <View style={[AUTH_FORM_STYLES.checkbox, rememberMe && AUTH_FORM_STYLES.checkboxActive]}>
+          {rememberMe ? <Text style={AUTH_FORM_STYLES.checkboxTick}>v</Text> : null}
+        </View>
+        <Text style={AUTH_FORM_STYLES.checkboxText}>Remember me</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={[AUTH_FORM_STYLES.primaryButton, loading && AUTH_FORM_STYLES.primaryButtonDisabled]}
+        onPress={handleLogin}
+        disabled={loading}
+      >
+        {loading ? <ActivityIndicator size="small" color={UI_COLORS.onAccent} /> : <Text style={AUTH_FORM_STYLES.primaryButtonText}>Log In</Text>}
+      </TouchableOpacity>
+
+      <TouchableOpacity style={AUTH_FORM_STYLES.linkButton} onPress={() => navigation.navigate('AccountRecovery')}>
+        <Text style={AUTH_FORM_STYLES.linkText}>Forgot Password?</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity style={AUTH_FORM_STYLES.linkButton} onPress={() => navigation.navigate('Signup')}>
+        <Text style={AUTH_FORM_STYLES.linkText}>Do not have an account? Sign Up</Text>
+      </TouchableOpacity>
+    </AuthScene>
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: UI_COLORS.background,
-  },
-  flex: {
-    flex: 1,
-  },
-  container: {
-    flex: 1,
-    padding: 20,
-    justifyContent: 'center',
-    gap: 12,
-  },
-  title: {
-    fontSize: 30,
-    fontWeight: '800',
-    color: UI_COLORS.textPrimary,
-  },
-  subtitle: {
-    marginBottom: 6,
-    fontSize: 14,
-    color: UI_COLORS.textSecondary,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: UI_COLORS.border,
-    borderRadius: 10,
-    backgroundColor: UI_COLORS.surface,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    color: UI_COLORS.textPrimary,
-    fontSize: 16,
-  },
-  inlineNotice: {
-    borderLeftWidth: 3,
-    borderColor: '#B91C1C',
-    backgroundColor: '#FEE2E2',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-  },
-  inlineNoticeText: {
-    color: '#7F1D1D',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  rememberRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  checkbox: {
-    width: 18,
-    height: 18,
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: UI_COLORS.border,
-    backgroundColor: UI_COLORS.surface,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  checkboxActive: {
-    borderColor: UI_COLORS.primary,
-    backgroundColor: '#DBEAFE',
-  },
-  checkboxTick: {
-    color: UI_COLORS.primary,
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  rememberText: {
-    color: UI_COLORS.textSecondary,
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  primaryButton: {
-    minHeight: 56,
-    borderRadius: 12,
-    backgroundColor: UI_COLORS.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 12,
-  },
-  primaryButtonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '800',
-  },
-  secondaryButton: {
-    minHeight: 52,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: UI_COLORS.primary,
-    backgroundColor: '#EFF6FF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 12,
-  },
-  secondaryButtonText: {
-    color: UI_COLORS.primary,
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  buttonDisabled: {
-    opacity: 0.7,
-  },
-});

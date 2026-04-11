@@ -34,3 +34,4 @@ const styles = StyleSheet.create({
   summaryLabel: { fontSize: 12, color: UI_COLORS.textMuted },
   summaryValue: { marginTop: 4, fontSize: 14, fontWeight: '700', color: UI_COLORS.textPrimary },
 });
+
