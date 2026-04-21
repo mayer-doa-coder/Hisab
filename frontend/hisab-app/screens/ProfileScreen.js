@@ -32,6 +32,14 @@ export default function ProfileScreen() {
             <Text style={styles.infoValue}>{isOnline ? 'Online' : 'Offline'}</Text>
           </View>
           <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Role</Text>
+            <Text style={styles.infoValue}>{String(user?.role || 'CASHIER')}</Text>
+          </View>
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Branch</Text>
+            <Text style={styles.infoValue}>{String(user?.branchId || 'Default')}</Text>
+          </View>
+          <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Auth status</Text>
             <Text style={styles.infoValue}>{String(authStatus?.state || 'unknown')}</Text>
           </View>

@@ -1,5 +1,6 @@
 const Transaction = require('../../models/Transaction');
 const Customer = require('../../models/Customer');
+const ApprovalRequest = require('../../models/ApprovalRequest');
 const { success } = require('../../utils/apiResponse');
 const {
   normalizeTrimmedString,
@@ -8,8 +9,17 @@ const {
 } = require('../../utils/validation');
 const { appendChange } = require('../../services/v1/changeLogService');
 const { logAudit } = require('../../services/v1/auditService');
-const { badRequest, notFound, unprocessable } = require('../../services/v1/httpError');
-const { asyncHandler, getUserIdFromReq, parsePagination } = require('./controllerUtils');
+const { HttpError, badRequest, notFound, unprocessable } = require('../../services/v1/httpError');
+const { checkPermission } = require('../../middleware/permissionMiddleware');
+const { ACTIONS } = require('../../security/rbac');
+const { trackEvent } = require('../../analytics/eventTracker');
+const {
+  asyncHandler,
+  getUserIdFromReq,
+  getActorUserIdFromReq,
+  getBranchIdFromReq,
+  parsePagination,
+} = require('./controllerUtils');
 
 const TRANSACTION_TYPES = new Set([
   'sale',
@@ -37,8 +47,109 @@ const serializeTransaction = (doc) => ({
   createdAt: new Date(doc.createdAt || doc.occurredAt).toISOString(),
 });
 
+const buildBranchScope = ({ req, query = {} } = {}) => {
+  const scoped = { ...query };
+  const branchId = getBranchIdFromReq(req);
+  const role = String(req?.auth?.role || '').toUpperCase();
+  if (branchId && role !== 'OWNER') {
+    scoped.branchId = branchId;
+  }
+  return scoped;
+};
+
+const executeVoidTransactionAction = async ({
+  tenantUserId,
+  actorUserId,
+  branchId = null,
+  transactionId,
+  reason,
+  voidedAt,
+} = {}) => {
+  const existing = await Transaction.findOne({
+    _id: transactionId,
+    userId: tenantUserId,
+    ...(branchId ? { branchId } : {}),
+  });
+  if (!existing) {
+    throw notFound('Transaction not found.');
+  }
+
+  if (existing.status === 'voided') {
+    throw unprocessable('Transaction is already voided.', 'TRANSACTION_ALREADY_VOIDED');
+  }
+
+  existing.status = 'voided';
+  existing.voidReason = reason;
+  existing.voidedAt = voidedAt;
+  await existing.save();
+
+  const compensating = await Transaction.create({
+    userId: tenantUserId,
+    branchId: branchId || null,
+    transactionType: 'void',
+    amount: Number(existing.amount || 0),
+    currency: existing.currency || 'BDT',
+    customerId: existing.customerId || null,
+    referenceType: 'void_of',
+    referenceId: String(existing._id),
+    note: `Compensating entry for ${String(existing._id)}`,
+    occurredAt: voidedAt,
+    status: 'posted',
+    voidRefTransactionId: existing._id,
+  });
+
+  const existingSerialized = serializeTransaction(existing);
+  const compensatingSerialized = serializeTransaction(compensating);
+
+  await Promise.allSettled([
+    appendChange({
+      userId: tenantUserId,
+      entityType: 'transaction',
+      entityId: existingSerialized.transactionId,
+      changeType: 'upsert',
+      payload: existingSerialized,
+      version: 1,
+      occurredAt: existing.updatedAt,
+    }),
+    appendChange({
+      userId: tenantUserId,
+      entityType: 'transaction',
+      entityId: compensatingSerialized.transactionId,
+      changeType: 'upsert',
+      payload: compensatingSerialized,
+      version: 1,
+      occurredAt: compensating.updatedAt,
+    }),
+    logAudit({
+      userId: tenantUserId,
+      tenantUserId,
+      actorUserId,
+      branchId,
+      entityType: 'transaction',
+      entityId: existingSerialized.transactionId,
+      action: 'void',
+      metadata: {
+        reason,
+        voidRefTransactionId: compensatingSerialized.transactionId,
+      },
+      affectedEntity: {
+        entityType: 'transaction',
+        entityId: existingSerialized.transactionId,
+      },
+      occurredAt: existing.updatedAt,
+    }),
+  ]);
+
+  return {
+    voided: true,
+    transaction: existingSerialized,
+    compensatingTransaction: compensatingSerialized,
+  };
+};
+
 const createTransaction = asyncHandler(async (req, res) => {
   const userId = getUserIdFromReq(req);
+  const branchId = getBranchIdFromReq(req);
 
   const transactionType = normalizeTrimmedString(req.body.transactionType).toLowerCase();
   const amount = parseMoney(req.body.amount);
@@ -53,7 +164,7 @@ const createTransaction = asyncHandler(async (req, res) => {
 
   const customerId = normalizeTrimmedString(req.body.customerId) || null;
   if (customerId) {
-    const customer = await Customer.findOne({ _id: customerId, userId, isArchived: false }).lean();
+    const customer = await Customer.findOne(buildBranchScope({ req, query: { _id: customerId, userId, isArchived: false } })).lean();
     if (!customer) {
       throw notFound('Customer not found.');
     }
@@ -61,6 +172,7 @@ const createTransaction = asyncHandler(async (req, res) => {
 
   const created = await Transaction.create({
     userId,
+    branchId: branchId || null,
     transactionType,
     amount,
     currency: normalizeTrimmedString(req.body.currency || 'BDT').toUpperCase(),
@@ -92,6 +204,19 @@ const createTransaction = asyncHandler(async (req, res) => {
       metadata: { after: serialized },
       occurredAt: created.updatedAt,
     }),
+    transactionType === 'sale'
+      ? trackEvent({
+        userId,
+        eventType: 'sale_created',
+        timestamp: created.updatedAt,
+        metadata: {
+          amount,
+          transactionId: serialized.transactionId,
+          customerId: serialized.customerId,
+        },
+        source: 'transactions_api',
+      })
+      : Promise.resolve(null),
   ]);
 
   return success(req, res, serialized, 201);
@@ -106,6 +231,7 @@ const listTransactions = asyncHandler(async (req, res) => {
   const to = parseIsoDate(req.query.to);
 
   const query = { userId };
+  Object.assign(query, buildBranchScope({ req }));
 
   if (type && TRANSACTION_TYPES.has(type)) {
     query.transactionType = type;
@@ -140,83 +266,83 @@ const listTransactions = asyncHandler(async (req, res) => {
 
 const voidTransaction = asyncHandler(async (req, res) => {
   const userId = getUserIdFromReq(req);
+  const actorUserId = getActorUserIdFromReq(req) || userId;
+  const branchId = getBranchIdFromReq(req);
   const transactionId = normalizeTrimmedString(req.params.transactionId);
-
-  const existing = await Transaction.findOne({ _id: transactionId, userId });
-  if (!existing) {
-    throw notFound('Transaction not found.');
-  }
-
-  if (existing.status === 'voided') {
-    throw unprocessable('Transaction is already voided.', 'TRANSACTION_ALREADY_VOIDED');
-  }
-
   const reason = normalizeTrimmedString(req.body.reason) || 'manual_void';
   const voidedAt = parseIsoDate(req.body.voidedAt) || new Date();
 
-  existing.status = 'voided';
-  existing.voidReason = reason;
-  existing.voidedAt = voidedAt;
-  await existing.save();
+  const role = req.auth?.role;
+  const canApprove = checkPermission(role, ACTIONS.VOID_SALE_APPROVE);
+  const canRequest = checkPermission(role, ACTIONS.VOID_SALE_REQUEST)
+    || checkPermission(role, ACTIONS.APPROVAL_REQUEST_CREATE);
 
-  const compensating = await Transaction.create({
-    userId,
-    transactionType: 'void',
-    amount: Number(existing.amount || 0),
-    currency: existing.currency || 'BDT',
-    customerId: existing.customerId || null,
-    referenceType: 'void_of',
-    referenceId: String(existing._id),
-    note: `Compensating entry for ${String(existing._id)}`,
-    occurredAt: voidedAt,
-    status: 'posted',
-    voidRefTransactionId: existing._id,
-  });
+  if (!canApprove && !canRequest) {
+    throw new HttpError({
+      statusCode: 403,
+      code: 'FORBIDDEN_ACTION',
+      message: 'You are not allowed to request or approve sale voids.',
+    });
+  }
 
-  const existingSerialized = serializeTransaction(existing);
-  const compensatingSerialized = serializeTransaction(compensating);
-
-  await Promise.allSettled([
-    appendChange({
-      userId,
-      entityType: 'transaction',
-      entityId: existingSerialized.transactionId,
-      changeType: 'upsert',
-      payload: existingSerialized,
-      version: 1,
-      occurredAt: existing.updatedAt,
-    }),
-    appendChange({
-      userId,
-      entityType: 'transaction',
-      entityId: compensatingSerialized.transactionId,
-      changeType: 'upsert',
-      payload: compensatingSerialized,
-      version: 1,
-      occurredAt: compensating.updatedAt,
-    }),
-    logAudit({
-      userId,
-      entityType: 'transaction',
-      entityId: existingSerialized.transactionId,
-      action: 'void',
-      metadata: {
+  if (!canApprove) {
+    const request = await ApprovalRequest.create({
+      actionType: 'VOID_SALE',
+      tenantUserId: userId,
+      branchId: branchId || null,
+      requestedBy: actorUserId,
+      status: 'PENDING',
+      source: 'transaction_void',
+      reason,
+      requestPayload: {
+        transactionId,
         reason,
-        voidRefTransactionId: compensatingSerialized.transactionId,
+        voidedAt: voidedAt.toISOString(),
       },
-      occurredAt: existing.updatedAt,
-    }),
-  ]);
+    });
 
-  return success(req, res, {
-    voided: true,
-    transaction: existingSerialized,
-    compensatingTransaction: compensatingSerialized,
+    await logAudit({
+      userId,
+      tenantUserId: userId,
+      actorUserId,
+      branchId,
+      entityType: 'approval_request',
+      entityId: String(request._id),
+      action: 'create',
+      metadata: {
+        actionType: 'VOID_SALE',
+        status: 'PENDING',
+        source: 'transaction_void',
+      },
+      affectedEntity: {
+        entityType: 'transaction',
+        entityId: transactionId,
+      },
+    });
+
+    return success(req, res, {
+      approvalRequired: true,
+      approvalRequestId: String(request._id),
+      status: 'PENDING',
+      message: 'Void sale request submitted for approval.',
+    }, 202);
+  }
+
+  const result = await executeVoidTransactionAction({
+    tenantUserId: userId,
+    actorUserId,
+    branchId,
+    transactionId,
+    reason,
+    voidedAt,
   });
+
+  return success(req, res, result);
 });
 
 module.exports = {
   createTransaction,
   listTransactions,
   voidTransaction,
+  executeVoidTransactionAction,
 };

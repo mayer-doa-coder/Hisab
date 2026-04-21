@@ -6,6 +6,11 @@ const { normalizeTrimmedString } = require('../../utils/validation');
 const { badRequest, notFound } = require('../../services/v1/httpError');
 const { calculateTrustScore } = require('../../services/trust/customerRiskEngine');
 const { asyncHandler, getUserIdFromReq } = require('./controllerUtils');
+const {
+  getTrustObjectiveConfig,
+  normalizeTrustHorizon,
+  TRUST_OBJECTIVE_CONFIG,
+} = require('../../config/trustObjective');
 
 const buildCustomerDataForTrust = async ({ userId, customerId }) => {
   const customer = await Customer.findOne({
@@ -53,6 +58,13 @@ const buildCustomerDataForTrust = async ({ userId, customerId }) => {
       delay_days: 0,
     }));
 
+  const ledgerEntries = bakiEntries.map((row) => ({
+    type: row.type,
+    amount: Number(row.amount || 0),
+    occurred_at: row.occurredAt,
+    running_due: Number(row.runningDue || 0),
+  }));
+
   const transactionHistory = transactions.map((row) => ({
     amount: Number(row.amount || 0),
     type: row.transactionType,
@@ -63,8 +75,19 @@ const buildCustomerDataForTrust = async ({ userId, customerId }) => {
     customer_id: String(customer._id),
     due_amount: Math.max(0, Number(dueAmount || 0)),
     payment_records: paymentRecords,
+    ledger_entries: ledgerEntries,
     transaction_history: transactionHistory,
   };
+};
+
+const resolvePredictionHorizon = (value) => {
+  const horizon = normalizeTrustHorizon(value);
+  if (horizon) {
+    return horizon;
+  }
+
+  const envDefault = normalizeTrustHorizon(process.env.TRUST_DEFAULT_PREDICTION_HORIZON);
+  return envDefault || TRUST_OBJECTIVE_CONFIG.default_horizon;
 };
 
 const logTrustInput = ({ userId, customerId, payload }) => {
@@ -81,12 +104,18 @@ const logTrustOutput = ({ userId, customerId, result }) => {
   console.info('[TRUST][CALC_RESULT]', {
     userId,
     customerId,
+    horizon: result.prediction_horizon,
     trust_score: result.trust_score,
     risk_score: result.risk_score,
     risk_level: result.risk_level,
     method: result.scoring_method,
   });
 };
+
+const getTrustObjectiveDefinition = asyncHandler(async (_req, res) => {
+  const objective = getTrustObjectiveConfig();
+  return success(_req, res, objective);
+});
 
 const getTrustByCustomerId = asyncHandler(async (req, res) => {
   const userId = getUserIdFromReq(req);
@@ -96,10 +125,13 @@ const getTrustByCustomerId = asyncHandler(async (req, res) => {
     throw badRequest('customerId is required in route parameter.', [{ field: 'customerId', reason: 'required' }]);
   }
 
+  const horizon = resolvePredictionHorizon(req.query?.horizon);
+
   const customerData = await buildCustomerDataForTrust({ userId, customerId });
   logTrustInput({ userId, customerId, payload: customerData });
 
   const result = calculateTrustScore(customerData, {
+    horizon,
     useChallenger: String(process.env.TRUST_CHALLENGER_ENABLED || 'true').toLowerCase() !== 'false',
   });
 
@@ -111,6 +143,7 @@ const postTrustScore = asyncHandler(async (req, res) => {
   const userId = getUserIdFromReq(req);
   const customerId = normalizeTrimmedString(req.body?.customerId);
   const directPayload = req.body?.customerData;
+  const horizon = resolvePredictionHorizon(req.body?.horizon || req.query?.horizon);
 
   let customerData = null;
   if (customerId) {
@@ -128,6 +161,7 @@ const postTrustScore = asyncHandler(async (req, res) => {
   logTrustInput({ userId, customerId: customerId || 'payload-direct', payload: customerData });
 
   const result = calculateTrustScore(customerData, {
+    horizon,
     useChallenger: req.body?.useChallenger === true,
   });
 
@@ -136,6 +170,7 @@ const postTrustScore = asyncHandler(async (req, res) => {
 });
 
 module.exports = {
+  getTrustObjectiveDefinition,
   getTrustByCustomerId,
   postTrustScore,
 };

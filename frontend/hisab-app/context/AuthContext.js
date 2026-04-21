@@ -24,6 +24,7 @@ import {
   updatePinOnline,
   verifyEmailCodeOnline,
 } from '../services/backend/authApi';
+import { trackAnalyticsEventOnline } from '../services/backend/pilotApi';
 
 export const AuthContext = createContext(null);
 
@@ -367,6 +368,16 @@ export function AuthProvider({ children }) {
       pinEnabled: Boolean(serverPayload?.user?.pinEnabled),
     });
     await syncAuthDeviceProfile();
+
+    // Non-blocking analytics so auth flow stays resilient.
+    trackAnalyticsEventOnline({
+      accessToken: localPayload?.session?.access_token || serverPayload?.accessToken || null,
+      eventType: 'login',
+      metadata: {
+        source: 'auth_context',
+      },
+      source: 'auth_context',
+    }).catch(() => null);
 
     return localPayload?.user || null;
   }, [syncAuthDeviceProfile, updateAuthStatus]);

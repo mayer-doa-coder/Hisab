@@ -10,7 +10,18 @@ const {
 const { appendChange } = require('../../services/v1/changeLogService');
 const { logAudit } = require('../../services/v1/auditService');
 const { badRequest, notFound, conflict } = require('../../services/v1/httpError');
-const { asyncHandler, getUserIdFromReq, parsePagination } = require('./controllerUtils');
+const { asyncHandler, getUserIdFromReq, getBranchIdFromReq, parsePagination } = require('./controllerUtils');
+const { trackEvent } = require('../../analytics/eventTracker');
+
+const buildBranchScope = (req, query = {}) => {
+  const scoped = { ...query };
+  const branchId = getBranchIdFromReq(req);
+  const role = String(req.auth?.role || '').toUpperCase();
+  if (branchId && role !== 'OWNER') {
+    scoped.branchId = branchId;
+  }
+  return scoped;
+};
 
 const serializeProduct = (doc) => ({
   productId: String(doc._id),
@@ -128,10 +139,12 @@ const parseUpdatePayload = (body = {}) => {
 
 const createProduct = asyncHandler(async (req, res) => {
   const userId = getUserIdFromReq(req);
+  const branchId = getBranchIdFromReq(req);
   const payload = parseCreatePayload(req.body);
 
   const created = await Product.create({
     userId,
+    branchId: branchId || null,
     ...payload,
   }).catch((err) => {
     if (err?.code === 11000) {
@@ -160,6 +173,16 @@ const createProduct = asyncHandler(async (req, res) => {
       metadata: { after: serialized },
       occurredAt: created.updatedAt,
     }),
+    trackEvent({
+      userId,
+      eventType: 'product_added',
+      timestamp: created.updatedAt,
+      metadata: {
+        productId: serialized.productId,
+        quantityOnHand: serialized.quantityOnHand,
+      },
+      source: 'products_api',
+    }),
   ]);
 
   return success(req, res, serialized, 201);
@@ -177,6 +200,7 @@ const listProducts = asyncHandler(async (req, res) => {
     userId,
     isArchived: false,
   };
+  Object.assign(query, buildBranchScope(req));
 
   if (search) {
     query.$or = [
@@ -213,7 +237,7 @@ const listProducts = asyncHandler(async (req, res) => {
 
 const getProductById = asyncHandler(async (req, res) => {
   const userId = getUserIdFromReq(req);
-  const product = await Product.findOne({ _id: req.params.productId, userId, isArchived: false }).lean();
+  const product = await Product.findOne(buildBranchScope(req, { _id: req.params.productId, userId, isArchived: false })).lean();
 
   if (!product) {
     throw notFound('Product not found.');
@@ -232,12 +256,12 @@ const updateProduct = asyncHandler(async (req, res) => {
   const updatePayload = parseUpdatePayload(req.body);
 
   const updated = await Product.findOneAndUpdate(
-    {
+    buildBranchScope(req, {
       _id: req.params.productId,
       userId,
       isArchived: false,
       version: expectedVersion,
-    },
+    }),
     {
       $set: updatePayload,
       $inc: { version: 1 },
@@ -285,11 +309,11 @@ const deleteProduct = asyncHandler(async (req, res) => {
   const userId = getUserIdFromReq(req);
 
   const updated = await Product.findOneAndUpdate(
-    {
+    buildBranchScope(req, {
       _id: req.params.productId,
       userId,
       isArchived: false,
-    },
+    }),
     {
       $set: { isArchived: true },
       $inc: { version: 1 },

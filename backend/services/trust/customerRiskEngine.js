@@ -1,3 +1,10 @@
+const {
+  normalizeTrustHorizon,
+  TRUST_OBJECTIVE_CONFIG,
+} = require('../../config/trustObjective');
+const { evaluateHorizonTargets } = require('./trustObjectiveEvaluator');
+const { assignMarkovState } = require('../prediction/markovStateEngine');
+
 const RISK_LEVELS = Object.freeze({
   LOW: 'LOW',
   MEDIUM: 'MEDIUM',
@@ -241,11 +248,46 @@ const hasInsufficientData = (features) => {
   return !hasHistory && !hasExposure;
 };
 
+const resolveMarketStateContext = ({ customerData = {}, options = {} }) => {
+  const featureSource = options?.marketStateFeatures || customerData?.market_state_features;
+  if (!featureSource || typeof featureSource !== 'object') {
+    return null;
+  }
+
+  const features = {
+    trend_pct: Number(featureSource.trend_pct || 0),
+    momentum_pct: Number(featureSource.momentum_pct || 0),
+    volatility_ratio: Number(featureSource.volatility_ratio || 0),
+    liquidity_stress_score: Number(featureSource.liquidity_stress_score || 0),
+    queue_pressure: Number(featureSource.queue_pressure || 0),
+    spread_to_close_ratio: Number(featureSource.spread_to_close_ratio || 0),
+    volume_to_floor_ratio: Number(featureSource.volume_to_floor_ratio || 0),
+  };
+
+  return {
+    current_state: assignMarkovState({
+      features,
+      previousState: options?.previousMarketState || customerData?.previous_market_state || null,
+    }),
+    feature_snapshot: features,
+  };
+};
+
 const calculateTrustScore = (customerData = {}, options = {}) => {
   const features = normalizeCustomerData(customerData);
+  const predictionHorizon = normalizeTrustHorizon(options.horizon)
+    || TRUST_OBJECTIVE_CONFIG.default_horizon;
+  const marketStateContext = resolveMarketStateContext({ customerData, options });
 
   if (hasInsufficientData(features)) {
     const fallbackResult = computeRuleBasedRisk(features);
+    const horizonTargets = evaluateHorizonTargets({
+      horizon: predictionHorizon,
+      customerData,
+      features,
+      riskScore: fallbackResult.risk_score,
+    });
+
     return {
       trust_score: fallbackResult.trust_score,
       risk_score: fallbackResult.risk_score,
@@ -255,12 +297,17 @@ const calculateTrustScore = (customerData = {}, options = {}) => {
         ...fallbackResult.risk_reasons,
       ],
       scoring_method: fallbackResult.scoring_method,
+      prediction_horizon: predictionHorizon,
+      prediction_targets: horizonTargets,
+      market_state_context: marketStateContext,
       feature_snapshot: {
         due_amount: features.due_amount,
         transaction_count: features.transaction_count,
         payment_count: features.payment_count,
         late_payment_count: features.late_payment_count,
         average_payment_delay_days: Number(features.average_payment_delay_days.toFixed(2)),
+        on_time_ratio: Number(features.on_time_ratio.toFixed(4)),
+        payment_volatility: Number(features.payment_volatility.toFixed(4)),
       },
     };
   }
@@ -270,18 +317,30 @@ const calculateTrustScore = (customerData = {}, options = {}) => {
     ? computeChallengerAdjustment(logisticResult, features)
     : logisticResult;
 
+  const horizonTargets = evaluateHorizonTargets({
+    horizon: predictionHorizon,
+    customerData,
+    features,
+    riskScore: finalResult.risk_score,
+  });
+
   return {
     trust_score: finalResult.trust_score,
     risk_score: finalResult.risk_score,
     risk_level: finalResult.risk_level,
     risk_reasons: finalResult.risk_reasons,
     scoring_method: finalResult.scoring_method,
+    prediction_horizon: predictionHorizon,
+    prediction_targets: horizonTargets,
+    market_state_context: marketStateContext,
     feature_snapshot: {
       due_amount: features.due_amount,
       transaction_count: features.transaction_count,
       payment_count: features.payment_count,
       late_payment_count: features.late_payment_count,
       average_payment_delay_days: Number(features.average_payment_delay_days.toFixed(2)),
+      on_time_ratio: Number(features.on_time_ratio.toFixed(4)),
+      payment_volatility: Number(features.payment_volatility.toFixed(4)),
     },
   };
 };

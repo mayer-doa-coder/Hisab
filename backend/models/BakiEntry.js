@@ -35,6 +35,31 @@ const bakiEntrySchema = new mongoose.Schema(
       required: true,
       min: 0,
     },
+    dueDate: {
+      type: Date,
+      default: null,
+      index: true,
+    },
+    status: {
+      type: String,
+      enum: ['open', 'paid', 'overdue'],
+      default: 'open',
+      index: true,
+    },
+    referenceId: {
+      type: String,
+      trim: true,
+      default: null,
+      index: true,
+    },
+    resolvedAt: {
+      type: Date,
+      default: null,
+    },
+    reminderSentAt: {
+      type: Date,
+      default: null,
+    },
     paymentMethod: {
       type: String,
       default: null,
@@ -87,6 +112,7 @@ const bakiEntrySchema = new mongoose.Schema(
 );
 
 bakiEntrySchema.index({ userId: 1, customerId: 1, occurredAt: 1 });
+bakiEntrySchema.index({ userId: 1, customerId: 1, status: 1, dueDate: 1 });
 bakiEntrySchema.index({ userId: 1, clientRefId: 1 }, { unique: true, sparse: true });
 
 module.exports = mongoose.model('BakiEntry', bakiEntrySchema);

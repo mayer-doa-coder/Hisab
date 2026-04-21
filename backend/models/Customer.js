@@ -8,6 +8,12 @@ const customerSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    branchId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Branch',
+      default: null,
+      index: true,
+    },
     name: {
       type: String,
       required: true,
@@ -29,6 +35,27 @@ const customerSchema = new mongoose.Schema(
       type: Number,
       min: 0,
       default: 0,
+    },
+    currentBalance: {
+      type: Number,
+      min: 0,
+      default: 0,
+    },
+    riskLevel: {
+      type: String,
+      enum: ['low', 'medium', 'high'],
+      default: 'low',
+      index: true,
+    },
+    dueTermsDays: {
+      type: Number,
+      min: 1,
+      max: 365,
+      default: 30,
+    },
+    lastPaymentDate: {
+      type: Date,
+      default: null,
     },
     isArchived: {
       type: Boolean,

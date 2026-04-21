@@ -17,7 +17,12 @@ const asyncHandler = (handler) => async (req, res, next) => {
   }
 };
 
-const getUserIdFromReq = (req) => String(req.user_id || req.auth?.user_id || '').trim();
+const getUserIdFromReq = (req) => String(req.user_id || req.auth?.tenant_user_id || req.auth?.user_id || '').trim();
+const getActorUserIdFromReq = (req) => String(req.actor_user_id || req.auth?.actor_user_id || req.auth?.user_id || '').trim();
+const getBranchIdFromReq = (req) => {
+  const branchId = String(req.branch_id || req.auth?.branch_id || '').trim();
+  return branchId || null;
+};
 
 const parsePagination = (req, { defaultPage = 1, defaultPageSize = 20, maxPageSize = 100 } = {}) => {
   const pageRaw = Number(req.query?.page);
@@ -118,6 +123,8 @@ module.exports = {
   asyncHandler,
   withIdempotency,
   getUserIdFromReq,
+  getActorUserIdFromReq,
+  getBranchIdFromReq,
   parsePagination,
   errorHandler,
 };

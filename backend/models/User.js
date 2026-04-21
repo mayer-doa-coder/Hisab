@@ -2,6 +2,12 @@ const mongoose = require('mongoose');
 
 const userSchema = new mongoose.Schema(
   {
+    name: {
+      type: String,
+      trim: true,
+      default: null,
+      maxlength: 120,
+    },
     email: {
       type: String,
       required: true,
@@ -9,12 +15,46 @@ const userSchema = new mongoose.Schema(
       lowercase: true,
       trim: true,
     },
+    phone: {
+      type: String,
+      trim: true,
+      default: null,
+      maxlength: 40,
+    },
     role: {
       type: String,
-      enum: ['user', 'manager', 'admin', 'owner', 'auditor'],
-      default: 'user',
-      lowercase: true,
+      enum: [
+        'OWNER',
+        'CASHIER',
+        'STOCK_MANAGER',
+        'ACCOUNTANT',
+        'user',
+        'manager',
+        'admin',
+        'owner',
+        'auditor',
+      ],
+      default: 'OWNER',
       trim: true,
+    },
+    branchId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Branch',
+      default: null,
+      index: true,
+    },
+    ownerUserId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+      index: true,
+    },
+    status: {
+      type: String,
+      enum: ['ACTIVE', 'INACTIVE', 'SUSPENDED'],
+      default: 'ACTIVE',
+      trim: true,
+      index: true,
     },
     password: {
       type: String,

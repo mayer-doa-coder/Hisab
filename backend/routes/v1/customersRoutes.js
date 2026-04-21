@@ -7,13 +7,15 @@ const {
   deleteCustomer,
 } = require('../../controllers/v1/customersController');
 const { withIdempotency } = require('../../controllers/v1/controllerUtils');
+const { requirePermission } = require('../../middleware/permissionMiddleware');
+const { ACTIONS } = require('../../security/rbac');
 
 const router = express.Router();
 
-router.get('/', listCustomers);
-router.get('/:customerId', getCustomerById);
-router.post('/', withIdempotency(createCustomer));
-router.patch('/:customerId', withIdempotency(updateCustomer));
-router.delete('/:customerId', deleteCustomer);
+router.get('/', requirePermission(ACTIONS.CUSTOMERS_VIEW), listCustomers);
+router.get('/:customerId', requirePermission(ACTIONS.CUSTOMERS_VIEW), getCustomerById);
+router.post('/', requirePermission(ACTIONS.SALES_CREATE), withIdempotency(createCustomer));
+router.patch('/:customerId', requirePermission(ACTIONS.SALES_CREATE), withIdempotency(updateCustomer));
+router.delete('/:customerId', requirePermission(ACTIONS.SALES_CREATE), deleteCustomer);
 
 module.exports = router;
