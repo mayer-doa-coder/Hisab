@@ -2,10 +2,70 @@ import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 
 let resolvedBaseUrl = '';
+const HEALTH_REQUEST_TIMEOUT_MS = 3500;
 
 const normalizeBaseUrl = (value) => {
   const next = String(value || '').trim();
   return next ? next.replace(/\/+$/, '') : '';
+};
+
+const isPrivateIpv4Host = (host) => {
+  const value = String(host || '').trim();
+  const match = value.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (!match) {
+    return false;
+  }
+
+  const octets = match.slice(1).map((part) => Number(part));
+  if (octets.some((part) => !Number.isInteger(part) || part < 0 || part > 255)) {
+    return false;
+  }
+
+  // RFC1918 LAN ranges plus loopback-like fallback used by emulators.
+  if (octets[0] === 10) {
+    return true;
+  }
+
+  if (octets[0] === 172 && octets[1] >= 16 && octets[1] <= 31) {
+    return true;
+  }
+
+  if (octets[0] === 192 && octets[1] === 168) {
+    return true;
+  }
+
+  if (octets[0] === 127) {
+    return true;
+  }
+
+  return false;
+};
+
+const canUseExpoHostForBackend = (host) => {
+  const normalizedHost = String(host || '').trim().toLowerCase();
+  if (!normalizedHost) {
+    return false;
+  }
+
+  if (normalizedHost === 'localhost') {
+    return true;
+  }
+
+  return isPrivateIpv4Host(normalizedHost);
+};
+
+const fetchWithTimeout = async (url, options = {}, timeoutMs = HEALTH_REQUEST_TIMEOUT_MS) => {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    return await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeoutId);
+  }
 };
 
 const pickExpoHost = () => {
@@ -41,7 +101,7 @@ const getEnvBaseUrl = () => {
 
 const getExpoLanBaseUrl = () => {
   const host = pickExpoHost();
-  if (!host) {
+  if (!canUseExpoHostForBackend(host)) {
     return '';
   }
 
@@ -93,7 +153,7 @@ export const fetchBackendHealth = async () => {
 
   for (const baseUrl of candidates) {
     try {
-      const response = await fetch(`${baseUrl}/health`, {
+      const response = await fetchWithTimeout(`${baseUrl}/health`, {
         method: 'GET',
         headers: {
           Accept: 'application/json',
@@ -115,7 +175,11 @@ export const fetchBackendHealth = async () => {
         database: payload?.database || null,
       };
     } catch (error) {
-      lastErrorMessage = error?.message || 'Unable to reach backend server.';
+      if (String(error?.name || '') === 'AbortError') {
+        lastErrorMessage = 'Backend health check timed out.';
+      } else {
+        lastErrorMessage = error?.message || 'Unable to reach backend server.';
+      }
     }
   }
 

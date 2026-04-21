@@ -9,6 +9,14 @@ const reportsRoutes = require('./reportsRoutes');
 const auditLogsRoutes = require('./auditLogsRoutes');
 const syncRoutes = require('./syncRoutes');
 const trustRoutes = require('./trustRoutes');
+const marketDataRoutes = require('./marketDataRoutes');
+const markovRoutes = require('./markovRoutes');
+const suggestionsRoutes = require('./suggestionsRoutes');
+const approvalRequestsRoutes = require('./approvalRequestsRoutes');
+const branchesRoutes = require('./branchesRoutes');
+const teamUsersRoutes = require('./teamUsersRoutes');
+const reliabilityRoutes = require('./reliabilityRoutes');
+const pilotRoutes = require('./pilotRoutes');
 
 const router = express.Router();
 
@@ -21,5 +29,13 @@ router.use('/reports', reportsRoutes);
 router.use('/audit-logs', auditLogsRoutes);
 router.use('/sync', syncRoutes);
 router.use('/trust', trustRoutes);
+router.use('/market-data', marketDataRoutes);
+router.use('/markov', markovRoutes);
+router.use('/suggestions', suggestionsRoutes);
+router.use('/approvals', approvalRequestsRoutes);
+router.use('/branches', branchesRoutes);
+router.use('/team/users', teamUsersRoutes);
+router.use('/reliability', reliabilityRoutes);
+router.use('/pilot', pilotRoutes);
 
 module.exports = router;

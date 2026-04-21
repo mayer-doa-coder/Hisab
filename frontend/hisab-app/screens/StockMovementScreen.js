@@ -22,6 +22,12 @@ const MOVEMENT_OPTIONS = [
   { label: 'Adjust (+/-)', value: 'adjust' },
 ];
 
+const STOCK_OUT_REASON_OPTIONS = [
+  { label: 'Damage', value: 'DAMAGE' },
+  { label: 'Expiry', value: 'EXPIRY' },
+  { label: 'Adjustment', value: 'ADJUSTMENT' },
+];
+
 const formatDateTime = (value) => {
   if (!value) {
     return 'N/A';
@@ -48,6 +54,7 @@ export default function StockMovementScreen() {
 
   const [productId, setProductId] = useState('');
   const [movementType, setMovementType] = useState('in');
+  const [stockOutReason, setStockOutReason] = useState('DAMAGE');
   const [quantity, setQuantity] = useState('');
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
@@ -104,6 +111,7 @@ export default function StockMovementScreen() {
         movementType,
         quantity: Number(quantity),
         note,
+        stockOutReason: movementType === 'out' ? stockOutReason : null,
       });
 
       setQuantity('');
@@ -157,6 +165,20 @@ export default function StockMovementScreen() {
                     </Picker>
                   </View>
 
+                  {movementType === 'out' ? (
+                    <>
+                      <Text style={styles.label}>Stock-Out Reason *</Text>
+                      <View style={styles.pickerWrap}>
+                        <Picker selectedValue={stockOutReason} onValueChange={(value) => setStockOutReason(String(value))}>
+                          {STOCK_OUT_REASON_OPTIONS.map((option) => (
+                            <Picker.Item key={option.value} label={option.label} value={option.value} />
+                          ))}
+                        </Picker>
+                      </View>
+                      <Text style={styles.reasonHint}>Sales stock-out is recorded from Sales flow, not manual movement.</Text>
+                    </>
+                  ) : null}
+
                   <Text style={styles.label}>Quantity *</Text>
                   <TextInput
                     value={quantity}
@@ -209,6 +231,8 @@ export default function StockMovementScreen() {
                 <Text style={styles.badge}>{item.movement_type.toUpperCase()}</Text>
               </View>
               <Text style={styles.meta}>Delta: {deltaPrefix(Number(item.quantity_delta))}{item.quantity_delta}</Text>
+              {item.stock_out_reason ? <Text style={styles.meta}>Reason: {item.stock_out_reason}</Text> : null}
+              {item.receipt_id ? <Text style={styles.meta}>Receipt: {item.receipt_id}</Text> : null}
               <Text style={styles.meta}>Before: {item.quantity_before} | After: {item.quantity_after}</Text>
               <Text style={styles.meta}>Date: {formatDateTime(item.created_at)}</Text>
               {item.note ? <Text style={styles.meta}>Note: {item.note}</Text> : null}
@@ -259,6 +283,12 @@ const styles = StyleSheet.create({
   },
   stockHintText: {
     color: UI_COLORS.textSecondary,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  reasonHint: {
+    marginTop: 4,
+    color: UI_COLORS.textMuted,
     fontSize: 12,
     fontWeight: '600',
   },

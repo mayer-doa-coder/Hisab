@@ -1,7 +1,7 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const { error: sendError } = require('../utils/apiResponse');
-const { normalizeRole } = require('../utils/normalization');
+const { canonicalizeRole, listPermissions } = require('../security/rbac');
 
 const sendAuthError = (req, res, {
   statusCode = 401,
@@ -105,16 +105,35 @@ const authMiddleware = async (req, res, next) => {
       }
     }
 
-    const role = normalizeRole(user.role, 'user');
+    const status = String(user.status || 'ACTIVE').trim().toUpperCase();
+    if (status !== 'ACTIVE') {
+      return sendAuthError(req, res, {
+        statusCode: 403,
+        code: 'USER_INACTIVE',
+        message: 'User account is not active.',
+      });
+    }
+
+    const role = canonicalizeRole(user.role);
+    const tenantUserId = String(user.ownerUserId || user._id);
+    const actorUserId = String(user._id);
+    const branchId = user.branchId ? String(user.branchId) : null;
 
     req.auth = {
-      user_id: String(userId),
+      user_id: actorUserId,
+      actor_user_id: actorUserId,
+      tenant_user_id: tenantUserId,
       token_type: 'access',
       role,
+      branch_id: branchId,
+      permissions: listPermissions(role),
     };
-    req.user_id = String(userId);
+    req.user_id = tenantUserId;
+    req.actor_user_id = actorUserId;
+    req.branch_id = branchId;
     req.user = user;
     req.user.role = role;
+    req.user.status = status;
     return next();
   } catch {
     return sendAuthError(req, res, {

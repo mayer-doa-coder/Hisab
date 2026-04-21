@@ -1,0 +1,210 @@
+{
+  "schema_version": "1.0.0",
+  "phase": "phase_0_objective_lock",
+  "locked": true,
+  "locked_at": "2026-04-12T00:00:00.000Z",
+  "lock_rationale": "Prediction objectives and horizon-specific metrics are frozen before downstream modeling.",
+  "default_horizon": "1_month",
+  "supported_horizons": [
+    "1_week",
+    "1_month",
+    "3_month"
+  ],
+  "horizons": {
+    "1_week": {
+      "time_window_days": 7,
+      "target_types": {
+        "direction_classes": [
+          "IMPROVING",
+          "STABLE",
+          "WORSENING"
+        ],
+        "return_buckets": [
+          "LOW_RISK",
+          "MEDIUM_RISK",
+          "HIGH_RISK"
+        ],
+        "expected_return_interval": {
+          "type": "risk_probability_range",
+          "unit": "probability",
+          "interval_half_width": 0.08
+        },
+        "return_bucket_thresholds": {
+          "LOW_RISK": {
+            "min_risk_score": 0,
+            "max_risk_score": 34
+          },
+          "MEDIUM_RISK": {
+            "min_risk_score": 35,
+            "max_risk_score": 64
+          },
+          "HIGH_RISK": {
+            "min_risk_score": 65,
+            "max_risk_score": 100
+          }
+        }
+      },
+      "label_definitions": {
+        "improvement": {
+          "on_time_ratio_min": 0.85,
+          "late_payment_rate_max": 0.15,
+          "payment_coverage_ratio_min": 0.9,
+          "due_change_ratio_max": -0.03,
+          "minimum_payment_events": 1
+        },
+        "deterioration": {
+          "on_time_ratio_max": 0.55,
+          "late_payment_rate_min": 0.45,
+          "payment_coverage_ratio_max": 0.55,
+          "due_change_ratio_min": 0.08,
+          "minimum_payment_events": 1
+        },
+        "default_risk": {
+          "risk_score_min": 80,
+          "late_payment_rate_min": 0.55,
+          "absolute_due_min": 5000
+        }
+      },
+      "metrics_thresholds": {
+        "auc_pr_min": 0.74,
+        "recall_at_fixed_precision": {
+          "precision": 0.9,
+          "recall_min": 0.68,
+          "priority": "high_recall"
+        },
+        "brier_score_max": 0.19,
+        "bad_debt_reduction_min_pct": 8
+      }
+    },
+    "1_month": {
+      "time_window_days": 30,
+      "target_types": {
+        "direction_classes": [
+          "IMPROVING",
+          "STABLE",
+          "WORSENING"
+        ],
+        "return_buckets": [
+          "LOW_RISK",
+          "MEDIUM_RISK",
+          "HIGH_RISK"
+        ],
+        "expected_return_interval": {
+          "type": "risk_probability_range",
+          "unit": "probability",
+          "interval_half_width": 0.12
+        },
+        "return_bucket_thresholds": {
+          "LOW_RISK": {
+            "min_risk_score": 0,
+            "max_risk_score": 39
+          },
+          "MEDIUM_RISK": {
+            "min_risk_score": 40,
+            "max_risk_score": 69
+          },
+          "HIGH_RISK": {
+            "min_risk_score": 70,
+            "max_risk_score": 100
+          }
+        }
+      },
+      "label_definitions": {
+        "improvement": {
+          "on_time_ratio_min": 0.8,
+          "late_payment_rate_max": 0.2,
+          "payment_coverage_ratio_min": 0.85,
+          "due_change_ratio_max": -0.05,
+          "minimum_payment_events": 2
+        },
+        "deterioration": {
+          "on_time_ratio_max": 0.6,
+          "late_payment_rate_min": 0.4,
+          "payment_coverage_ratio_max": 0.6,
+          "due_change_ratio_min": 0.1,
+          "minimum_payment_events": 2
+        },
+        "default_risk": {
+          "risk_score_min": 75,
+          "late_payment_rate_min": 0.5,
+          "absolute_due_min": 6000
+        }
+      },
+      "metrics_thresholds": {
+        "auc_pr_min": 0.76,
+        "recall_at_fixed_precision": {
+          "precision": 0.9,
+          "recall_min": 0.6,
+          "priority": "balanced"
+        },
+        "brier_score_max": 0.17,
+        "bad_debt_reduction_min_pct": 12
+      }
+    },
+    "3_month": {
+      "time_window_days": 90,
+      "target_types": {
+        "direction_classes": [
+          "IMPROVING",
+          "STABLE",
+          "WORSENING"
+        ],
+        "return_buckets": [
+          "LOW_RISK",
+          "MEDIUM_RISK",
+          "HIGH_RISK"
+        ],
+        "expected_return_interval": {
+          "type": "risk_probability_range",
+          "unit": "probability",
+          "interval_half_width": 0.18
+        },
+        "return_bucket_thresholds": {
+          "LOW_RISK": {
+            "min_risk_score": 0,
+            "max_risk_score": 44
+          },
+          "MEDIUM_RISK": {
+            "min_risk_score": 45,
+            "max_risk_score": 74
+          },
+          "HIGH_RISK": {
+            "min_risk_score": 75,
+            "max_risk_score": 100
+          }
+        }
+      },
+      "label_definitions": {
+        "improvement": {
+          "on_time_ratio_min": 0.78,
+          "late_payment_rate_max": 0.22,
+          "payment_coverage_ratio_min": 0.8,
+          "due_change_ratio_max": -0.08,
+          "minimum_payment_events": 4
+        },
+        "deterioration": {
+          "on_time_ratio_max": 0.62,
+          "late_payment_rate_min": 0.38,
+          "payment_coverage_ratio_max": 0.62,
+          "due_change_ratio_min": 0.14,
+          "minimum_payment_events": 4
+        },
+        "default_risk": {
+          "risk_score_min": 72,
+          "late_payment_rate_min": 0.45,
+          "absolute_due_min": 7000
+        }
+      },
+      "metrics_thresholds": {
+        "auc_pr_min": 0.78,
+        "recall_at_fixed_precision": {
+          "precision": 0.9,
+          "recall_min": 0.55,
+          "priority": "calibration_first"
+        },
+        "brier_score_max": 0.15,
+        "bad_debt_reduction_min_pct": 15
+      }
+    }
+  }
+}

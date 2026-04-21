@@ -4,13 +4,24 @@ const { success } = require('../../utils/apiResponse');
 const {
   normalizeTrimmedString,
   parseMoney,
+  parsePositiveInt,
   isValidPhone,
   parseBoolean,
 } = require('../../utils/validation');
 const { appendChange } = require('../../services/v1/changeLogService');
 const { logAudit } = require('../../services/v1/auditService');
 const { badRequest, notFound, conflict } = require('../../services/v1/httpError');
-const { asyncHandler, getUserIdFromReq, parsePagination } = require('./controllerUtils');
+const { asyncHandler, getUserIdFromReq, getBranchIdFromReq, parsePagination } = require('./controllerUtils');
+
+const buildBranchScope = (req, query = {}) => {
+  const scoped = { ...query };
+  const branchId = getBranchIdFromReq(req);
+  const role = String(req.auth?.role || '').toUpperCase();
+  if (branchId && role !== 'OWNER') {
+    scoped.branchId = branchId;
+  }
+  return scoped;
+};
 
 const serializeCustomer = (doc, extra = {}) => ({
   customerId: String(doc._id),
@@ -18,6 +29,10 @@ const serializeCustomer = (doc, extra = {}) => ({
   phone: doc.phone || null,
   address: doc.address || null,
   creditLimit: Number(doc.creditLimit || 0),
+  currentBalance: Number(doc.currentBalance || 0),
+  riskLevel: doc.riskLevel || 'low',
+  dueTermsDays: Number(doc.dueTermsDays || 30),
+  lastPaymentDate: doc.lastPaymentDate ? new Date(doc.lastPaymentDate).toISOString() : null,
   isArchived: Boolean(doc.isArchived),
   version: Number(doc.version || 1),
   createdAt: doc.createdAt,
@@ -25,12 +40,15 @@ const serializeCustomer = (doc, extra = {}) => ({
   ...extra,
 });
 
-const computeTotalDue = async ({ userId, customerId }) => {
+const computeTotalDue = async ({ userId, customerId, branchId = null }) => {
   const rows = await BakiEntry.aggregate([
     {
       $match: {
         userId,
+        ...(branchId ? { branchId } : {}),
         customerId,
+        isArchived: { $ne: true },
+        deletedAt: null,
       },
     },
     {
@@ -70,11 +88,17 @@ const parseCreatePayload = (body = {}) => {
     throw badRequest('creditLimit must be a non-negative number.', [{ field: 'creditLimit', reason: 'invalid' }]);
   }
 
+  const dueTermsDays = body.dueTermsDays === undefined ? 30 : parsePositiveInt(body.dueTermsDays);
+  if (!dueTermsDays) {
+    throw badRequest('dueTermsDays must be a positive integer.', [{ field: 'dueTermsDays', reason: 'invalid' }]);
+  }
+
   return {
     name,
     phone: phone || null,
     address: normalizeTrimmedString(body.address) || null,
     creditLimit,
+    dueTermsDays,
   };
 };
 
@@ -109,6 +133,14 @@ const parseUpdatePayload = (body = {}) => {
     payload.creditLimit = creditLimit;
   }
 
+  if (body.dueTermsDays !== undefined) {
+    const dueTermsDays = parsePositiveInt(body.dueTermsDays);
+    if (!dueTermsDays) {
+      throw badRequest('dueTermsDays must be a positive integer.', [{ field: 'dueTermsDays', reason: 'invalid' }]);
+    }
+    payload.dueTermsDays = dueTermsDays;
+  }
+
   if (!Object.keys(payload).length) {
     throw badRequest('At least one updatable field is required.');
   }
@@ -118,9 +150,10 @@ const parseUpdatePayload = (body = {}) => {
 
 const createCustomer = asyncHandler(async (req, res) => {
   const userId = getUserIdFromReq(req);
+  const branchId = getBranchIdFromReq(req);
   const payload = parseCreatePayload(req.body);
 
-  const created = await Customer.create({ userId, ...payload });
+  const created = await Customer.create({ userId, branchId: branchId || null, ...payload });
   const serialized = serializeCustomer(created, { totalDue: 0, riskLevel: 'low' });
 
   await Promise.allSettled([
@@ -148,6 +181,7 @@ const createCustomer = asyncHandler(async (req, res) => {
 
 const listCustomers = asyncHandler(async (req, res) => {
   const userId = getUserIdFromReq(req);
+  const branchId = getBranchIdFromReq(req);
   const { page, pageSize, skip, limit } = parsePagination(req);
 
   const search = normalizeTrimmedString(req.query.search).toLowerCase();
@@ -157,6 +191,7 @@ const listCustomers = asyncHandler(async (req, res) => {
     userId,
     isArchived: false,
   };
+  Object.assign(query, buildBranchScope(req));
 
   if (search) {
     query.$or = [
@@ -174,9 +209,9 @@ const listCustomers = asyncHandler(async (req, res) => {
 
     const enriched = await Promise.all(
       docs.map(async (doc) => {
-        const totalDue = await computeTotalDue({ userId, customerId: doc._id });
+        const totalDue = await computeTotalDue({ userId, customerId: doc._id, branchId });
         const riskLevel = totalDue > 5000 ? 'high' : totalDue > 1000 ? 'medium' : 'low';
-        return serializeCustomer(doc, { totalDue, riskLevel });
+        return serializeCustomer(doc, { totalDue, currentBalance: totalDue, riskLevel });
       })
     );
 
@@ -197,9 +232,9 @@ const listCustomers = asyncHandler(async (req, res) => {
 
   const enrichedAll = await Promise.all(
     allDocs.map(async (doc) => {
-      const totalDue = await computeTotalDue({ userId, customerId: doc._id });
+      const totalDue = await computeTotalDue({ userId, customerId: doc._id, branchId });
       const riskLevel = totalDue > 5000 ? 'high' : totalDue > 1000 ? 'medium' : 'low';
-      return serializeCustomer(doc, { totalDue, riskLevel });
+      return serializeCustomer(doc, { totalDue, currentBalance: totalDue, riskLevel });
     })
   );
 
@@ -218,19 +253,21 @@ const listCustomers = asyncHandler(async (req, res) => {
 
 const getCustomerById = asyncHandler(async (req, res) => {
   const userId = getUserIdFromReq(req);
-  const doc = await Customer.findOne({ _id: req.params.customerId, userId, isArchived: false }).lean();
+  const branchId = getBranchIdFromReq(req);
+  const doc = await Customer.findOne(buildBranchScope(req, { _id: req.params.customerId, userId, isArchived: false })).lean();
   if (!doc) {
     throw notFound('Customer not found.');
   }
 
-  const totalDue = await computeTotalDue({ userId, customerId: doc._id });
+  const totalDue = await computeTotalDue({ userId, customerId: doc._id, branchId });
   const riskLevel = totalDue > 5000 ? 'high' : totalDue > 1000 ? 'medium' : 'low';
 
-  return success(req, res, serializeCustomer(doc, { totalDue, riskLevel }));
+  return success(req, res, serializeCustomer(doc, { totalDue, currentBalance: totalDue, riskLevel }));
 });
 
 const updateCustomer = asyncHandler(async (req, res) => {
   const userId = getUserIdFromReq(req);
+  const branchId = getBranchIdFromReq(req);
   const expectedVersion = Number(req.body?.expectedVersion);
   if (!Number.isInteger(expectedVersion) || expectedVersion <= 0) {
     throw badRequest('expectedVersion is required for updates.');
@@ -239,12 +276,12 @@ const updateCustomer = asyncHandler(async (req, res) => {
   const updatePayload = parseUpdatePayload(req.body);
 
   const updated = await Customer.findOneAndUpdate(
-    {
+    buildBranchScope(req, {
       _id: req.params.customerId,
       userId,
       isArchived: false,
       version: expectedVersion,
-    },
+    }),
     {
       $set: updatePayload,
       $inc: { version: 1 },
@@ -258,9 +295,9 @@ const updateCustomer = asyncHandler(async (req, res) => {
     throw conflict('Customer version conflict or customer not found.', 'VERSION_CONFLICT');
   }
 
-  const totalDue = await computeTotalDue({ userId, customerId: updated._id });
+  const totalDue = await computeTotalDue({ userId, customerId: updated._id, branchId });
   const riskLevel = totalDue > 5000 ? 'high' : totalDue > 1000 ? 'medium' : 'low';
-  const serialized = serializeCustomer(updated, { totalDue, riskLevel });
+  const serialized = serializeCustomer(updated, { totalDue, currentBalance: totalDue, riskLevel });
 
   await Promise.allSettled([
     appendChange({
@@ -287,12 +324,13 @@ const updateCustomer = asyncHandler(async (req, res) => {
 
 const deleteCustomer = asyncHandler(async (req, res) => {
   const userId = getUserIdFromReq(req);
-  const doc = await Customer.findOne({ _id: req.params.customerId, userId, isArchived: false });
+  const branchId = getBranchIdFromReq(req);
+  const doc = await Customer.findOne(buildBranchScope(req, { _id: req.params.customerId, userId, isArchived: false }));
   if (!doc) {
     throw notFound('Customer not found.');
   }
 
-  const due = await computeTotalDue({ userId, customerId: doc._id });
+  const due = await computeTotalDue({ userId, customerId: doc._id, branchId });
   if (due > 0) {
     throw badRequest('Customer has outstanding due and cannot be deleted.', null, 'CUSTOMER_HAS_OUTSTANDING_DUE');
   }

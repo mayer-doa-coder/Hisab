@@ -15,7 +15,10 @@ import { UI_COLORS } from '../constants/ui-theme';
 import { useAppData } from '../context/AppDataContext';
 import { useAuth } from '../context/AuthContext';
 import { DATE_RANGE_TYPES, buildKpiDateFilter } from '../services/analytics/dateRangeUtils';
-import { AppCard } from '../components/ui';
+import { fetchComplianceDashboardOnline } from '../services/backend/reportingApi';
+import { fetchActivityInsightExampleOnline } from '../services/backend/pilotApi';
+import { AppButton, AppCard } from '../components/ui';
+import { getDashboardTip } from '../services/onboarding/contextualTips';
 import { SPACING } from '../theme/spacing';
 import { TYPOGRAPHY } from '../theme/typography';
 
@@ -24,6 +27,13 @@ const QUICK_ACTIONS = [
   { icon: 'payments', label: '+ Payment', route: 'Baki' },
   { icon: 'groups', label: 'Customers', route: 'Customers' },
   { icon: 'inventory-2', label: 'Stock', route: 'Products' },
+  { icon: 'analytics', label: 'Reports', route: 'Reports' },
+];
+
+const REPORT_PERIODS = [
+  { key: 'daily', label: 'Daily', rangeType: DATE_RANGE_TYPES.TODAY },
+  { key: 'weekly', label: 'Weekly', rangeType: DATE_RANGE_TYPES.WEEK },
+  { key: 'monthly', label: 'Monthly', rangeType: DATE_RANGE_TYPES.MONTH },
 ];
 
 const toNumber = (value, fallback = 0) => {
@@ -59,7 +69,7 @@ function ActionIconButton({ icon, label, onPress }) {
 
 export default function DashboardScreen() {
   const navigation = useNavigation();
-  const { isOnline } = useAuth();
+  const { isOnline, session } = useAuth();
   const {
     products,
     customers,
@@ -72,7 +82,10 @@ export default function DashboardScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [loadError, setLoadError] = useState('');
   const [lastRefreshAt, setLastRefreshAt] = useState(null);
+  const [period, setPeriod] = useState('daily');
   const [todayMovementCount, setTodayMovementCount] = useState(0);
+  const [complianceDashboard, setComplianceDashboard] = useState(null);
+  const [activityInsightExample, setActivityInsightExample] = useState(null);
   const [kpis, setKpis] = useState({
     totalCredit: 0,
     totalPayment: 0,
@@ -91,13 +104,14 @@ export default function DashboardScreen() {
   }, [customers, products]);
 
   const loadDashboard = useCallback(async () => {
-    const range = buildKpiDateFilter(DATE_RANGE_TYPES.TODAY, new Date());
+    const selectedPeriod = REPORT_PERIODS.find((row) => row.key === period) || REPORT_PERIODS[0];
+    const range = buildKpiDateFilter(selectedPeriod.rangeType, new Date());
 
     try {
       setLoading(true);
       setLoadError('');
 
-      const [kpiSummary, movementCount] = await Promise.all([
+      const [kpiSummary, movementCount, onlineDashboard, pilotExample] = await Promise.all([
         getDashboardKpiSummary({
           startDateIso: range.startDateIso,
           endDateIso: range.endDateIso,
@@ -107,6 +121,19 @@ export default function DashboardScreen() {
           startDateIso: range.startDateIso,
           endDateIso: range.endDateIso,
         }),
+        isOnline && session?.access_token
+          ? fetchComplianceDashboardOnline({
+            accessToken: session.access_token,
+            period: selectedPeriod.key,
+            fromDateIso: range.startDateIso,
+            toDateIso: range.endDateIso,
+          })
+          : Promise.resolve(null),
+        isOnline && session?.access_token
+          ? fetchActivityInsightExampleOnline({
+            accessToken: session.access_token,
+          })
+          : Promise.resolve(null),
       ]);
 
       setKpis({
@@ -116,13 +143,15 @@ export default function DashboardScreen() {
         activeCustomers: toNumber(kpiSummary?.active_customers, 0),
       });
       setTodayMovementCount(Math.max(0, toNumber(movementCount, 0)));
+      setComplianceDashboard(onlineDashboard?.dashboards || null);
+      setActivityInsightExample(pilotExample?.example || null);
       setLastRefreshAt(new Date().toISOString());
     } catch (error) {
       setLoadError(error?.message || 'Unable to load dashboard metrics.');
     } finally {
       setLoading(false);
     }
-  }, [getDashboardKpiSummary, getStockMovementCountInRange]);
+  }, [getDashboardKpiSummary, getStockMovementCountInRange, isOnline, period, session?.access_token]);
 
   const handleRefresh = useCallback(async () => {
     try {
@@ -171,6 +200,86 @@ export default function DashboardScreen() {
               <Text style={styles.todayMetricValue}>{formatMoney(kpis.totalPayment)}</Text>
             </View>
           </View>
+        </AppCard>
+
+        <AppCard style={styles.totalDueCard}>
+          <Text style={styles.sectionTitle}>Reporting Period</Text>
+          <View style={styles.periodRow}>
+            {REPORT_PERIODS.map((option) => (
+              <AppButton
+                key={option.key}
+                title={option.label}
+                variant={period === option.key ? 'primary' : 'secondary'}
+                style={styles.periodButton}
+                onPress={() => setPeriod(option.key)}
+              />
+            ))}
+          </View>
+        </AppCard>
+
+        <AppCard style={styles.totalDueCard}>
+          <Text style={styles.sectionTitle}>Sales Dashboard</Text>
+          <Text style={styles.metaText}>Total Sales: {formatMoney(complianceDashboard?.sales?.totalSales)}</Text>
+          <Text style={styles.metaText}>Transactions: {toNumber(complianceDashboard?.sales?.transactionCount, 0)}</Text>
+          <Text style={styles.sectionSubTitle}>Top Selling Products</Text>
+          {(complianceDashboard?.sales?.topSellingProducts || []).slice(0, 5).map((row) => (
+            <Text key={`top-${row.productId}`} style={styles.metaText}>
+              {row.productName}: {toNumber(row.unitsSold, 0)} units
+            </Text>
+          ))}
+        </AppCard>
+
+        <AppCard style={styles.totalDueCard}>
+          <Text style={styles.sectionTitle}>Inventory Dashboard</Text>
+          <Text style={styles.metaText}>Current Stock Items: {(complianceDashboard?.inventory?.currentStockLevels || []).length}</Text>
+          <Text style={styles.metaText}>Low Stock Items: {(complianceDashboard?.inventory?.lowStockItems || []).length}</Text>
+          <Text style={styles.metaText}>Dead Stock Items: {(complianceDashboard?.inventory?.deadStockItems || []).length}</Text>
+        </AppCard>
+
+        <AppCard style={styles.totalDueCard}>
+          <Text style={styles.sectionTitle}>Finance Dashboard</Text>
+          <Text style={styles.metaText}>Revenue: {formatMoney(complianceDashboard?.finance?.totalRevenue)}</Text>
+          <Text style={styles.metaText}>Expenses: {formatMoney(complianceDashboard?.finance?.totalExpenses)}</Text>
+          <Text style={styles.metaText}>Profit: {formatMoney(complianceDashboard?.finance?.netProfit)}</Text>
+        </AppCard>
+
+        <AppCard style={styles.totalDueCard}>
+          <Text style={styles.sectionTitle}>Collections Dashboard</Text>
+          <Text style={styles.metaText}>Total Baki: {formatMoney(complianceDashboard?.collections?.totalBaki)}</Text>
+          <Text style={styles.metaText}>Overdue: {formatMoney(complianceDashboard?.collections?.overdueAmount)}</Text>
+          <Text style={styles.metaText}>Recovery Rate: {toNumber(complianceDashboard?.collections?.recoveryRate, 0).toFixed(2)}%</Text>
+        </AppCard>
+
+        <AppCard style={styles.totalDueCard}>
+          <Text style={styles.sectionTitle}>Pilot Adoption Tip</Text>
+          <Text style={styles.metaText}>{getDashboardTip({
+            period,
+            totalCustomers: summary.totalCustomers,
+            isOnline,
+          })}</Text>
+          <View style={styles.inlineButtonRow}>
+            <AppButton
+              title="Open Onboarding"
+              variant="secondary"
+              style={styles.inlineButton}
+              onPress={() => navigation.navigate('Onboarding')}
+            />
+            <AppButton
+              title="Help Center"
+              variant="secondary"
+              style={styles.inlineButton}
+              onPress={() => navigation.navigate('HelpCenter')}
+            />
+          </View>
+        </AppCard>
+
+        <AppCard style={styles.totalDueCard}>
+          <Text style={styles.sectionTitle}>Activity to Insight Example</Text>
+          <Text style={styles.metaText}>Activity: {activityInsightExample?.activity?.event_type || 'sale_created'}</Text>
+          <Text style={styles.metaText}>{activityInsightExample?.metrics?.dao || 'Operator activity updates DAO.'}</Text>
+          <Text style={styles.metaText}>{activityInsightExample?.metrics?.digitalSalesRatio || 'Sale totals update digital ratio.'}</Text>
+          <Text style={styles.metaText}>{activityInsightExample?.metrics?.featureUsage || 'Feature usage count increments.'}</Text>
+          <Text style={styles.metaText}>{activityInsightExample?.insight || 'Adoption signals convert into actionable insights.'}</Text>
         </AppCard>
 
         <View>
@@ -294,10 +403,11 @@ const styles = StyleSheet.create({
   },
   quickActionGrid: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: SPACING.sm,
   },
   quickActionItem: {
-    flex: 1,
+    width: '30%',
     alignItems: 'center',
     gap: SPACING.sm,
   },
@@ -339,6 +449,34 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.body,
     color: UI_COLORS.textPrimary,
     marginTop: SPACING.xs,
+    fontWeight: '700',
+  },
+  periodRow: {
+    flexDirection: 'row',
+    gap: SPACING.sm,
+    flexWrap: 'wrap',
+  },
+  periodButton: {
+    minHeight: 44,
+    flexGrow: 1,
+  },
+  inlineButtonRow: {
+    flexDirection: 'row',
+    gap: SPACING.sm,
+    marginTop: SPACING.sm,
+  },
+  inlineButton: {
+    flex: 1,
+    minHeight: 42,
+  },
+  metaText: {
+    ...TYPOGRAPHY.small,
+    color: UI_COLORS.textSecondary,
+  },
+  sectionSubTitle: {
+    ...TYPOGRAPHY.small,
+    color: UI_COLORS.textPrimary,
+    marginTop: SPACING.sm,
     fontWeight: '700',
   },
   statusText: {

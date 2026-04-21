@@ -10,9 +10,13 @@ export default function CustomerForm({
   name,
   phone,
   address,
+  creditLimit,
+  dueTermsDays,
   setName,
   setPhone,
   setAddress,
+  setCreditLimit,
+  setDueTermsDays,
   onSave,
   onCancel,
   saving,
@@ -48,6 +52,28 @@ export default function CustomerForm({
           onChangeText={setAddress}
           placeholder="Optional"
           style={styles.input}
+        />
+      </View>
+
+      <View style={styles.formGroup}>
+        <Text style={styles.label}>Credit Limit</Text>
+        <AppInput
+          value={creditLimit}
+          onChangeText={setCreditLimit}
+          placeholder="0.00"
+          style={styles.input}
+          keyboardType="decimal-pad"
+        />
+      </View>
+
+      <View style={styles.formGroup}>
+        <Text style={styles.label}>Due Terms (Days)</Text>
+        <AppInput
+          value={dueTermsDays}
+          onChangeText={setDueTermsDays}
+          placeholder="30"
+          style={styles.input}
+          keyboardType="number-pad"
         />
       </View>
 

@@ -9,6 +9,7 @@ const authMiddleware = require('./middleware/authMiddleware');
 const requestContext = require('./middleware/requestContext');
 const securityHeaders = require('./middleware/securityHeaders');
 const { createRateLimiter } = require('./middleware/rateLimitMiddleware');
+const { createPerformanceMiddleware } = require('./monitoring/performanceTracker');
 const { getProfile } = require('./controllers/authController');
 const { error: sendError } = require('./utils/apiResponse');
 const { errorHandler } = require('./controllers/v1/controllerUtils');
@@ -68,6 +69,9 @@ const app = express();
 app.set('trust proxy', 1);
 
 app.use(requestContext);
+app.use(createPerformanceMiddleware({
+  ignorePaths: ['/health'],
+}));
 app.use(helmet({
   contentSecurityPolicy: false,
   crossOriginEmbedderPolicy: false,

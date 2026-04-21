@@ -28,6 +28,8 @@ export default function CustomerListScreen() {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
+  const [creditLimit, setCreditLimit] = useState('0');
+  const [dueTermsDays, setDueTermsDays] = useState('30');
   const [saving, setSaving] = useState(false);
   const [editingCustomerId, setEditingCustomerId] = useState(null);
   const [fullCustomers, setFullCustomers] = useState([]);
@@ -73,6 +75,8 @@ export default function CustomerListScreen() {
     setName('');
     setPhone('');
     setAddress('');
+    setCreditLimit('0');
+    setDueTermsDays('30');
     setEditingCustomerId(null);
   };
 
@@ -83,13 +87,28 @@ export default function CustomerListScreen() {
 
     try {
       setSaving(true);
+      const numericCreditLimit = Number(creditLimit || 0);
+      const numericDueTermsDays = Number(dueTermsDays || 30);
       if (editingCustomerId) {
-        const updated = await updateCustomer({ id: editingCustomerId, name, phone, address });
+        const updated = await updateCustomer({
+          id: editingCustomerId,
+          name,
+          phone,
+          address,
+          creditLimit: Number.isFinite(numericCreditLimit) && numericCreditLimit >= 0 ? numericCreditLimit : 0,
+          dueTermsDays: Number.isInteger(numericDueTermsDays) && numericDueTermsDays > 0 ? numericDueTermsDays : 30,
+        });
         console.log('[DB] customer updated:', updated);
         resetForm();
         Alert.alert('Success', 'Customer updated successfully.');
       } else {
-        const saved = await addCustomer({ name, phone, address });
+        const saved = await addCustomer({
+          name,
+          phone,
+          address,
+          creditLimit: Number.isFinite(numericCreditLimit) && numericCreditLimit >= 0 ? numericCreditLimit : 0,
+          dueTermsDays: Number.isInteger(numericDueTermsDays) && numericDueTermsDays > 0 ? numericDueTermsDays : 30,
+        });
         console.log('[DB] customer saved:', saved);
         resetForm();
         Alert.alert('Success', 'Customer saved successfully.');
@@ -107,6 +126,8 @@ export default function CustomerListScreen() {
     setName(String(customer.name || ''));
     setPhone(String(customer.phone || ''));
     setAddress(String(customer.address || ''));
+    setCreditLimit(String(customer.credit_limit ?? 0));
+    setDueTermsDays(String(customer.due_terms_days ?? 30));
   };
 
   const handleDelete = (customer) => {
@@ -148,9 +169,13 @@ export default function CustomerListScreen() {
                 name={name}
                 phone={phone}
                 address={address}
+                creditLimit={creditLimit}
+                dueTermsDays={dueTermsDays}
                 setName={setName}
                 setPhone={setPhone}
                 setAddress={setAddress}
+                setCreditLimit={setCreditLimit}
+                setDueTermsDays={setDueTermsDays}
                 onSave={handleSaveCustomer}
                 onCancel={resetForm}
                 saving={saving}

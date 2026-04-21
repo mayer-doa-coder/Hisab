@@ -1,6 +1,6 @@
 # Trust Model Backtesting and Promotion Report (Phase 7)
 
-- Generated at: 2026-04-11T23:22:50.206875Z
+- Generated at: 2026-04-21T06:08:05.960442Z
 - Dataset source: synthetic_seed_1337
 - Windows evaluated: 5
 - Gate version: 1.0.0

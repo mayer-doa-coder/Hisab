@@ -8,6 +8,12 @@ const productSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    branchId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Branch',
+      default: null,
+      index: true,
+    },
     name: {
       type: String,
       required: true,

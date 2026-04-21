@@ -1,7 +1,7 @@
 {
   "model_name": "hisab_trust_champion",
   "version": "1.0.0",
-  "created_at": "2026-04-11T23:22:43.392Z",
+  "created_at": "2026-04-21T06:07:59.795Z",
   "method": "monotonic_logistic_regression",
   "dataset_source": "synthetic_seed_1337",
   "feature_order": [
@@ -116,5 +116,18 @@
     "recall_at_precision_90": 0.441176,
     "brier_calibrated": 0.154384,
     "ece_calibrated": 0.00638
+  },
+  "objective_lock": {
+    "schema_version": "1.0.0",
+    "phase": "phase_0_objective_lock",
+    "locked": true,
+    "locked_at": "2026-04-12T00:00:00.000Z",
+    "default_horizon": "1_month",
+    "supported_horizons": [
+      "1_week",
+      "1_month",
+      "3_month"
+    ],
+    "source_path": "D:\\Hisab\\backend\\config\\trustObjective.json"
   }
 }

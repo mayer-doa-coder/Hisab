@@ -8,6 +8,12 @@ const transactionSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    branchId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Branch',
+      default: null,
+      index: true,
+    },
     transactionType: {
       type: String,
       enum: ['sale', 'purchase', 'expense', 'income', 'credit_issue', 'credit_payment', 'void'],

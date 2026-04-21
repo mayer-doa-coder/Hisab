@@ -25,8 +25,25 @@ import {
   getExpiredProducts as dbGetExpiredProducts,
   getExpiringSoonProducts as dbGetExpiringSoonProducts,
   getLowStockProducts as dbGetLowStockProducts,
+  getInventoryBatches as dbGetInventoryBatches,
+  selectBatchForSale as dbSelectBatchForSale,
+  getInventoryAlerts as dbGetInventoryAlerts,
+  refreshInventoryAlerts as dbRefreshInventoryAlerts,
+  getDeadStockProducts as dbGetDeadStockProducts,
+  getInventoryHealthInsights as dbGetInventoryHealthInsights,
+  getCycleCounts as dbGetCycleCounts,
+  recordCycleCount as dbRecordCycleCount,
+  validateInventoryBatchConsistency as dbValidateInventoryBatchConsistency,
   getCustomerLedger as dbGetCustomerLedger,
   getBakiKpiSummary as dbGetBakiKpiSummary,
+  getCollectionsDashboard as dbGetCollectionsDashboard,
+  getCustomerStatement as dbGetCustomerStatement,
+  buildCustomerStatementCsv as dbBuildCustomerStatementCsv,
+  scheduleCollectionReminder as dbScheduleCollectionReminder,
+  getCollectionReminders as dbGetCollectionReminders,
+  createPaymentPromise as dbCreatePaymentPromise,
+  getPaymentPromises as dbGetPaymentPromises,
+  updatePaymentPromiseStatus as dbUpdatePaymentPromiseStatus,
   getDashboardKpiSummary as dbGetDashboardKpiSummary,
   getDashboardTopActiveCustomers as dbGetDashboardTopActiveCustomers,
   getAuditLogs as dbGetAuditLogs,
@@ -35,6 +52,32 @@ import {
   getStockMovementCountInRange as dbGetStockMovementCountInRange,
   insertProduct,
   addStockMovement as dbAddStockMovement,
+  createSale as dbCreateSale,
+  getSalesHistory as dbGetSalesHistory,
+  getRecentSoldProducts as dbGetRecentSoldProducts,
+  getSaleReceipt as dbGetSaleReceipt,
+  validateSalesMovementConsistency as dbValidateSalesMovementConsistency,
+  addSupplier as dbAddSupplier,
+  updateSupplier as dbUpdateSupplier,
+  deleteSupplier as dbDeleteSupplier,
+  listSuppliers as dbListSuppliers,
+  createPurchaseOrder as dbCreatePurchaseOrder,
+  getPurchaseHistory as dbGetPurchaseHistory,
+  getOpenPurchaseOrders as dbGetOpenPurchaseOrders,
+  getPurchaseOrderDetails as dbGetPurchaseOrderDetails,
+  receivePurchaseItems as dbReceivePurchaseItems,
+  recordSupplierPayment as dbRecordSupplierPayment,
+  getSupplierPayables as dbGetSupplierPayables,
+  validatePurchaseMovementConsistency as dbValidatePurchaseMovementConsistency,
+  createExpense as dbCreateExpense,
+  getExpenses as dbGetExpenses,
+  getCashbookEntries as dbGetCashbookEntries,
+  getCashflowSummary as dbGetCashflowSummary,
+  getProfitReport as dbGetProfitReport,
+  getProductMarginReport as dbGetProductMarginReport,
+  getDayCloseSnapshot as dbGetDayCloseSnapshot,
+  closeBusinessDay as dbCloseBusinessDay,
+  getDayCloseReports as dbGetDayCloseReports,
   updateCustomer as dbUpdateCustomer,
   updateProduct as dbUpdateProduct,
 } from './database/db';
@@ -45,7 +88,33 @@ import ProductDetailsScreen from './screens/ProductDetailsScreen.js';
 import ProductListScreen from './screens/ProductListScreen';
 import StockMovementScreen from './screens/StockMovementScreen.js';
 import DashboardScreen from './screens/DashboardScreen';
+import ReportsScreen from './screens/ReportsScreen';
+import SyncConflictScreen from './screens/SyncConflictScreen';
+import OfflineQueueMonitor from './screens/OfflineQueueMonitor';
+import BackupRestoreScreen from './screens/BackupRestoreScreen';
+import StockSuggestionsScreen from './screens/StockSuggestionsScreen';
 import AuditHistoryScreen from './screens/AuditHistoryScreen';
+import SalesScreen from './screens/SalesScreen';
+import SalesHistoryScreen from './screens/SalesHistoryScreen';
+import ReceiptScreen from './screens/ReceiptScreen';
+import SupplierScreen from './screens/SupplierScreen';
+import PurchaseOrderScreen from './screens/PurchaseOrderScreen';
+import GoodsReceiveScreen from './screens/GoodsReceiveScreen';
+import PurchaseHistoryScreen from './screens/PurchaseHistoryScreen';
+import CashbookScreen from './screens/CashbookScreen';
+import ExpenseScreen from './screens/ExpenseScreen';
+import ProfitReportScreen from './screens/ProfitReportScreen';
+import DayCloseScreen from './screens/DayCloseScreen';
+import InventoryBatchViewScreen from './screens/InventoryBatchViewScreen';
+import AlertsScreen from './screens/AlertsScreen';
+import CycleCountScreen from './screens/CycleCountScreen';
+import ApprovalRequestsScreen from './screens/ApprovalRequestsScreen';
+import CustomerCreditScreen from './screens/CustomerCreditScreen';
+import CollectionsDashboardScreen from './screens/CollectionsDashboardScreen';
+import CustomerStatementScreen from './screens/CustomerStatementScreen';
+import OnboardingScreen from './screens/OnboardingScreen';
+import HelpCenterScreen from './screens/HelpCenterScreen';
+import FeedbackScreen from './screens/FeedbackScreen';
 import ProfileScreen from './screens/ProfileScreen';
 import AccountRecoveryScreen from './screens/auth/AccountRecoveryScreen';
 import LoginScreen from './screens/auth/LoginScreen';
@@ -66,19 +135,75 @@ import { computeFeatureBatch } from './services/features/featureCalculator';
 import { createReorderPredictor } from './services/reorder/reorderSuggestionEngine.js';
 import { pushTrustMonitoringSnapshotOnline } from './services/backend/trustMonitoringApi';
 import { fetchCustomerTrustScoresOnline } from './services/backend/trustApi';
+import {
+  fetchCollectionsDashboardOnline,
+  fetchCustomerStatementOnline,
+  exportCustomerStatementCsvOnline,
+  createCustomerReminderOnline,
+  listCustomerRemindersOnline,
+  createPaymentPromiseOnline,
+  listPaymentPromisesOnline,
+  updatePaymentPromiseStatusOnline,
+} from './services/backend/creditApi';
+import {
+  listApprovalRequestsOnline,
+  approveApprovalRequestOnline,
+  rejectApprovalRequestOnline,
+} from './services/backend/approvalApi';
 import { runDataSync } from './services/sync/dataSync';
 import { UI_COLORS } from './constants/ui-theme';
 import { COLORS } from './theme/colors';
+import {
+  ACTIONS as RBAC_ACTIONS,
+  checkPermission as checkRolePermission,
+  canonicalizeRole,
+} from './security/rbac';
 
 const Drawer = createDrawerNavigator();
 const RootStack = createNativeStackNavigator();
 const AuthStack = createNativeStackNavigator();
 const MainStack = createNativeStackNavigator();
+const DEFAULT_TRUST_PREDICTION_HORIZON = '1_month';
 
 const RISK_LEVEL_TOKEN_LABELS = Object.freeze({
   LOW: 'Low Risk',
   MEDIUM: 'Medium Risk',
   HIGH: 'High Risk',
+});
+
+const ROUTE_REQUIRED_ACTIONS = Object.freeze({
+  StockSuggestions: RBAC_ACTIONS.PRODUCTS_VIEW,
+  Audit: RBAC_ACTIONS.AUDIT_VIEW,
+  ApprovalRequests: RBAC_ACTIONS.APPROVAL_REVIEW,
+  Reports: RBAC_ACTIONS.REPORTS_VIEW,
+  SyncConflicts: RBAC_ACTIONS.AUDIT_VIEW,
+  OfflineQueue: RBAC_ACTIONS.AUDIT_VIEW,
+  BackupRestore: RBAC_ACTIONS.AUDIT_VIEW,
+  Sales: RBAC_ACTIONS.SALES_CREATE,
+  SalesHistory: RBAC_ACTIONS.SALES_CREATE,
+  Suppliers: RBAC_ACTIONS.PURCHASE_MANAGE,
+  PurchaseOrders: RBAC_ACTIONS.PURCHASE_MANAGE,
+  GoodsReceive: RBAC_ACTIONS.PURCHASE_MANAGE,
+  PurchaseHistory: RBAC_ACTIONS.PURCHASE_MANAGE,
+  Cashbook: RBAC_ACTIONS.EXPENSES_MANAGE,
+  Expenses: RBAC_ACTIONS.EXPENSES_MANAGE,
+  ProfitReport: RBAC_ACTIONS.REPORTS_VIEW,
+  DayClose: RBAC_ACTIONS.EXPENSES_MANAGE,
+  InventoryBatches: RBAC_ACTIONS.STOCK_MANAGE,
+  Alerts: RBAC_ACTIONS.STOCK_MANAGE,
+  CycleCount: RBAC_ACTIONS.STOCK_MANAGE,
+  Products: RBAC_ACTIONS.PRODUCTS_VIEW,
+  Customers: RBAC_ACTIONS.CUSTOMERS_VIEW,
+  Ledger: RBAC_ACTIONS.CUSTOMERS_VIEW,
+  Baki: RBAC_ACTIONS.CUSTOMERS_VIEW,
+  CustomerCredit: RBAC_ACTIONS.CUSTOMERS_VIEW,
+  Collections: RBAC_ACTIONS.REPORTS_VIEW,
+  CustomerStatement: RBAC_ACTIONS.REPORTS_VIEW,
+  Onboarding: RBAC_ACTIONS.REPORTS_VIEW,
+  HelpCenter: RBAC_ACTIONS.REPORTS_VIEW,
+  Feedback: RBAC_ACTIONS.REPORTS_VIEW,
+  Movement: RBAC_ACTIONS.STOCK_MANAGE,
+  Details: RBAC_ACTIONS.PRODUCTS_VIEW,
 });
 
 const toUiRiskLabel = (value) => {
@@ -123,6 +248,17 @@ function BootLoading({
 }
 
 function MainSidebarNavigator() {
+  const { user } = useAuth();
+  const activeRole = canonicalizeRole(user?.role);
+  const canAccessRoute = useCallback((routeName) => {
+    const requiredAction = ROUTE_REQUIRED_ACTIONS[routeName] || null;
+    if (!requiredAction) {
+      return true;
+    }
+
+    return checkRolePermission(activeRole, requiredAction);
+  }, [activeRole]);
+
   return (
     <Drawer.Navigator
       initialRouteName="Dashboard"
@@ -151,9 +287,19 @@ function MainSidebarNavigator() {
           letterSpacing: 0.2,
         },
         drawerItemStyle: {
-          borderRadius: 10,
-          marginHorizontal: 10,
-          marginVertical: 4,
+          ...(canAccessRoute(route.name)
+            ? {
+              borderRadius: 10,
+              marginHorizontal: 10,
+              marginVertical: 4,
+            }
+            : {
+              display: 'none',
+              height: 0,
+              marginHorizontal: 0,
+              marginVertical: 0,
+              paddingVertical: 0,
+            }),
         },
         drawerIcon: ({ color, size }) => {
           if (route.name === 'Products') {
@@ -168,6 +314,30 @@ function MainSidebarNavigator() {
             return <MaterialIcons name="receipt-long" size={size} color={color} />;
           }
 
+          if (route.name === 'CustomerCredit') {
+            return <MaterialIcons name="credit-score" size={size} color={color} />;
+          }
+
+          if (route.name === 'Collections') {
+            return <MaterialIcons name="analytics" size={size} color={color} />;
+          }
+
+          if (route.name === 'CustomerStatement') {
+            return <MaterialIcons name="description" size={size} color={color} />;
+          }
+
+          if (route.name === 'Onboarding') {
+            return <MaterialIcons name="school" size={size} color={color} />;
+          }
+
+          if (route.name === 'HelpCenter') {
+            return <MaterialIcons name="help-center" size={size} color={color} />;
+          }
+
+          if (route.name === 'Feedback') {
+            return <MaterialIcons name="forum" size={size} color={color} />;
+          }
+
           if (route.name === 'Movement') {
             return <MaterialIcons name="swap-horiz" size={size} color={color} />;
           }
@@ -180,8 +350,84 @@ function MainSidebarNavigator() {
             return <MaterialIcons name="dashboard" size={size} color={color} />;
           }
 
+          if (route.name === 'Reports') {
+            return <MaterialIcons name="bar-chart" size={size} color={color} />;
+          }
+
+          if (route.name === 'SyncConflicts') {
+            return <MaterialIcons name="merge-type" size={size} color={color} />;
+          }
+
+          if (route.name === 'OfflineQueue') {
+            return <MaterialIcons name="schedule-send" size={size} color={color} />;
+          }
+
+          if (route.name === 'BackupRestore') {
+            return <MaterialIcons name="backup" size={size} color={color} />;
+          }
+
+          if (route.name === 'StockSuggestions') {
+            return <MaterialIcons name="insights" size={size} color={color} />;
+          }
+
           if (route.name === 'Audit') {
             return <MaterialIcons name="history" size={size} color={color} />;
+          }
+
+          if (route.name === 'ApprovalRequests') {
+            return <MaterialIcons name="verified-user" size={size} color={color} />;
+          }
+
+          if (route.name === 'Sales') {
+            return <MaterialIcons name="point-of-sale" size={size} color={color} />;
+          }
+
+          if (route.name === 'SalesHistory') {
+            return <MaterialIcons name="history-edu" size={size} color={color} />;
+          }
+
+          if (route.name === 'Suppliers') {
+            return <MaterialIcons name="local-shipping" size={size} color={color} />;
+          }
+
+          if (route.name === 'PurchaseOrders') {
+            return <MaterialIcons name="assignment" size={size} color={color} />;
+          }
+
+          if (route.name === 'GoodsReceive') {
+            return <MaterialIcons name="inventory" size={size} color={color} />;
+          }
+
+          if (route.name === 'PurchaseHistory') {
+            return <MaterialIcons name="history-toggle-off" size={size} color={color} />;
+          }
+
+          if (route.name === 'Cashbook') {
+            return <MaterialIcons name="account-balance-wallet" size={size} color={color} />;
+          }
+
+          if (route.name === 'Expenses') {
+            return <MaterialIcons name="receipt" size={size} color={color} />;
+          }
+
+          if (route.name === 'ProfitReport') {
+            return <MaterialIcons name="trending-up" size={size} color={color} />;
+          }
+
+          if (route.name === 'DayClose') {
+            return <MaterialIcons name="event-available" size={size} color={color} />;
+          }
+
+          if (route.name === 'InventoryBatches') {
+            return <MaterialIcons name="layers" size={size} color={color} />;
+          }
+
+          if (route.name === 'Alerts') {
+            return <MaterialIcons name="notification-important" size={size} color={color} />;
+          }
+
+          if (route.name === 'CycleCount') {
+            return <MaterialIcons name="fact-check" size={size} color={color} />;
           }
 
           if (route.name === 'Profile') {
@@ -209,6 +455,46 @@ function MainSidebarNavigator() {
         })}
       />
       <Drawer.Screen
+        name="Reports"
+        component={ReportsScreen}
+        options={{
+          title: 'Reports',
+          headerTitle: 'Reports & Compliance',
+        }}
+      />
+      <Drawer.Screen
+        name="SyncConflicts"
+        component={SyncConflictScreen}
+        options={{
+          title: 'Sync Conflicts',
+          headerTitle: 'Sync Conflict Center',
+        }}
+      />
+      <Drawer.Screen
+        name="OfflineQueue"
+        component={OfflineQueueMonitor}
+        options={{
+          title: 'Offline Queue',
+          headerTitle: 'Offline Queue Monitor',
+        }}
+      />
+      <Drawer.Screen
+        name="BackupRestore"
+        component={BackupRestoreScreen}
+        options={{
+          title: 'Backup & Restore',
+          headerTitle: 'Backup and Restore',
+        }}
+      />
+      <Drawer.Screen
+        name="StockSuggestions"
+        component={StockSuggestionsScreen}
+        options={{
+          title: 'Suggestions',
+          headerTitle: 'Stock Suggestions',
+        }}
+      />
+      <Drawer.Screen
         name="Profile"
         component={ProfileScreen}
         options={{
@@ -222,6 +508,118 @@ function MainSidebarNavigator() {
         options={{
           title: 'Audit',
           headerTitle: 'Audit History',
+        }}
+      />
+      <Drawer.Screen
+        name="ApprovalRequests"
+        component={ApprovalRequestsScreen}
+        options={{
+          title: 'Approvals',
+          headerTitle: 'Approval Requests',
+        }}
+      />
+      <Drawer.Screen
+        name="Sales"
+        component={SalesScreen}
+        options={{
+          title: 'Sales',
+          headerTitle: 'Sales & Receipts',
+        }}
+      />
+      <Drawer.Screen
+        name="SalesHistory"
+        component={SalesHistoryScreen}
+        options={{
+          title: 'Sales History',
+          headerTitle: 'Sales History',
+        }}
+      />
+      <Drawer.Screen
+        name="Suppliers"
+        component={SupplierScreen}
+        options={{
+          title: 'Suppliers',
+          headerTitle: 'Supplier Manager',
+        }}
+      />
+      <Drawer.Screen
+        name="PurchaseOrders"
+        component={PurchaseOrderScreen}
+        options={{
+          title: 'Purchase Orders',
+          headerTitle: 'Create Purchase Orders',
+        }}
+      />
+      <Drawer.Screen
+        name="GoodsReceive"
+        component={GoodsReceiveScreen}
+        options={{
+          title: 'Goods Receive',
+          headerTitle: 'Goods Receiving',
+        }}
+      />
+      <Drawer.Screen
+        name="PurchaseHistory"
+        component={PurchaseHistoryScreen}
+        options={{
+          title: 'Purchase History',
+          headerTitle: 'Purchase History & Payables',
+        }}
+      />
+      <Drawer.Screen
+        name="Cashbook"
+        component={CashbookScreen}
+        options={{
+          title: 'Cashbook',
+          headerTitle: 'Cashbook & Journal',
+        }}
+      />
+      <Drawer.Screen
+        name="Expenses"
+        component={ExpenseScreen}
+        options={{
+          title: 'Expenses',
+          headerTitle: 'Expense Manager',
+        }}
+      />
+      <Drawer.Screen
+        name="ProfitReport"
+        component={ProfitReportScreen}
+        options={{
+          title: 'Profit Report',
+          headerTitle: 'Profit & Margin Report',
+        }}
+      />
+      <Drawer.Screen
+        name="DayClose"
+        component={DayCloseScreen}
+        options={{
+          title: 'Day Close',
+          headerTitle: 'Day Close Summary',
+        }}
+      />
+      <Drawer.Screen
+        name="InventoryBatches"
+        component={InventoryBatchViewScreen}
+        options={{
+          title: 'Inventory Batches',
+          headerTitle: 'Batch & FEFO View',
+        }}
+      />
+      <Drawer.Screen
+        name="Alerts"
+        component={AlertsScreen}
+        options={{
+          title: 'Alerts',
+          headerTitle: 'Inventory Alerts',
+        }}
+      />
+      <Drawer.Screen
+        name="CycleCount"
+        component={CycleCountScreen}
+        options={{
+          title: 'Cycle Count',
+          headerTitle: 'Cycle Count & Reconciliation',
         }}
       />
       <Drawer.Screen
@@ -257,6 +655,54 @@ function MainSidebarNavigator() {
         }}
       />
       <Drawer.Screen
+        name="CustomerCredit"
+        component={CustomerCreditScreen}
+        options={{
+          title: 'Credit',
+          headerTitle: 'Customer Credit',
+        }}
+      />
+      <Drawer.Screen
+        name="Collections"
+        component={CollectionsDashboardScreen}
+        options={{
+          title: 'Collections',
+          headerTitle: 'Collections Dashboard',
+        }}
+      />
+      <Drawer.Screen
+        name="CustomerStatement"
+        component={CustomerStatementScreen}
+        options={{
+          title: 'Statement',
+          headerTitle: 'Customer Statement',
+        }}
+      />
+      <Drawer.Screen
+        name="Onboarding"
+        component={OnboardingScreen}
+        options={{
+          title: 'Onboarding',
+          headerTitle: 'Pilot Onboarding',
+        }}
+      />
+      <Drawer.Screen
+        name="HelpCenter"
+        component={HelpCenterScreen}
+        options={{
+          title: 'Help Center',
+          headerTitle: 'Help Center',
+        }}
+      />
+      <Drawer.Screen
+        name="Feedback"
+        component={FeedbackScreen}
+        options={{
+          title: 'Feedback',
+          headerTitle: 'Feedback Loop',
+        }}
+      />
+      <Drawer.Screen
         name="Movement"
         component={StockMovementScreen}
         options={{
@@ -280,6 +726,16 @@ function MainStackNavigator() {
   return (
     <MainStack.Navigator>
       <MainStack.Screen name="MainSidebar" component={MainSidebarNavigator} options={{ headerShown: false }} />
+      <MainStack.Screen
+        name="Receipt"
+        component={ReceiptScreen}
+        options={{
+          title: 'Receipt',
+          headerStyle: { backgroundColor: UI_COLORS.textPrimary },
+          headerTintColor: UI_COLORS.surface,
+          contentStyle: { backgroundColor: UI_COLORS.background },
+        }}
+      />
       <MainStack.Screen
         name="UpdatePassword"
         component={UpdatePasswordScreen}
@@ -326,6 +782,7 @@ function AuthStackNavigator() {
 
 function MainDataShell() {
   const { user, session, isOnline } = useAuth();
+  const activeRole = canonicalizeRole(user?.role);
   const trustRolloutController = useMemo(() => createTrustRolloutController({
     config: {
       enable_new_scoring: true,
@@ -386,7 +843,10 @@ function MainDataShell() {
     logger: console.warn,
     shadowLogger: console.warn,
   }), [trustMonitoringEngine, trustRolloutController, trustRoutingFlags]);
-  const reorderPredictor = useMemo(() => createReorderPredictor('rule-based'), []);
+  const reorderPredictor = useMemo(() => createReorderPredictor('markov-chain', {
+    accessToken: session?.access_token || null,
+    backendEnabled: Boolean(isOnline),
+  }), [isOnline, session?.access_token]);
   const reorderRuleConfig = useMemo(
     () => ({
       windowDays: 30,
@@ -485,6 +945,7 @@ function MainDataShell() {
         const onlineTrustByCustomerId = await fetchCustomerTrustScoresOnline({
           accessToken: session.access_token,
           customerIds: enrichedCustomers.map((row) => row.id),
+          horizon: DEFAULT_TRUST_PREDICTION_HORIZON,
         });
 
         enrichedCustomers = enrichedCustomers.map((row) => {
@@ -508,6 +969,8 @@ function MainDataShell() {
               : Array.isArray(row.risk_reasons)
                 ? row.risk_reasons
                 : [],
+            prediction_horizon: onlineTrust.prediction_horizon || DEFAULT_TRUST_PREDICTION_HORIZON,
+            prediction_targets: onlineTrust.prediction_targets || null,
           };
         });
       } catch (error) {
@@ -517,11 +980,13 @@ function MainDataShell() {
 
     let nextSuggestions = [];
     try {
-      nextSuggestions = reorderPredictor.predict({
+      nextSuggestions = await Promise.resolve(reorderPredictor.predict({
         products: productRows,
         salesRows,
         config: reorderRuleConfig,
-      });
+        accessToken: session?.access_token || null,
+        horizon: '1W',
+      }));
     } catch (error) {
       console.error('[APP] reorder suggestion calculation failed:', error);
     }
@@ -700,34 +1165,255 @@ function MainDataShell() {
   );
 
   const addStockMovement = useCallback(
-    async ({ productId, movementType, quantity, note }) => {
-      const saved = await dbAddStockMovement({ productId, movementType, quantity, note });
+    async ({ productId, movementType, quantity, note, stockOutReason }) => {
+      const saved = await dbAddStockMovement({ productId, movementType, quantity, note, stockOutReason });
       await refreshAll();
       return saved;
     },
     [refreshAll]
   );
+
+  const createSale = useCallback(
+    async ({ customerId = null, items = [], payments = [], paymentMode = 'CASH', note = null, timestamp = null } = {}) => {
+      const saved = await dbCreateSale({ customerId, items, payments, paymentMode, note, timestamp });
+      await refreshAll();
+      await runOnlineSync();
+      return saved;
+    },
+    [refreshAll, runOnlineSync]
+  );
+
+  const getSalesHistory = useCallback(async ({
+    limit = 100,
+    fromDateIso = null,
+    toDateIso = null,
+    customerId = null,
+    productId = null,
+    paymentMode = null,
+    searchText = '',
+  } = {}) => {
+    return dbGetSalesHistory({
+      limit,
+      fromDateIso,
+      toDateIso,
+      customerId,
+      productId,
+      paymentMode,
+      searchText,
+    });
+  }, []);
+
+  const getRecentSoldProducts = useCallback(async ({ limit = 12 } = {}) => {
+    return dbGetRecentSoldProducts({ limit });
+  }, []);
+
+  const getSaleReceipt = useCallback(async ({ saleId = null, receiptId = null } = {}) => {
+    return dbGetSaleReceipt({ saleId, receiptId });
+  }, []);
+
+  const validateSalesMovementConsistency = useCallback(async ({ dateIso = null } = {}) => {
+    return dbValidateSalesMovementConsistency({ dateIso });
+  }, []);
+
+  const listSuppliers = useCallback(async ({ searchText = '', limit = 200 } = {}) => {
+    return dbListSuppliers({ searchText, limit });
+  }, []);
+
+  const addSupplier = useCallback(async ({ name, phone, address } = {}) => {
+    const saved = await dbAddSupplier({ name, phone, address });
+    await refreshAll();
+    await runOnlineSync();
+    return saved;
+  }, [refreshAll, runOnlineSync]);
+
+  const updateSupplier = useCallback(async ({ id, name, phone, address } = {}) => {
+    const updated = await dbUpdateSupplier({ id, name, phone, address });
+    await refreshAll();
+    await runOnlineSync();
+    return updated;
+  }, [refreshAll, runOnlineSync]);
+
+  const deleteSupplier = useCallback(async (id) => {
+    const deleted = await dbDeleteSupplier(id);
+    await refreshAll();
+    await runOnlineSync();
+    return deleted;
+  }, [refreshAll, runOnlineSync]);
+
+  const createPurchaseOrder = useCallback(async ({ supplierId, items, note, purchaseDate, paidAmount, paymentMethod } = {}) => {
+    const saved = await dbCreatePurchaseOrder({ supplierId, items, note, purchaseDate, paidAmount, paymentMethod });
+    await refreshAll();
+    await runOnlineSync();
+    return saved;
+  }, [refreshAll, runOnlineSync]);
+
+  const getPurchaseHistory = useCallback(async ({
+    limit = 100,
+    fromDateIso = null,
+    toDateIso = null,
+    supplierId = null,
+    status = null,
+    searchText = '',
+  } = {}) => {
+    return dbGetPurchaseHistory({
+      limit,
+      fromDateIso,
+      toDateIso,
+      supplierId,
+      status,
+      searchText,
+    });
+  }, []);
+
+  const getOpenPurchaseOrders = useCallback(async ({ limit = 100 } = {}) => {
+    return dbGetOpenPurchaseOrders({ limit });
+  }, []);
+
+  const getPurchaseOrderDetails = useCallback(async ({ purchaseOrderId } = {}) => {
+    return dbGetPurchaseOrderDetails({ purchaseOrderId });
+  }, []);
+
+  const receivePurchaseItems = useCallback(async ({ purchaseOrderId, items, note, receivedAt } = {}) => {
+    const saved = await dbReceivePurchaseItems({ purchaseOrderId, items, note, receivedAt });
+    await refreshAll();
+    await runOnlineSync();
+    return saved;
+  }, [refreshAll, runOnlineSync]);
+
+  const recordSupplierPayment = useCallback(async ({
+    supplierId,
+    amount,
+    purchaseOrderId,
+    paymentMethod,
+    note,
+    paidAt,
+  } = {}) => {
+    const saved = await dbRecordSupplierPayment({
+      supplierId,
+      amount,
+      purchaseOrderId,
+      paymentMethod,
+      note,
+      paidAt,
+    });
+    await refreshAll();
+    await runOnlineSync();
+    return saved;
+  }, [refreshAll, runOnlineSync]);
+
+  const getSupplierPayables = useCallback(async ({ supplierId = null, limit = 120 } = {}) => {
+    return dbGetSupplierPayables({ supplierId, limit });
+  }, []);
+
+  const validatePurchaseMovementConsistency = useCallback(async ({ dateIso = null } = {}) => {
+    return dbValidatePurchaseMovementConsistency({ dateIso });
+  }, []);
+
+  const createExpense = useCallback(async ({ title, amount, category, paymentMethod, note, expenseDate } = {}) => {
+    const saved = await dbCreateExpense({ title, amount, category, paymentMethod, note, expenseDate });
+    await refreshAll();
+    await runOnlineSync();
+    return saved;
+  }, [refreshAll, runOnlineSync]);
+
+  const getExpenses = useCallback(async ({ fromDateIso, toDateIso, category, searchText, limit } = {}) => {
+    return dbGetExpenses({ fromDateIso, toDateIso, category, searchText, limit });
+  }, []);
+
+  const getCashbookEntries = useCallback(async ({ fromDateIso, toDateIso, entryType, paymentMethod, limit } = {}) => {
+    return dbGetCashbookEntries({ fromDateIso, toDateIso, entryType, paymentMethod, limit });
+  }, []);
+
+  const getCashflowSummary = useCallback(async ({ fromDateIso, toDateIso, days } = {}) => {
+    return dbGetCashflowSummary({ fromDateIso, toDateIso, days });
+  }, []);
+
+  const getProfitReport = useCallback(async ({ fromDateIso, toDateIso, days } = {}) => {
+    return dbGetProfitReport({ fromDateIso, toDateIso, days });
+  }, []);
+
+  const getProductMarginReport = useCallback(async ({ fromDateIso, toDateIso, days, limit } = {}) => {
+    return dbGetProductMarginReport({ fromDateIso, toDateIso, days, limit });
+  }, []);
+
+  const getDayCloseSnapshot = useCallback(async ({ businessDate } = {}) => {
+    return dbGetDayCloseSnapshot({ businessDate });
+  }, []);
+
+  const closeBusinessDay = useCallback(async ({ businessDate, cashOnHand, note } = {}) => {
+    const saved = await dbCloseBusinessDay({ businessDate, cashOnHand, note });
+    await refreshAll();
+    await runOnlineSync();
+    return saved;
+  }, [refreshAll, runOnlineSync]);
+
+  const getDayCloseReports = useCallback(async ({ limit } = {}) => {
+    return dbGetDayCloseReports({ limit });
+  }, []);
+
+  const getInventoryBatches = useCallback(async ({ productId = null, includeDepleted = false, limit = 300 } = {}) => {
+    return dbGetInventoryBatches({ productId, includeDepleted, limit });
+  }, []);
+
+  const selectBatchForSale = useCallback(async ({ productId } = {}) => {
+    return dbSelectBatchForSale(productId);
+  }, []);
+
+  const getInventoryAlerts = useCallback(async ({ alertType = null, severity = null, activeOnly = true, limit = 200 } = {}) => {
+    return dbGetInventoryAlerts({ alertType, severity, activeOnly, limit });
+  }, []);
+
+  const refreshInventoryAlerts = useCallback(async ({ expiryAlertDays, deadStockDays } = {}) => {
+    const rows = await dbRefreshInventoryAlerts({ expiryAlertDays, deadStockDays });
+    await refreshAll();
+    return rows;
+  }, [refreshAll]);
+
+  const getDeadStockProducts = useCallback(async ({ thresholdDays = 60, limit = 200 } = {}) => {
+    return dbGetDeadStockProducts({ thresholdDays, limit });
+  }, []);
+
+  const getInventoryHealthInsights = useCallback(async ({ lookbackDays = 30, expiryAlertDays = 7, deadStockDays = 60 } = {}) => {
+    return dbGetInventoryHealthInsights({ lookbackDays, expiryAlertDays, deadStockDays });
+  }, []);
+
+  const getCycleCounts = useCallback(async ({ productId = null, limit = 120 } = {}) => {
+    return dbGetCycleCounts({ productId, limit });
+  }, []);
+
+  const recordCycleCount = useCallback(async ({ productId, physicalQuantity, note, timestamp } = {}) => {
+    const row = await dbRecordCycleCount({ productId, physicalQuantity, note, timestamp });
+    await refreshAll();
+    await runOnlineSync();
+    return row;
+  }, [refreshAll, runOnlineSync]);
+
+  const validateInventoryBatchConsistency = useCallback(async ({ productId = null } = {}) => {
+    return dbValidateInventoryBatchConsistency({ productId });
+  }, []);
 
   const getStockMovementHistory = useCallback(async ({ productId = null, limit = 100 } = {}) => {
     return dbGetStockMovements({ productId, limit });
   }, []);
 
   const addCustomer = useCallback(
-    async ({ name, phone, address }) => {
-      const saved = await dbAddCustomer({ name, phone, address });
+    async ({ name, phone, address, creditLimit, dueTermsDays }) => {
+      const saved = await dbAddCustomer({ name, phone, address, creditLimit, dueTermsDays });
       await refreshAll();
+      await runOnlineSync();
       return saved;
     },
-    [refreshAll]
+    [refreshAll, runOnlineSync]
   );
 
   const updateCustomer = useCallback(
-    async ({ id, name, phone, address }) => {
-      const updated = await dbUpdateCustomer({ id, name, phone, address });
+    async ({ id, name, phone, address, creditLimit, dueTermsDays, riskLevel }) => {
+      const updated = await dbUpdateCustomer({ id, name, phone, address, creditLimit, dueTermsDays, riskLevel });
       await refreshAll();
+      await runOnlineSync();
       return updated;
     },
-    [refreshAll]
+    [refreshAll, runOnlineSync]
   );
 
   const deleteCustomer = useCallback(
@@ -740,8 +1426,8 @@ function MainDataShell() {
   );
 
   const addBaki = useCallback(
-    async ({ customerId, amount, note }) => {
-      const saved = await dbAddBaki({ customerId, amount, note });
+    async ({ customerId, amount, note, dueDate, dueTermsDays, referenceId }) => {
+      const saved = await dbAddBaki({ customerId, amount, note, dueDate, dueTermsDays, referenceId });
       await refreshAll();
       await runOnlineSync();
       return saved;
@@ -750,8 +1436,8 @@ function MainDataShell() {
   );
 
   const addBakiPayment = useCallback(
-    async ({ customerId, amount, note, paymentMethod }) => {
-      const saved = await dbAddPayment({ customerId, amount, note, paymentMethod });
+    async ({ customerId, amount, note, paymentMethod, referenceId }) => {
+      const saved = await dbAddPayment({ customerId, amount, note, paymentMethod, referenceId });
       await refreshAll();
       await runOnlineSync();
       return saved;
@@ -766,6 +1452,175 @@ function MainDataShell() {
   const getBakiKpiSummary = useCallback(async ({ startDateIso, endDateIso, rangeDays }) => {
     return dbGetBakiKpiSummary({ startDateIso, endDateIso, rangeDays });
   }, []);
+
+  const getCollectionsDashboardData = useCallback(async () => {
+    if (isOnline && session?.access_token) {
+      return fetchCollectionsDashboardOnline({ accessToken: session.access_token });
+    }
+
+    return dbGetCollectionsDashboard();
+  }, [isOnline, session?.access_token]);
+
+  const getCustomerStatementData = useCallback(async ({ customerId, fromDateIso = null, toDateIso = null } = {}) => {
+    if (isOnline && session?.access_token) {
+      return fetchCustomerStatementOnline({
+        accessToken: session.access_token,
+        customerId,
+        fromDateIso,
+        toDateIso,
+      });
+    }
+
+    return dbGetCustomerStatement({ customerId, fromDateIso, toDateIso });
+  }, [isOnline, session?.access_token]);
+
+  const exportCustomerStatementCsvData = useCallback(async ({ customerId, fromDateIso = null, toDateIso = null } = {}) => {
+    if (isOnline && session?.access_token) {
+      return exportCustomerStatementCsvOnline({
+        accessToken: session.access_token,
+        customerId,
+        fromDateIso,
+        toDateIso,
+      });
+    }
+
+    const statement = await dbGetCustomerStatement({ customerId, fromDateIso, toDateIso });
+    return dbBuildCustomerStatementCsv({ statement });
+  }, [isOnline, session?.access_token]);
+
+  const scheduleCustomerReminder = useCallback(async ({
+    customerId,
+    bakiTransactionId = null,
+    channel = 'manual',
+    message = null,
+    sentAt = null,
+    status = 'sent',
+    referenceId = null,
+  } = {}) => {
+    if (isOnline && session?.access_token) {
+      const saved = await createCustomerReminderOnline({
+        accessToken: session.access_token,
+        customerId,
+        bakiEntryId: bakiTransactionId,
+        channel,
+        message,
+        sentAt,
+        status,
+        referenceId,
+      });
+      await refreshAll();
+      await runOnlineSync();
+      return saved;
+    }
+
+    const saved = await dbScheduleCollectionReminder({
+      customerId,
+      bakiTransactionId,
+      channel,
+      message,
+      sentAt,
+      status,
+      referenceId,
+    });
+    await refreshAll();
+    return saved;
+  }, [isOnline, refreshAll, runOnlineSync, session?.access_token]);
+
+  const getCustomerReminders = useCallback(async ({ customerId, limit = 100 } = {}) => {
+    if (isOnline && session?.access_token) {
+      const response = await listCustomerRemindersOnline({ accessToken: session.access_token, customerId, limit });
+      return Array.isArray(response?.items) ? response.items : [];
+    }
+
+    return dbGetCollectionReminders({ customerId, limit });
+  }, [isOnline, session?.access_token]);
+
+  const createCustomerPromise = useCallback(async ({ customerId, promisedAmount, promiseDate, note = null } = {}) => {
+    if (isOnline && session?.access_token) {
+      const saved = await createPaymentPromiseOnline({
+        accessToken: session.access_token,
+        customerId,
+        promisedAmount,
+        promiseDate,
+        note,
+      });
+      await refreshAll();
+      await runOnlineSync();
+      return saved;
+    }
+
+    const saved = await dbCreatePaymentPromise({ customerId, promisedAmount, promiseDate, note });
+    await refreshAll();
+    return saved;
+  }, [isOnline, refreshAll, runOnlineSync, session?.access_token]);
+
+  const getCustomerPromises = useCallback(async ({ customerId = null, status = 'all', limit = 100 } = {}) => {
+    if (isOnline && session?.access_token && customerId) {
+      const response = await listPaymentPromisesOnline({ accessToken: session.access_token, customerId, status });
+      return Array.isArray(response?.items) ? response.items : [];
+    }
+
+    return dbGetPaymentPromises({ customerId, status, limit });
+  }, [isOnline, session?.access_token]);
+
+  const updateCustomerPromiseStatus = useCallback(async ({ promiseId, status, fulfilledBakiTransactionId = null } = {}) => {
+    if (isOnline && session?.access_token) {
+      const updated = await updatePaymentPromiseStatusOnline({
+        accessToken: session.access_token,
+        promiseId,
+        status,
+      });
+      await refreshAll();
+      await runOnlineSync();
+      return updated;
+    }
+
+    const updated = await dbUpdatePaymentPromiseStatus({ promiseId, status, fulfilledBakiTransactionId });
+    await refreshAll();
+    return updated;
+  }, [isOnline, refreshAll, runOnlineSync, session?.access_token]);
+
+  const listApprovalRequests = useCallback(async ({ status = 'PENDING', actionType = null } = {}) => {
+    if (!isOnline || !session?.access_token) {
+      return [];
+    }
+
+    const response = await listApprovalRequestsOnline({
+      accessToken: session.access_token,
+      status,
+      actionType,
+    });
+
+    return Array.isArray(response?.items) ? response.items : [];
+  }, [isOnline, session?.access_token]);
+
+  const approveApprovalRequest = useCallback(async ({ approvalRequestId, decisionNote = null } = {}) => {
+    if (!isOnline || !session?.access_token) {
+      throw new Error('Online connection is required to approve requests.');
+    }
+
+    const result = await approveApprovalRequestOnline({
+      accessToken: session.access_token,
+      approvalRequestId,
+      decisionNote,
+    });
+    await refreshAll();
+    return result;
+  }, [isOnline, refreshAll, session?.access_token]);
+
+  const rejectApprovalRequest = useCallback(async ({ approvalRequestId, decisionNote = null } = {}) => {
+    if (!isOnline || !session?.access_token) {
+      throw new Error('Online connection is required to reject requests.');
+    }
+
+    const result = await rejectApprovalRequestOnline({
+      accessToken: session.access_token,
+      approvalRequestId,
+      decisionNote,
+    });
+    await refreshAll();
+    return result;
+  }, [isOnline, refreshAll, session?.access_token]);
 
   const getDashboardKpiSummary = useCallback(async ({ startDateIso, endDateIso, transactionType }) => {
     return dbGetDashboardKpiSummary({ startDateIso, endDateIso, transactionType });
@@ -803,6 +1658,41 @@ function MainDataShell() {
       deleteProduct,
       addStockMovement,
       getStockMovementHistory,
+      createSale,
+      getSalesHistory,
+      getRecentSoldProducts,
+      getSaleReceipt,
+      validateSalesMovementConsistency,
+      listSuppliers,
+      addSupplier,
+      updateSupplier,
+      deleteSupplier,
+      createPurchaseOrder,
+      getPurchaseHistory,
+      getOpenPurchaseOrders,
+      getPurchaseOrderDetails,
+      receivePurchaseItems,
+      recordSupplierPayment,
+      getSupplierPayables,
+      validatePurchaseMovementConsistency,
+      createExpense,
+      getExpenses,
+      getCashbookEntries,
+      getCashflowSummary,
+      getProfitReport,
+      getProductMarginReport,
+      getDayCloseSnapshot,
+      closeBusinessDay,
+      getDayCloseReports,
+      getInventoryBatches,
+      selectBatchForSale,
+      getInventoryAlerts,
+      refreshInventoryAlerts,
+      getDeadStockProducts,
+      getInventoryHealthInsights,
+      getCycleCounts,
+      recordCycleCount,
+      validateInventoryBatchConsistency,
       addCustomer,
       updateCustomer,
       deleteCustomer,
@@ -810,10 +1700,23 @@ function MainDataShell() {
       addBakiPayment,
       getCustomerLedger,
       getBakiKpiSummary,
+      getCollectionsDashboardData,
+      getCustomerStatementData,
+      exportCustomerStatementCsvData,
+      scheduleCustomerReminder,
+      getCustomerReminders,
+      createCustomerPromise,
+      getCustomerPromises,
+      updateCustomerPromiseStatus,
       getDashboardKpiSummary,
       getDashboardTopActiveCustomers,
       getStockMovementCountInRange,
       getAuditLogs,
+      listApprovalRequests,
+      approveApprovalRequest,
+      rejectApprovalRequest,
+      activeRole,
+      hasPermission: (action) => checkRolePermission(activeRole, action),
       runOnlineSync,
       getTrustRolloutConfig: () => trustRolloutController.getConfig(),
       setTrustRolloutStage: (stageKey) => trustRolloutController.setRolloutStage(stageKey),
@@ -841,6 +1744,41 @@ function MainDataShell() {
       deleteProduct,
       addStockMovement,
       getStockMovementHistory,
+      createSale,
+      getSalesHistory,
+      getRecentSoldProducts,
+      getSaleReceipt,
+      validateSalesMovementConsistency,
+      listSuppliers,
+      addSupplier,
+      updateSupplier,
+      deleteSupplier,
+      createPurchaseOrder,
+      getPurchaseHistory,
+      getOpenPurchaseOrders,
+      getPurchaseOrderDetails,
+      receivePurchaseItems,
+      recordSupplierPayment,
+      getSupplierPayables,
+      validatePurchaseMovementConsistency,
+      createExpense,
+      getExpenses,
+      getCashbookEntries,
+      getCashflowSummary,
+      getProfitReport,
+      getProductMarginReport,
+      getDayCloseSnapshot,
+      closeBusinessDay,
+      getDayCloseReports,
+      getInventoryBatches,
+      selectBatchForSale,
+      getInventoryAlerts,
+      refreshInventoryAlerts,
+      getDeadStockProducts,
+      getInventoryHealthInsights,
+      getCycleCounts,
+      recordCycleCount,
+      validateInventoryBatchConsistency,
       addCustomer,
       updateCustomer,
       deleteCustomer,
@@ -848,10 +1786,22 @@ function MainDataShell() {
       addBakiPayment,
       getCustomerLedger,
       getBakiKpiSummary,
+      getCollectionsDashboardData,
+      getCustomerStatementData,
+      exportCustomerStatementCsvData,
+      scheduleCustomerReminder,
+      getCustomerReminders,
+      createCustomerPromise,
+      getCustomerPromises,
+      updateCustomerPromiseStatus,
       getDashboardKpiSummary,
       getDashboardTopActiveCustomers,
       getStockMovementCountInRange,
       getAuditLogs,
+      listApprovalRequests,
+      approveApprovalRequest,
+      rejectApprovalRequest,
+      activeRole,
       runOnlineSync,
       trustMonitoringEngine,
       trustRolloutController,

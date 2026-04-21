@@ -15,9 +15,11 @@ const {
   normalizeEmail,
   normalizePin,
   normalizeDeviceId,
-  normalizeRole,
+  normalizeTrimmed,
   toBoolean,
 } = require('../utils/normalization');
+const { canonicalizeRole } = require('../security/rbac');
+const { trackEvent } = require('../analytics/eventTracker');
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MAX_FAILED_PIN_ATTEMPTS = 5;
@@ -111,16 +113,23 @@ const getAccessSecret = () => process.env.JWT_SECRET;
 
 const getRefreshSecret = () => process.env.JWT_REFRESH_SECRET || process.env.REFRESH_TOKEN_SECRET || process.env.JWT_SECRET;
 
-const buildAccessToken = (userId, { authMethod = 'pin', role = 'user' } = {}) => {
+const buildAccessToken = (userDoc, { authMethod = 'pin' } = {}) => {
   const secret = getAccessSecret();
 
   if (!secret) {
     throw new Error('JWT_SECRET is not configured.');
   }
 
+  const actorUserId = String(userDoc?._id || userDoc || '').trim();
+  const tenantUserId = String(userDoc?.ownerUserId || userDoc?._id || userDoc || '').trim();
+  const role = canonicalizeRole(userDoc?.role);
+  const branchId = userDoc?.branchId ? String(userDoc.branchId) : null;
+
   return jwt.sign({
-    user_id: String(userId),
-    role: normalizeRole(role),
+    user_id: actorUserId,
+    tenant_user_id: tenantUserId || actorUserId,
+    branch_id: branchId,
+    role,
     token_type: 'access',
     amr: authMethod,
     jti: crypto.randomUUID(),
@@ -310,7 +319,12 @@ const revokeAllUserRefreshTokens = async (userId) => {
 const toPublicUser = (userDoc) => ({
   id: String(userDoc._id),
   email: userDoc.email,
-  role: normalizeRole(userDoc.role),
+  name: userDoc.name || null,
+  phone: userDoc.phone || null,
+  role: canonicalizeRole(userDoc.role),
+  status: String(userDoc.status || 'ACTIVE').trim().toUpperCase(),
+  branchId: userDoc.branchId ? String(userDoc.branchId) : null,
+  ownerUserId: userDoc.ownerUserId ? String(userDoc.ownerUserId) : String(userDoc._id),
   emailVerified: Boolean(userDoc.emailVerifiedAt),
   pinEnabled: Boolean(userDoc.pinSetAt),
   createdAt: userDoc.createdAt,
@@ -384,9 +398,16 @@ const signup = async (req, res) => {
       });
     }
 
+    const requestedName = normalizeTrimmed(req.body?.name) || null;
+    const requestedPhone = normalizeTrimmed(req.body?.phone) || null;
+
     if (user) {
       user.password = pinHash;
       user.pinHash = pinHash;
+      user.name = requestedName || user.name || null;
+      user.phone = requestedPhone || user.phone || null;
+      user.role = user.role || 'OWNER';
+      user.status = user.status || 'ACTIVE';
       user.passwordChangedAt = new Date();
       user.pinChangedAt = new Date();
       user.pinSetAt = new Date();
@@ -397,7 +418,11 @@ const signup = async (req, res) => {
       await user.save();
     } else {
       user = await User.create({
+        name: requestedName,
         email: validation.email,
+        phone: requestedPhone,
+        role: 'OWNER',
+        status: 'ACTIVE',
         password: pinHash,
         pinHash,
         pinSetAt: new Date(),
@@ -409,6 +434,9 @@ const signup = async (req, res) => {
         passwordChangedAt: new Date(),
         pinChangedAt: new Date(),
       });
+
+      user.ownerUserId = user._id;
+      await user.save();
     }
 
     const verification = await issueEmailVerificationCode({
@@ -617,7 +645,7 @@ const verifyEmailCode = async (req, res) => {
     await user.save();
 
     await revokeAllUserRefreshTokens(user._id);
-    const accessToken = buildAccessToken(user._id, { authMethod: 'pin', role: user.role });
+    const accessToken = buildAccessToken(user, { authMethod: 'pin' });
     const refreshToken = buildRefreshToken(user._id, { rememberMe });
     await persistRefreshToken({ userId: user._id, refreshToken });
 
@@ -627,6 +655,20 @@ const verifyEmailCode = async (req, res) => {
       userId: user._id,
       metadata: { rememberMe },
     });
+
+    try {
+      await trackEvent({
+        userId: user._id,
+        eventType: 'login',
+        metadata: {
+          authMethod: 'email_verification',
+          rememberMe,
+        },
+        source: 'auth_api',
+      });
+    } catch {
+      // Analytics should not block authentication success flow.
+    }
 
     return res.status(200).json(buildAuthResponse(user, accessToken, refreshToken));
   } catch {
@@ -908,7 +950,7 @@ const loginWithPin = async (req, res) => {
     await user.save();
 
     await revokeAllUserRefreshTokens(user._id);
-    const accessToken = buildAccessToken(user._id, { authMethod: 'pin', role: user.role });
+    const accessToken = buildAccessToken(user, { authMethod: 'pin' });
     const refreshToken = buildRefreshToken(user._id, { rememberMe });
     await persistRefreshToken({ userId: user._id, refreshToken });
 
@@ -917,6 +959,20 @@ const loginWithPin = async (req, res) => {
       severity: 'info',
       userId: user._id,
     });
+
+    try {
+      await trackEvent({
+        userId: user._id,
+        eventType: 'login',
+        metadata: {
+          authMethod: 'pin',
+          rememberMe,
+        },
+        source: 'auth_api',
+      });
+    } catch {
+      // Analytics should not block authentication success flow.
+    }
 
     return res.status(200).json(buildAuthResponse(user, accessToken, refreshToken));
   } catch {
@@ -1074,7 +1130,7 @@ const refreshToken = async (req, res) => {
     }
 
     const rememberMe = toBoolean(decoded?.remember_me, false);
-    const nextAccessToken = buildAccessToken(user._id, { authMethod: 'refresh', role: user.role });
+    const nextAccessToken = buildAccessToken(user, { authMethod: 'refresh' });
     const nextRefreshToken = buildRefreshToken(user._id, { rememberMe });
 
     await persistRefreshToken({

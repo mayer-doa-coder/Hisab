@@ -24,7 +24,9 @@ const optionalDeviceIdSchema = z
 
 const signupSchema = z
   .object({
+    name: z.string().trim().min(1).max(120).optional(),
     email: emailSchema,
+    phone: z.string().trim().min(1).max(40).optional(),
     pin: pinSchema,
     rememberMe: rememberMeSchema,
   })

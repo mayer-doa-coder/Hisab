@@ -6,6 +6,10 @@ const {
   FEATURE_CONFIG,
   sigmoid,
 } = require('./monotonicLogistic');
+const {
+  TRUST_OBJECTIVE_CONFIG,
+  TRUST_OBJECTIVE_CONFIG_PATH,
+} = require('../../config/trustObjective');
 
 const VERSION = '1.0.0';
 
@@ -151,6 +155,15 @@ const buildModelArtifact = ({ trained, datasetSource, sampleRows }) => {
       recall_at_precision_90: trained.metrics.recall_at_precision_90,
       brier_calibrated: trained.metrics.brier_calibrated,
       ece_calibrated: trained.metrics.ece_calibrated,
+    },
+    objective_lock: {
+      schema_version: TRUST_OBJECTIVE_CONFIG.schema_version,
+      phase: TRUST_OBJECTIVE_CONFIG.phase,
+      locked: TRUST_OBJECTIVE_CONFIG.locked,
+      locked_at: TRUST_OBJECTIVE_CONFIG.locked_at,
+      default_horizon: TRUST_OBJECTIVE_CONFIG.default_horizon,
+      supported_horizons: TRUST_OBJECTIVE_CONFIG.supported_horizons,
+      source_path: TRUST_OBJECTIVE_CONFIG_PATH,
     },
   };
 };

@@ -1,7 +1,7 @@
 export const TRUST_CHALLENGER_MODEL = {
   "model_name": "hisab_trust_challenger",
   "version": "1.0.0",
-  "created_at": "2026-04-11T23:22:46.702260Z",
+  "created_at": "2026-04-21T06:08:02.628024Z",
   "method": "lightgbm_shallow_challenger",
   "enabled_default": false,
   "dataset_source": "synthetic_seed_1337",
