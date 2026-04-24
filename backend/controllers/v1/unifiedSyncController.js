@@ -948,7 +948,8 @@ const applyCustomerChange = async ({ userId, change }) => {
   const name = normalizeTrimmedString(payload.name);
   const creditLimit = payload.creditLimit === undefined ? 0 : parseMoney(payload.creditLimit);
   const currentBalance = payload.currentBalance === undefined ? null : parseMoney(payload.currentBalance);
-  const dueTermsDays = payload.dueTermsDays === undefined ? null : parsePositiveInt(payload.dueTermsDays);
+  const rawDueTermsDays = payload.dueTermsDays === undefined ? null : parsePositiveInt(payload.dueTermsDays);
+  const dueTermsDays = rawDueTermsDays === null ? null : Math.min(365, rawDueTermsDays);
   const riskLevel = normalizeTrimmedString(payload.riskLevel || '').toLowerCase();
   const normalizedRiskLevel = ['low', 'medium', 'high'].includes(riskLevel) ? riskLevel : null;
   const lastPaymentDate = payload.lastPaymentDate ? parseOptionalDate(payload.lastPaymentDate) : null;

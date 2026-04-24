@@ -1,9 +1,10 @@
 import DateTimePicker from '@react-native-community/datetimepicker';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useMemo, useState } from 'react';
 import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
-import { UI_COLORS } from '../../constants/ui-theme';
 import { AppButton, AppCard, AppInput } from '../../components/ui';
+import { UI_COLORS } from '../../constants/ui-theme';
 import { SPACING } from '../../theme/spacing';
 import { TYPOGRAPHY } from '../../theme/typography';
 
@@ -25,52 +26,40 @@ export default function ProductForm({
   refreshing,
 }) {
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showMore, setShowMore] = useState(false);
 
   const displayDate = useMemo(() => {
-    if (!expiryDate) {
-      return 'No expiry selected';
-    }
-
+    if (!expiryDate) return 'মেয়াদ দেওয়া হয়নি';
     const parsed = new Date(expiryDate);
-    if (Number.isNaN(parsed.getTime())) {
-      return 'Invalid date';
-    }
-
+    if (Number.isNaN(parsed.getTime())) return 'ভুল তারিখ';
     return parsed.toISOString().slice(0, 10);
   }, [expiryDate]);
 
   const pickerValue = useMemo(() => {
-    if (!expiryDate) {
-      return new Date();
-    }
-
+    if (!expiryDate) return new Date();
     const parsed = new Date(expiryDate);
     return Number.isNaN(parsed.getTime()) ? new Date() : parsed;
   }, [expiryDate]);
 
   const handleDateChange = (_event, selectedDate) => {
-    if (Platform.OS !== 'ios') {
-      setShowDatePicker(false);
-    }
-
-    if (!selectedDate || Number.isNaN(selectedDate.getTime())) {
-      return;
-    }
-
+    if (Platform.OS !== 'ios') setShowDatePicker(false);
+    if (!selectedDate || Number.isNaN(selectedDate.getTime())) return;
     setExpiryDate(selectedDate.toISOString());
   };
 
   return (
     <AppCard style={styles.formWrap}>
-      <Text style={styles.formTitle}>{editingId ? 'Update Product' : 'Add Product'}</Text>
+      <Text style={styles.formTitle}>
+        {editingId ? 'পণ্য আপডেট করুন' : 'পণ্য যোগ করুন'}
+      </Text>
 
+      {/* ── Essential fields ─────────────────────────── */}
       <View style={styles.formGroup}>
-        <Text style={styles.label}>Product Name *</Text>
+        <Text style={styles.label}>পণ্যের নাম *</Text>
         <AppInput
           value={name}
           onChangeText={setName}
-          placeholder="Enter product name"
-          style={styles.input}
+          placeholder="পণ্যের নাম লিখুন"
           autoCapitalize="words"
         />
       </View>
@@ -78,77 +67,105 @@ export default function ProductForm({
       <View style={styles.formRow}>
         {!editingId ? (
           <View style={styles.col}>
-            <Text style={styles.label}>Quantity *</Text>
+            <Text style={styles.label}>পরিমাণ *</Text>
             <AppInput
               value={quantity}
               onChangeText={setQuantity}
-              placeholder="Enter quantity"
-              style={styles.input}
+              placeholder="০"
               keyboardType="numeric"
             />
           </View>
         ) : null}
 
         <View style={styles.col}>
-          <Text style={styles.label}>Price *</Text>
+          <Text style={styles.label}>দাম *</Text>
           <AppInput
             value={price}
             onChangeText={setPrice}
-            placeholder="Enter price"
-            style={styles.input}
+            placeholder="০.০০"
             keyboardType="decimal-pad"
           />
         </View>
       </View>
 
       {editingId ? (
-        <Text style={styles.helpText}>Stock quantity is updated from the Movement tab only.</Text>
+        <Text style={styles.helpText}>
+          স্টক পরিমাণ শুধু মুভমেন্ট ট্যাব থেকে আপডেট হয়।
+        </Text>
       ) : null}
 
-      <View style={styles.formGroup}>
-        <Text style={styles.label}>Low Stock Alert Threshold *</Text>
-        <AppInput
-          value={lowStockThreshold}
-          onChangeText={setLowStockThreshold}
-          placeholder="Enter low-stock threshold"
-          style={styles.input}
-          keyboardType="numeric"
+      {/* ── Advanced toggle ──────────────────────────── */}
+      <TouchableOpacity
+        style={styles.moreToggle}
+        onPress={() => setShowMore((v) => !v)}
+        activeOpacity={0.75}
+      >
+        <MaterialIcons
+          name={showMore ? 'expand-less' : 'expand-more'}
+          size={18}
+          color={UI_COLORS.primary}
         />
-      </View>
+        <Text style={styles.moreToggleText}>
+          {showMore ? 'কম দেখুন' : 'আরো অপশন'}
+        </Text>
+      </TouchableOpacity>
 
-      <View style={styles.formGroup}>
-        <Text style={styles.label}>Expiry Date</Text>
-        <View style={styles.dateRow}>
-          <Text style={styles.dateValue}>{displayDate}</Text>
-          <View style={styles.dateActionRow}>
-            <TouchableOpacity style={styles.dateButton} onPress={() => setShowDatePicker(true)}>
-              <Text style={styles.dateButtonText}>Pick Date</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.clearButton} onPress={() => setExpiryDate('')}>
-              <Text style={styles.clearButtonText}>Clear</Text>
-            </TouchableOpacity>
+      {/* ── Advanced fields ──────────────────────────── */}
+      {showMore && (
+        <View style={styles.morePanel}>
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>কম স্টকের সতর্কতা</Text>
+            <AppInput
+              value={lowStockThreshold}
+              onChangeText={setLowStockThreshold}
+              placeholder="কত টির নিচে সতর্ক করবে?"
+              keyboardType="numeric"
+            />
           </View>
-        </View>
-      </View>
 
-      {showDatePicker ? (
-        <DateTimePicker
-          value={pickerValue}
-          mode="date"
-          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-          onChange={handleDateChange}
-        />
-      ) : null}
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>মেয়াদ শেষের তারিখ</Text>
+            <View style={styles.dateRow}>
+              <Text style={styles.dateValue}>{displayDate}</Text>
+              <View style={styles.dateActionRow}>
+                <TouchableOpacity
+                  style={styles.dateButton}
+                  onPress={() => setShowDatePicker(true)}
+                >
+                  <Text style={styles.dateButtonText}>তারিখ বেছে নিন</Text>
+                </TouchableOpacity>
+                {expiryDate ? (
+                  <TouchableOpacity
+                    style={styles.clearButton}
+                    onPress={() => setExpiryDate('')}
+                  >
+                    <Text style={styles.clearButtonText}>মুছুন</Text>
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+            </View>
+          </View>
+
+          {showDatePicker ? (
+            <DateTimePicker
+              value={pickerValue}
+              mode="date"
+              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+              onChange={handleDateChange}
+            />
+          ) : null}
+        </View>
+      )}
 
       <AppButton
-        title={saving ? 'Saving...' : editingId ? 'Update Product' : 'Save Product'}
+        title={saving ? 'সেভ হচ্ছে...' : editingId ? 'আপডেট করুন' : 'পণ্য যোগ করুন'}
         onPress={onSave}
         disabled={saving || refreshing}
         style={styles.button}
       />
 
       {editingId ? (
-        <AppButton title="Cancel Edit" onPress={onCancel} variant="secondary" />
+        <AppButton title="বাতিল করুন" onPress={onCancel} variant="secondary" />
       ) : null}
     </AppCard>
   );
@@ -170,7 +187,27 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.small,
     color: UI_COLORS.textMuted,
   },
-  input: {},
+
+  moreToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    alignSelf: 'flex-start',
+    paddingVertical: 4,
+  },
+  moreToggleText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: UI_COLORS.primary,
+  },
+
+  morePanel: {
+    gap: SPACING.sm,
+    borderTopWidth: 1,
+    borderTopColor: UI_COLORS.borderSoft,
+    paddingTop: SPACING.sm,
+  },
+
   dateRow: {
     borderWidth: 1,
     borderColor: UI_COLORS.border,
@@ -210,8 +247,6 @@ const styles = StyleSheet.create({
     color: UI_COLORS.textSecondary,
     fontWeight: '700',
   },
-  button: {
-    marginTop: SPACING.sm,
-  },
-});
 
+  button: { marginTop: SPACING.xs },
+});

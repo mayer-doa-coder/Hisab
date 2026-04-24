@@ -9,26 +9,43 @@ export default function BakiListItem({ item, onStartPayment }) {
   return (
     <View style={styles.card}>
       <View style={styles.cardTopRow}>
-        <Text style={styles.rowTitle}>{item.customer_name}</Text>
+        <View style={styles.customerInfo}>
+          <Text style={styles.rowTitle}>{item.customer_name}</Text>
+          {item.customer_phone ? (
+            <Text style={styles.rowPhone}>{item.customer_phone}</Text>
+          ) : null}
+        </View>
         <Text style={[styles.statusBadge, hasDue ? styles.unpaidBadge : styles.paidBadge]}>
-          {hasDue ? 'Due' : 'Clear'}
+          {hasDue ? 'বাকি আছে' : 'পরিষ্কার'}
         </Text>
       </View>
 
-      <Text style={styles.meta}>Current Due: ৳{dueAmount.toFixed(2)}</Text>
-      <Text style={styles.meta}>Credits: {Number(item.credit_count || 0)}</Text>
-      <Text style={styles.meta}>Payments: {Number(item.payment_count || 0)}</Text>
-      <Text style={styles.date}>Last Activity: {item.last_activity_at || 'N/A'}</Text>
-
-      <View style={styles.actionRow}>
-        <TouchableOpacity
-          style={[styles.paidButton, !hasDue && styles.disabledButton]}
-          onPress={() => onStartPayment(item)}
-          disabled={!hasDue}
-        >
-          <Text style={styles.paidButtonText}>{hasDue ? 'Record Payment' : 'No Payment Needed'}</Text>
-        </TouchableOpacity>
+      <View style={styles.metaRow}>
+        <View style={styles.metaItem}>
+          <Text style={styles.metaLabel}>বর্তমান বাকি</Text>
+          <Text style={[styles.metaValue, hasDue && styles.metaValueDanger]}>
+            ৳{dueAmount.toFixed(2)}
+          </Text>
+        </View>
+        <View style={styles.metaItem}>
+          <Text style={styles.metaLabel}>বাকি এন্ট্রি</Text>
+          <Text style={styles.metaValue}>{Number(item.credit_count || 0)}</Text>
+        </View>
+        <View style={styles.metaItem}>
+          <Text style={styles.metaLabel}>পেমেন্ট</Text>
+          <Text style={styles.metaValue}>{Number(item.payment_count || 0)}</Text>
+        </View>
       </View>
+
+      {item.last_activity_at ? (
+        <Text style={styles.date}>শেষ লেনদেন: {item.last_activity_at}</Text>
+      ) : null}
+
+      {hasDue && (
+        <TouchableOpacity style={styles.payBtn} onPress={() => onStartPayment(item)} activeOpacity={0.82}>
+          <Text style={styles.payBtnText}>জমা নিন</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
@@ -37,13 +54,19 @@ const styles = StyleSheet.create({
   card: {
     borderWidth: 1,
     borderColor: UI_COLORS.border,
-    borderRadius: 10,
-    padding: 12,
+    borderRadius: 12,
+    padding: 14,
     backgroundColor: UI_COLORS.surface,
-    marginBottom: 10,
+    gap: 8,
   },
-  cardTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  cardTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  customerInfo: { flex: 1, gap: 2 },
   rowTitle: { fontSize: 16, fontWeight: '700', color: UI_COLORS.textPrimary },
+  rowPhone: { fontSize: 12, color: UI_COLORS.textMuted },
   statusBadge: {
     fontSize: 11,
     borderRadius: 99,
@@ -54,16 +77,24 @@ const styles = StyleSheet.create({
   },
   paidBadge: { backgroundColor: UI_COLORS.surfaceSuccess, color: UI_COLORS.textSuccess },
   unpaidBadge: { backgroundColor: UI_COLORS.surfaceDanger, color: UI_COLORS.textDanger },
-  meta: { marginTop: 4, fontSize: 13, color: UI_COLORS.textSecondary },
-  date: { marginTop: 5, fontSize: 12, color: UI_COLORS.textMuted },
-  actionRow: { marginTop: 10, flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  paidButton: {
-    backgroundColor: UI_COLORS.primary,
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+  metaRow: {
+    flexDirection: 'row',
+    gap: 0,
   },
-  paidButtonText: { color: UI_COLORS.textOnPrimary, fontSize: 12, fontWeight: '700' },
-  disabledButton: { opacity: 0.5 },
+  metaItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  metaLabel: { fontSize: 11, color: UI_COLORS.textMuted, fontWeight: '600' },
+  metaValue: { fontSize: 15, fontWeight: '700', color: UI_COLORS.textPrimary, marginTop: 2 },
+  metaValueDanger: { color: UI_COLORS.textDanger },
+  date: { fontSize: 11, color: UI_COLORS.textMuted },
+  payBtn: {
+    backgroundColor: UI_COLORS.success,
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: 'center',
+    marginTop: 2,
+  },
+  payBtnText: { color: UI_COLORS.textOnPrimary, fontSize: 14, fontWeight: '700' },
 });
-

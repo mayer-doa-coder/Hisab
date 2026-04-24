@@ -60,7 +60,7 @@ export default function ReceiptScreen({ navigation, route }) {
         message: buildReceiptText(receipt),
       });
     } catch (error) {
-      Alert.alert('Share Failed', error?.message || 'Unable to share receipt.');
+      Alert.alert('শেয়ার ব্যর্থ', error?.message || 'রিসিট শেয়ার করা যায়নি।');
     }
   }, [receipt]);
 
@@ -97,7 +97,7 @@ export default function ReceiptScreen({ navigation, route }) {
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.title}>Receipt</Text>
+        <Text style={styles.title}>রিসিট</Text>
 
         {loading ? (
           <View style={styles.loadingWrap}>
@@ -113,13 +113,13 @@ export default function ReceiptScreen({ navigation, route }) {
         {!loading && !errorText ? (
           <View style={styles.buttonRow}>
             <TouchableOpacity style={styles.primaryButton} onPress={handleShare}>
-              <Text style={styles.primaryButtonText}>Share Receipt</Text>
+              <Text style={styles.primaryButtonText}>রিসিট শেয়ার করুন</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.secondaryButton} onPress={() => handleShare()}>
-              <Text style={styles.secondaryButtonText}>Reprint</Text>
+              <Text style={styles.secondaryButtonText}>পুনরায় প্রিন্ট</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.secondaryButton} onPress={() => navigation.navigate('MainSidebar', { screen: 'Sales' })}>
-              <Text style={styles.secondaryButtonText}>Back To Sales</Text>
+              <Text style={styles.secondaryButtonText}>বিক্রিতে ফিরুন</Text>
             </TouchableOpacity>
           </View>
         ) : null}

@@ -6,15 +6,15 @@ export default function ProductSummaryCards({ totalItems, totalQuantity, stockVa
   return (
     <View style={styles.summaryRow}>
       <View style={styles.summaryCard}>
-        <Text style={styles.summaryLabel}>Products</Text>
+        <Text style={styles.summaryLabel}>পণ্য</Text>
         <Text style={styles.summaryValue}>{totalItems}</Text>
       </View>
       <View style={styles.summaryCard}>
-        <Text style={styles.summaryLabel}>Total Qty</Text>
+        <Text style={styles.summaryLabel}>মোট পরিমাণ</Text>
         <Text style={styles.summaryValue}>{totalQuantity}</Text>
       </View>
       <View style={styles.summaryCard}>
-        <Text style={styles.summaryLabel}>Stock Value</Text>
+        <Text style={styles.summaryLabel}>স্টক মূল্য</Text>
         <Text style={styles.summaryValue}>৳{Number(stockValue || 0).toFixed(2)}</Text>
       </View>
     </View>

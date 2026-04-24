@@ -33,17 +33,17 @@ export default function UpdatePasswordScreen() {
     const normalizedConfirm = String(confirmPin || '').trim();
 
     if (!normalizedCurrent || !normalizedNew || !normalizedConfirm) {
-      setMessage('All PIN fields are required.');
+      setMessage('সব PIN ঘর পূরণ করুন।');
       return;
     }
 
     if (!/^\d{4,6}$/.test(normalizedCurrent) || !/^\d{4,6}$/.test(normalizedNew)) {
-      setMessage('PIN must be 4 to 6 digits.');
+      setMessage('PIN ৪ থেকে ৬ সংখ্যার হতে হবে।');
       return;
     }
 
     if (normalizedNew !== normalizedConfirm) {
-      setMessage('PINs do not match.');
+      setMessage('PIN মিলছে না।');
       return;
     }
 
@@ -54,9 +54,9 @@ export default function UpdatePasswordScreen() {
         currentPin: normalizedCurrent,
         newPin: normalizedNew,
       });
-      setMessage('PIN updated. Please sign in again.');
+      setMessage('PIN আপডেট হয়েছে। আবার লগইন করুন।');
     } catch (error) {
-      setMessage(error?.message || 'Update failed.');
+      setMessage(error?.message || 'আপডেট ব্যর্থ হয়েছে।');
     } finally {
       setLoading(false);
     }
@@ -66,13 +66,13 @@ export default function UpdatePasswordScreen() {
     <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex}>
         <View style={styles.container}>
-          <Text style={styles.title}>Update PIN</Text>
-          <Text style={styles.subtitle}>Change PIN</Text>
+          <Text style={styles.title}>PIN আপডেট করুন</Text>
+          <Text style={styles.subtitle}>PIN পরিবর্তন</Text>
 
           <TextInput
             value={currentPin}
             onChangeText={setCurrentPin}
-            placeholder="Current PIN"
+            placeholder="বর্তমান PIN"
             keyboardType="number-pad"
             maxLength={6}
             secureTextEntry
@@ -88,7 +88,7 @@ export default function UpdatePasswordScreen() {
           <TextInput
             value={newPin}
             onChangeText={setNewPin}
-            placeholder="New PIN"
+            placeholder="নতুন PIN"
             keyboardType="number-pad"
             maxLength={6}
             secureTextEntry
@@ -98,7 +98,7 @@ export default function UpdatePasswordScreen() {
           <TextInput
             value={confirmPin}
             onChangeText={setConfirmPin}
-            placeholder="Confirm new PIN"
+            placeholder="PIN নিশ্চিত করুন"
             keyboardType="number-pad"
             maxLength={6}
             secureTextEntry
@@ -106,7 +106,7 @@ export default function UpdatePasswordScreen() {
           />
 
           <TouchableOpacity style={[styles.button, loading && styles.buttonDisabled]} onPress={handleUpdatePin} disabled={loading}>
-            {loading ? <ActivityIndicator size="small" color={UI_COLORS.onAccent} /> : <Text style={styles.buttonText}>Update PIN</Text>}
+            {loading ? <ActivityIndicator size="small" color={UI_COLORS.onAccent} /> : <Text style={styles.buttonText}>PIN আপডেট করুন</Text>}
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>

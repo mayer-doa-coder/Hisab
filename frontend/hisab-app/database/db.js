@@ -2894,7 +2894,7 @@ export const insertCustomer = async ({
 		? Number(Number(creditLimit).toFixed(2))
 		: 0;
 	const normalizedDueTermsDays = Number.isInteger(Number(dueTermsDays)) && Number(dueTermsDays) > 0
-		? Number(dueTermsDays)
+		? Math.min(365, Number(dueTermsDays))
 		: 30;
 	const syncUpdatedAt = new Date().toISOString();
 
@@ -10988,8 +10988,8 @@ export const updateCustomer = ({
 			? Number(existing.credit_limit || 0)
 			: (Number.isFinite(Number(creditLimit)) && Number(creditLimit) >= 0 ? Number(Number(creditLimit).toFixed(2)) : NaN);
 		const normalizedDueTermsDays = dueTermsDays === undefined
-			? Number(existing.due_terms_days || 30)
-			: (Number.isInteger(Number(dueTermsDays)) && Number(dueTermsDays) > 0 ? Number(dueTermsDays) : NaN);
+			? Math.min(365, Number(existing.due_terms_days || 30))
+			: (Number.isInteger(Number(dueTermsDays)) && Number(dueTermsDays) > 0 ? Math.min(365, Number(dueTermsDays)) : NaN);
 		const normalizedRiskLevel = riskLevel === undefined
 			? String(existing.risk_level || 'low').toLowerCase()
 			: String(riskLevel || '').trim().toLowerCase();

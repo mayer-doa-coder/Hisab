@@ -456,7 +456,7 @@ const upsertCustomerFromServer = async ({ userId, change }) => {
     ? String(data.riskLevel).trim().toLowerCase()
     : 'low';
   const nextDueTermsDays = Number.isInteger(Number(data.dueTermsDays)) && Number(data.dueTermsDays) > 0
-    ? Number(data.dueTermsDays)
+    ? Math.min(365, Number(data.dueTermsDays))
     : 30;
   const nextLastPaymentDate = data.lastPaymentDate ? String(data.lastPaymentDate) : null;
 
@@ -2360,6 +2360,8 @@ const applyAckMapping = async ({ userId, item, ack, serverTime }) => {
 };
 
 export const runDataSync = async ({ userId, accessToken, maxQueueItems = 100 } = {}) => {
+  const syncVerboseLogs = (typeof __DEV__ !== 'undefined' && __DEV__)
+    || String(process?.env?.EXPO_PUBLIC_SYNC_VERBOSE || '').trim() === '1';
   const normalizedUserId = Number(userId);
   if (!Number.isInteger(normalizedUserId) || normalizedUserId <= 0) {
     console.warn('[SYNC][CLIENT][SKIPPED_INVALID_USER]', { userId });
@@ -2388,12 +2390,14 @@ export const runDataSync = async ({ userId, accessToken, maxQueueItems = 100 } =
     return summary;
   }, {});
 
-  console.info('[SYNC][CLIENT][REQUEST]', {
-    userId: normalizedUserId,
-    pendingCount: pending.length,
-    outboundCount: outbound.length,
-    pendingByEntity,
-  });
+  if (syncVerboseLogs || pending.length > 0 || outbound.length > 0) {
+    console.info('[SYNC][CLIENT][REQUEST]', {
+      userId: normalizedUserId,
+      pendingCount: pending.length,
+      outboundCount: outbound.length,
+      pendingByEntity,
+    });
+  }
 
   const lastSyncAt = await getLastSyncAt({ userId: normalizedUserId });
 
@@ -2474,14 +2478,16 @@ export const runDataSync = async ({ userId, accessToken, maxQueueItems = 100 } =
   const nextSyncAt = response?.nextSyncAt || response?.serverTime || new Date().toISOString();
   await setLastSyncAt({ userId: normalizedUserId, lastSyncAt: nextSyncAt });
 
-  console.info('[SYNC][CLIENT][RESPONSE]', {
-    userId: normalizedUserId,
-    synced: syncedCount,
-    ackCount: ackRows.length,
-    serverChanges: serverChanges.length,
-    hasMoreServerChanges: Boolean(response?.hasMoreServerChanges),
-    nextSyncAt,
-  });
+  if (syncVerboseLogs || syncedCount > 0 || serverChanges.length > 0 || Boolean(response?.hasMoreServerChanges)) {
+    console.info('[SYNC][CLIENT][RESPONSE]', {
+      userId: normalizedUserId,
+      synced: syncedCount,
+      ackCount: ackRows.length,
+      serverChanges: serverChanges.length,
+      hasMoreServerChanges: Boolean(response?.hasMoreServerChanges),
+      nextSyncAt,
+    });
+  }
 
   return {
     synced: syncedCount,

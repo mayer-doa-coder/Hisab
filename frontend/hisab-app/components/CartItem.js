@@ -14,11 +14,11 @@ export default function CartItem({ item, onIncrement, onDecrement, onRemove }) {
         </Text>
         <TouchableOpacity style={styles.removeButton} onPress={onRemove}>
           <MaterialIcons name="delete-outline" size={16} color={UI_COLORS.textDanger} />
-          <Text style={styles.removeText}>Remove</Text>
+          <Text style={styles.removeText}>সরান</Text>
         </TouchableOpacity>
       </View>
 
-      <Text style={styles.meta}>{formatMoney(item.unit_price)} each</Text>
+      <Text style={styles.meta}>{formatMoney(item.unit_price)} প্রতিটি</Text>
 
       <View style={styles.controlsRow}>
         <View style={styles.quantityPill}>

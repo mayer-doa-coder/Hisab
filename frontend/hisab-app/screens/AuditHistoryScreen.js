@@ -59,7 +59,7 @@ export default function AuditHistoryScreen() {
 
       setRows(Array.isArray(data) ? data : []);
     } catch (loadError) {
-      setError(loadError?.message || 'Unable to load audit logs.');
+      setError(loadError?.message || 'অডিট লগ লোড হয়নি।');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -79,17 +79,17 @@ export default function AuditHistoryScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadLogs({ isRefresh: true })} />}
         ListHeaderComponent={
           <View style={styles.headerWrap}>
-            <Text style={styles.title}>Audit History</Text>
-            <Text style={styles.subtitle}>Track who changed financial data and when.</Text>
+            <Text style={styles.title}>অডিট ইতিহাস</Text>
+            <Text style={styles.subtitle}>কে, কখন আর্থিক তথ্য পরিবর্তন করেছে তা ট্র্যাক করুন।</Text>
 
             <TextInput
               value={searchText}
               onChangeText={setSearchText}
-              placeholder="Search notes, action or entity"
+              placeholder="নোট, কাজ বা এন্টিটি দিয়ে খুঁজুন"
               style={styles.input}
             />
 
-            <Text style={styles.label}>Entity</Text>
+            <Text style={styles.label}>বিষয়</Text>
             <View style={styles.filterRow}>
               {ENTITY_FILTERS.map((item) => (
                 <TouchableOpacity
@@ -102,7 +102,7 @@ export default function AuditHistoryScreen() {
               ))}
             </View>
 
-            <Text style={styles.label}>Action</Text>
+            <Text style={styles.label}>কার্যক্রম</Text>
             <View style={styles.filterRow}>
               {ACTION_FILTERS.map((item) => (
                 <TouchableOpacity
@@ -116,7 +116,7 @@ export default function AuditHistoryScreen() {
             </View>
 
             <TouchableOpacity style={styles.reloadButton} onPress={() => loadLogs()}>
-              <Text style={styles.reloadButtonText}>Reload</Text>
+              <Text style={styles.reloadButtonText}>রিলোড</Text>
             </TouchableOpacity>
 
             {error ? (
@@ -130,10 +130,10 @@ export default function AuditHistoryScreen() {
           loading ? (
             <View style={styles.loadingWrap}>
               <ActivityIndicator size="small" color={UI_COLORS.primary} />
-              <Text style={styles.loadingText}>Loading logs...</Text>
+              <Text style={styles.loadingText}>লোড হচ্ছে...</Text>
             </View>
           ) : (
-            <Text style={styles.emptyText}>No audit logs found for current filters.</Text>
+            <Text style={styles.emptyText}>এই ফিল্টারে কোনো অডিট লগ নেই।</Text>
           )
         }
         renderItem={({ item }) => (

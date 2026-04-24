@@ -11,7 +11,7 @@ export default function ProductLowStockAlerts({ lowStockProducts }) {
         <Text style={styles.badgeText}>{lowStockCount} items low stock</Text>
       </View>
 
-      <Text style={styles.sectionHeading}>Low Stock Alerts</Text>
+      <Text style={styles.sectionHeading}>কম স্টক সতর্কতা</Text>
       {lowStockCount === 0 ? (
         <Text style={styles.emptyText}>No low stock products right now.</Text>
       ) : (

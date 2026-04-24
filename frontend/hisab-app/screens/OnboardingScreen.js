@@ -133,17 +133,17 @@ export default function OnboardingScreen() {
         contentContainerStyle={styles.container}
         ListHeaderComponent={(
           <View style={styles.headerWrap}>
-            <Text style={styles.title}>Pilot Onboarding</Text>
-            <Text style={styles.subtitle}>Roll out to 5-10 diverse shops and keep setup friction low.</Text>
+            <Text style={styles.title}>পাইলট অনবোর্ডিং</Text>
+            <Text style={styles.subtitle}>৫-১০টি বিভিন্ন ধরনের দোকানে চালু করুন।</Text>
 
             <AppCard style={styles.card}>
-              <Text style={styles.sectionTitle}>Guided Walkthrough</Text>
+              <Text style={styles.sectionTitle}>পথপ্রদর্শক</Text>
               <Text style={styles.metaText}>Step {stepIndex + 1} of {GUIDED_STEPS.length}</Text>
               <Text style={styles.rowTitle}>{activeStep.title}</Text>
               <Text style={styles.metaText}>{activeStep.subtitle}</Text>
               <View style={styles.buttonRow}>
                 <AppButton
-                  title="Previous"
+                  title="আগে"
                   variant="secondary"
                   style={styles.buttonFlex}
                   onPress={() => setStepIndex((prev) => Math.max(0, prev - 1))}
@@ -158,16 +158,16 @@ export default function OnboardingScreen() {
             </AppCard>
 
             <AppCard style={styles.card}>
-              <Text style={styles.sectionTitle}>Pilot Shop Setup</Text>
+              <Text style={styles.sectionTitle}>পাইলট দোকান সেটআপ</Text>
               <AppInput
                 value={shopName}
                 onChangeText={setShopName}
-                placeholder="Shop name"
+                placeholder="দোকানের নাম"
               />
               <AppInput
                 value={estimatedDailySales}
                 onChangeText={setEstimatedDailySales}
-                placeholder="Estimated daily sales"
+                placeholder="আনুমানিক দৈনিক বিক্রি"
                 keyboardType="numeric"
               />
 
@@ -191,7 +191,7 @@ export default function OnboardingScreen() {
             </AppCard>
 
             <AppCard style={styles.card}>
-              <Text style={styles.sectionTitle}>Shop-Type Template</Text>
+              <Text style={styles.sectionTitle}>দোকানের ধরনের টেমপ্লেট</Text>
               <Text style={styles.rowTitle}>{selectedTemplate.title}</Text>
               <Text style={styles.metaText}>Focus: {selectedTemplate.focus}</Text>
               {(selectedTemplate.steps || []).map((row, index) => (
@@ -200,13 +200,13 @@ export default function OnboardingScreen() {
             </AppCard>
 
             <AppCard style={styles.card}>
-              <Text style={styles.sectionTitle}>Contextual Tip</Text>
+              <Text style={styles.sectionTitle}>প্রসঙ্গীয় টিপ</Text>
               <Text style={styles.metaText}>{getContextualTip(activeStep.key === 'collections' ? 'credit' : activeStep.key === 'core_setup' ? 'inventory' : 'sales')}</Text>
               {statusText ? <Text style={styles.statusText}>{statusText}</Text> : null}
             </AppCard>
 
-            <Text style={styles.sectionTitle}>Pilot Shops</Text>
-            {loading ? <Text style={styles.metaText}>Loading pilot shops...</Text> : null}
+            <Text style={styles.sectionTitle}>পাইলট দোকানসমূহ</Text>
+            {loading ? <Text style={styles.metaText}>পাইলট দোকান লোড হচ্ছে...</Text> : null}
           </View>
         )}
         ListEmptyComponent={<Text style={styles.metaText}>No pilot shops yet.</Text>}

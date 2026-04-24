@@ -1,15 +1,15 @@
-import { Picker } from '@react-native-picker/picker';
-import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 import { UI_COLORS } from '../../constants/ui-theme';
 import { CUSTOMER_DUE_FILTERS, CUSTOMER_SORT_OPTIONS } from '../../services/customers/customerSearchUtils';
 
-const SORT_ITEMS = [
-  { label: 'Recent Added', value: CUSTOMER_SORT_OPTIONS.RECENT },
-  { label: 'Name A-Z', value: CUSTOMER_SORT_OPTIONS.NAME_ASC },
-  { label: 'Name Z-A', value: CUSTOMER_SORT_OPTIONS.NAME_DESC },
-  { label: 'Due High-Low', value: CUSTOMER_SORT_OPTIONS.DUE_DESC },
-  { label: 'Due Low-High', value: CUSTOMER_SORT_OPTIONS.DUE_ASC },
+const SORT_OPTIONS = [
+  { label: 'নতুন', value: CUSTOMER_SORT_OPTIONS.RECENT },
+  { label: 'নাম A-Z', value: CUSTOMER_SORT_OPTIONS.NAME_ASC },
+  { label: 'নাম Z-A', value: CUSTOMER_SORT_OPTIONS.NAME_DESC },
+  { label: 'বেশি বাকি', value: CUSTOMER_SORT_OPTIONS.DUE_DESC },
+  { label: 'কম বাকি', value: CUSTOMER_SORT_OPTIONS.DUE_ASC },
 ];
 
 export default function CustomerSearchControls({
@@ -21,66 +21,54 @@ export default function CustomerSearchControls({
   setSortBy,
   onClear,
 }) {
+  const isActive =
+    Boolean(searchText.trim()) ||
+    dueFilter !== CUSTOMER_DUE_FILTERS.ALL ||
+    sortBy !== CUSTOMER_SORT_OPTIONS.RECENT;
+
   return (
     <View style={styles.wrap}>
-      <TextInput
-        value={searchText}
-        onChangeText={setSearchText}
-        placeholder="Search by name or phone"
-        style={styles.input}
-      />
-
-      <View style={styles.filterRow}>
-        <TouchableOpacity
-          style={[styles.filterChip, dueFilter === CUSTOMER_DUE_FILTERS.ALL && styles.filterChipActive]}
-          onPress={() => setDueFilter(CUSTOMER_DUE_FILTERS.ALL)}
-        >
-          <Text style={[styles.filterChipText, dueFilter === CUSTOMER_DUE_FILTERS.ALL && styles.filterChipTextActive]}>
-            All Customers
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.filterChip, dueFilter === CUSTOMER_DUE_FILTERS.DUE_ONLY && styles.filterChipActive]}
-          onPress={() => setDueFilter(CUSTOMER_DUE_FILTERS.DUE_ONLY)}
-        >
-          <Text
-            style={[
-              styles.filterChipText,
-              dueFilter === CUSTOMER_DUE_FILTERS.DUE_ONLY && styles.filterChipTextActive,
-            ]}
-          >
-            Due {'>'} 0
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.filterChip, dueFilter === CUSTOMER_DUE_FILTERS.NO_DUE && styles.filterChipActive]}
-          onPress={() => setDueFilter(CUSTOMER_DUE_FILTERS.NO_DUE)}
-        >
-          <Text
-            style={[
-              styles.filterChipText,
-              dueFilter === CUSTOMER_DUE_FILTERS.NO_DUE && styles.filterChipTextActive,
-            ]}
-          >
-            No Due
-          </Text>
-        </TouchableOpacity>
+      {/* Search */}
+      <View style={styles.searchRow}>
+        <MaterialIcons name="search" size={18} color={UI_COLORS.textMuted} />
+        <TextInput
+          value={searchText}
+          onChangeText={setSearchText}
+          placeholder="নাম বা ফোন দিয়ে খুঁজুন..."
+          placeholderTextColor={UI_COLORS.textMuted}
+          style={styles.searchInput}
+        />
+        {searchText ? (
+          <TouchableOpacity onPress={() => setSearchText('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <MaterialIcons name="close" size={16} color={UI_COLORS.textMuted} />
+          </TouchableOpacity>
+        ) : null}
       </View>
 
-      <Text style={styles.sortLabel}>Sort By</Text>
-      <View style={styles.pickerWrap}>
-        <Picker selectedValue={sortBy} onValueChange={(value) => setSortBy(String(value))}>
-          {SORT_ITEMS.map((item) => (
-            <Picker.Item key={item.value} label={item.label} value={item.value} />
-          ))}
-        </Picker>
-      </View>
+      {/* Sort chips */}
+      <Text style={styles.sectionLabel}>সাজান</Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
+        {SORT_OPTIONS.map((opt) => (
+          <TouchableOpacity
+            key={opt.value}
+            style={[styles.sortChip, sortBy === opt.value && styles.sortChipActive]}
+            activeOpacity={0.78}
+            onPress={() => setSortBy(opt.value)}
+          >
+            <Text style={[styles.sortChipText, sortBy === opt.value && styles.sortChipTextActive]}>
+              {opt.label}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
 
-      <TouchableOpacity style={styles.clearButton} onPress={onClear}>
-        <Text style={styles.clearText}>Clear Search / Filter / Sort</Text>
-      </TouchableOpacity>
+      {/* Reset */}
+      {isActive && (
+        <TouchableOpacity style={styles.clearButton} onPress={onClear}>
+          <MaterialIcons name="refresh" size={14} color={UI_COLORS.textSecondary} />
+          <Text style={styles.clearText}>রিসেট</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
@@ -94,61 +82,69 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 12,
     backgroundColor: UI_COLORS.surface,
-    gap: 8,
+    gap: 10,
   },
-  input: {
-    borderWidth: 1,
-    borderColor: UI_COLORS.border,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 15,
-    color: UI_COLORS.textPrimary,
-    backgroundColor: UI_COLORS.surface,
-  },
-  filterRow: {
+  searchRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
+    alignItems: 'center',
     gap: 8,
-  },
-  filterChip: {
-    borderRadius: 99,
-    backgroundColor: UI_COLORS.surfaceMuted,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  filterChipActive: {
-    backgroundColor: UI_COLORS.surfaceSubtle,
-  },
-  filterChipText: {
-    fontSize: 12,
-    color: UI_COLORS.textSecondary,
-    fontWeight: '700',
-  },
-  filterChipTextActive: {
-    color: UI_COLORS.primary,
-  },
-  sortLabel: {
-    marginTop: 2,
-    fontSize: 12,
-    fontWeight: '700',
-    color: UI_COLORS.textSecondary,
-  },
-  pickerWrap: {
     borderWidth: 1,
     borderColor: UI_COLORS.border,
     borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
     backgroundColor: UI_COLORS.surface,
-    overflow: 'hidden',
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    color: UI_COLORS.textPrimary,
+    paddingVertical: 0,
+  },
+  sectionLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: UI_COLORS.textSecondary,
+    marginBottom: -4,
+  },
+  chipRow: {
+    gap: 8,
+    paddingVertical: 2,
+  },
+  sortChip: {
+    borderRadius: 99,
+    borderWidth: 1,
+    borderColor: UI_COLORS.borderSoft,
+    backgroundColor: UI_COLORS.surfaceSubtle,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    minHeight: 38,
+    justifyContent: 'center',
+  },
+  sortChipActive: {
+    backgroundColor: UI_COLORS.primary,
+    borderColor: UI_COLORS.primary,
+  },
+  sortChipText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: UI_COLORS.textSecondary,
+  },
+  sortChipTextActive: {
+    color: UI_COLORS.textOnPrimary,
   },
   clearButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
     alignSelf: 'flex-start',
-    borderRadius: 8,
+    borderRadius: 10,
     backgroundColor: UI_COLORS.surfaceMuted,
     borderWidth: 1,
     borderColor: UI_COLORS.border,
-    paddingHorizontal: 10,
-    paddingVertical: 7,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    minHeight: 38,
   },
   clearText: {
     fontSize: 12,
@@ -156,4 +152,3 @@ const styles = StyleSheet.create({
     color: UI_COLORS.textSecondary,
   },
 });
-

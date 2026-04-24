@@ -41,7 +41,7 @@ export default function ApprovalRequestsScreen() {
       const data = await listApprovalRequests({ status: 'PENDING' });
       setRows(Array.isArray(data) ? data : []);
     } catch (error) {
-      Alert.alert('Failed', error?.message || 'Failed to load approval requests.');
+      Alert.alert('ব্যর্থ', error?.message || 'অনুমোদনের অনুরোধ লোড হয়নি।');
     } finally {
       setLoading(false);
     }
@@ -62,7 +62,7 @@ export default function ApprovalRequestsScreen() {
       await approveApprovalRequest({ approvalRequestId, decisionNote });
       await loadRows();
     } catch (error) {
-      Alert.alert('Approve Failed', error?.message || 'Unable to approve this request.');
+      Alert.alert('অনুমোদন ব্যর্থ', error?.message || 'এই অনুরোধ অনুমোদন করা যায়নি।');
     }
   }, [approveApprovalRequest, decisionNote, loadRows]);
 
@@ -71,7 +71,7 @@ export default function ApprovalRequestsScreen() {
       await rejectApprovalRequest({ approvalRequestId, decisionNote });
       await loadRows();
     } catch (error) {
-      Alert.alert('Reject Failed', error?.message || 'Unable to reject this request.');
+      Alert.alert('প্রত্যাখ্যান ব্যর্থ', error?.message || 'এই অনুরোধ প্রত্যাখ্যান করা যায়নি।');
     }
   }, [decisionNote, loadRows, rejectApprovalRequest]);
 
@@ -84,14 +84,14 @@ export default function ApprovalRequestsScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={UI_COLORS.primary} />}
         ListHeaderComponent={(
           <View>
-            <Text style={styles.title}>Approval Queue</Text>
-            <Text style={styles.subtitle}>Review pending void, return, and discount override requests.</Text>
+            <Text style={styles.title}>অনুমোদন সারি</Text>
+            <Text style={styles.subtitle}>মুলতুবি বাতিল, ফেরত ও ছাড়ের অনুরোধ পর্যালোচনা করুন।</Text>
             <AppCard style={styles.noteCard}>
-              <Text style={styles.label}>Decision Note (Optional)</Text>
+              <Text style={styles.label}>সিদ্ধান্তের নোট (ঐচ্ছিক)</Text>
               <AppInput
                 value={decisionNote}
                 onChangeText={setDecisionNote}
-                placeholder="Add a note for approval/rejection"
+                placeholder="অনুমোদন/প্রত্যাখ্যানের নোট লিখুন"
               />
             </AppCard>
           </View>
@@ -101,23 +101,23 @@ export default function ApprovalRequestsScreen() {
             ? (
               <View style={styles.emptyWrap}>
                 <ActivityIndicator color={UI_COLORS.primary} />
-                <Text style={styles.emptyText}>Loading requests...</Text>
+                <Text style={styles.emptyText}>লোড হচ্ছে...</Text>
               </View>
             )
-            : <Text style={styles.emptyText}>No pending requests.</Text>
+            : <Text style={styles.emptyText}>কোনো মুলতুবি অনুরোধ নেই।</Text>
         }
         renderItem={({ item }) => (
           <AppCard style={styles.card}>
             <Text style={styles.action}>{item.actionType}</Text>
-            <Text style={styles.meta}>Requested By: {String(item.requestedBy || 'N/A')}</Text>
-            <Text style={styles.meta}>At: {formatTime(item.createdAt)}</Text>
-            <Text style={styles.meta}>Reason: {item.reason || 'N/A'}</Text>
+            <Text style={styles.meta}>আবেদনকারী: {String(item.requestedBy || 'N/A')}</Text>
+            <Text style={styles.meta}>সময়: {formatTime(item.createdAt)}</Text>
+            <Text style={styles.meta}>কারণ: {item.reason || 'অজানা'}</Text>
             <View style={styles.buttonRow}>
               <TouchableOpacity style={styles.approveButton} onPress={() => handleApprove(item.approvalRequestId)}>
-                <Text style={styles.approveButtonText}>Approve</Text>
+                <Text style={styles.approveButtonText}>অনুমোদন</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.rejectButton} onPress={() => handleReject(item.approvalRequestId)}>
-                <Text style={styles.rejectButtonText}>Reject</Text>
+                <Text style={styles.rejectButtonText}>প্রত্যাখ্যান</Text>
               </TouchableOpacity>
             </View>
           </AppCard>

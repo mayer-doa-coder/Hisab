@@ -61,12 +61,12 @@ export default function CycleCountScreen() {
     const physical = Number(physicalQuantity);
 
     if (!Number.isInteger(productId) || productId <= 0) {
-      Alert.alert('Required', 'Select a product first.');
+      Alert.alert('প্রয়োজনীয়', 'Select a product first.');
       return;
     }
 
     if (!Number.isInteger(physical) || physical < 0) {
-      Alert.alert('Invalid', 'Physical quantity must be a non-negative integer.');
+      Alert.alert('অবৈধ', 'Physical quantity must be a non-negative integer.');
       return;
     }
 
@@ -91,7 +91,7 @@ export default function CycleCountScreen() {
         `System: ${result.system_quantity} | Physical: ${result.physical_quantity} | Variance: ${result.variance}`
       );
     } catch (error) {
-      Alert.alert('Failed', error?.message || 'Unable to save cycle count.');
+      Alert.alert('ব্যর্থ', error?.message || 'Unable to save cycle count.');
     } finally {
       setSaving(false);
     }
@@ -105,11 +105,11 @@ export default function CycleCountScreen() {
         contentContainerStyle={styles.container}
         ListHeaderComponent={
           <View>
-            <Text style={styles.title}>Cycle Count</Text>
-            <Text style={styles.subtitle}>Record physical counts and auto-reconcile with ADJUSTMENT movements.</Text>
+            <Text style={styles.title}>চক্র গণনা</Text>
+            <Text style={styles.subtitle}>ভৌত গণনা রেকর্ড করুন এবং স্বয়ংক্রিয়ভাবে সমন্বয় হবে।</Text>
 
             <AppCard style={styles.card}>
-              <Text style={styles.sectionTitle}>New Count</Text>
+              <Text style={styles.sectionTitle}>নতুন গণনা</Text>
 
               <View style={styles.pickerWrap}>
                 <Picker selectedValue={selectedProductId} onValueChange={(value) => setSelectedProductId(String(value))}>
@@ -123,10 +123,10 @@ export default function CycleCountScreen() {
                 value={physicalQuantity}
                 onChangeText={setPhysicalQuantity}
                 keyboardType="number-pad"
-                placeholder="Physical quantity"
+                placeholder="বাস্তব পরিমাণ"
               />
 
-              <AppInput value={note} onChangeText={setNote} placeholder="Note (optional)" />
+              <AppInput value={note} onChangeText={setNote} placeholder="নোট (ঐচ্ছিক)" />
 
               <View style={styles.buttonRow}>
                 <AppButton title={saving ? 'Saving...' : 'Record Count'} onPress={handleSubmit} disabled={saving} style={styles.buttonFlex} />
@@ -143,7 +143,7 @@ export default function CycleCountScreen() {
             </AppCard>
 
             <AppCard style={styles.card}>
-              <Text style={styles.sectionTitle}>Batch Consistency</Text>
+              <Text style={styles.sectionTitle}>ব্যাচ সামঞ্জস্য</Text>
               <Text style={styles.metaText}>Status: {consistency?.is_consistent ? 'CONSISTENT' : 'MISMATCH'}</Text>
               {!consistency?.is_consistent && Array.isArray(consistency?.mismatches) ? (
                 consistency.mismatches.map((row) => (
@@ -154,7 +154,7 @@ export default function CycleCountScreen() {
               ) : null}
             </AppCard>
 
-            <Text style={styles.sectionTitle}>Recent Cycle Counts</Text>
+            <Text style={styles.sectionTitle}>সাম্প্রতিক চক্র গণনা</Text>
           </View>
         }
         ListEmptyComponent={<Text style={styles.emptyText}>{loading ? 'Loading...' : 'No cycle count records yet.'}</Text>}

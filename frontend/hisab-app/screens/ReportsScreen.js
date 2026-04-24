@@ -201,11 +201,11 @@ export default function ReportsScreen() {
         contentContainerStyle={styles.container}
         ListHeaderComponent={
           <View style={styles.headerWrap}>
-            <Text style={styles.title}>Reports Hub</Text>
-            <Text style={styles.subtitle}>Generate compliance-ready business reports and exports.</Text>
+            <Text style={styles.title}>রিপোর্ট</Text>
+            <Text style={styles.subtitle}>ব্যবসার রিপোর্ট তৈরি করুন।</Text>
 
             <AppCard style={styles.card}>
-              <Text style={styles.sectionTitle}>Period</Text>
+              <Text style={styles.sectionTitle}>সময়কাল</Text>
               <View style={styles.segmentRow}>
                 {PERIOD_OPTIONS.map((option) => (
                   <AppButton
@@ -218,7 +218,7 @@ export default function ReportsScreen() {
                 ))}
               </View>
 
-              <Text style={styles.sectionTitle}>Report Type</Text>
+              <Text style={styles.sectionTitle}>রিপোর্টের ধরন</Text>
               <View style={styles.segmentRow}>
                 {REPORT_TYPES.map((option) => (
                   <AppButton
@@ -233,7 +233,7 @@ export default function ReportsScreen() {
 
               <View style={styles.buttonRow}>
                 <AppButton
-                  title={loading ? 'Loading...' : 'Refresh'}
+                  title={loading ? 'লোড হচ্ছে...' : 'Refresh'}
                   onPress={loadReport}
                   style={styles.buttonFlex}
                   disabled={loading}
@@ -249,7 +249,7 @@ export default function ReportsScreen() {
             </AppCard>
 
             <AppCard style={styles.card}>
-              <Text style={styles.sectionTitle}>Summary Metrics</Text>
+              <Text style={styles.sectionTitle}>সারসংক্ষেপ</Text>
               {summaryRows.length ? (
                 summaryRows.map((row) => (
                   <View key={row.id} style={styles.metricRow}>
@@ -258,13 +258,13 @@ export default function ReportsScreen() {
                   </View>
                 ))
               ) : (
-                <Text style={styles.metaText}>No summary available.</Text>
+                <Text style={styles.metaText}>কোনো সারসংক্ষেপ নেই।</Text>
               )}
             </AppCard>
 
             {taxSummary ? (
               <AppCard style={styles.card}>
-                <Text style={styles.sectionTitle}>Tax-Friendly Summary</Text>
+                <Text style={styles.sectionTitle}>করবান্ধব সারসংক্ষেপ</Text>
                 <Text style={styles.metaText}>Total Sales: {formatMetricValue(taxSummary.totalSales)}</Text>
                 <Text style={styles.metaText}>Total Expenses: {formatMetricValue(taxSummary.totalExpenses)}</Text>
                 <Text style={styles.metaText}>Net Profit: {formatMetricValue(taxSummary.netProfit)}</Text>
@@ -273,13 +273,13 @@ export default function ReportsScreen() {
 
             {reconciliation ? (
               <AppCard style={styles.card}>
-                <Text style={styles.sectionTitle}>Reconciliation</Text>
+                <Text style={styles.sectionTitle}>সমন্বয়</Text>
                 <Text style={styles.metaText}>All Reconciled: {reconciliation.allReconciled ? 'Yes' : 'No'}</Text>
               </AppCard>
             ) : null}
 
             <AppCard style={styles.card}>
-              <Text style={styles.sectionTitle}>Export</Text>
+              <Text style={styles.sectionTitle}>রপ্তানি</Text>
               <View style={styles.buttonRow}>
                 <AppButton
                   title={exporting ? 'Exporting...' : 'Export CSV'}
@@ -298,7 +298,7 @@ export default function ReportsScreen() {
               {statusText ? <Text style={styles.statusText}>{statusText}</Text> : null}
             </AppCard>
 
-            <Text style={styles.sectionTitle}>Detailed Breakdown</Text>
+            <Text style={styles.sectionTitle}>বিস্তারিত বিশ্লেষণ</Text>
           </View>
         }
         ListEmptyComponent={<Text style={styles.metaText}>{loading ? 'Loading details...' : 'No detailed rows available.'}</Text>}

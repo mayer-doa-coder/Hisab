@@ -4,6 +4,7 @@ const mongoose = require('mongoose');
 const helmet = require('helmet');
 
 const authRoutes = require('./routes/authRoutes');
+const sttRoutes = require('./routes/sttRoutes');
 const v1Routes = require('./routes/v1');
 const authMiddleware = require('./middleware/authMiddleware');
 const requestContext = require('./middleware/requestContext');
@@ -100,6 +101,7 @@ app.get('/health', (req, res) => {
 });
 
 app.use('/api/auth', authLimiter, authRoutes);
+app.use('/api/stt', sttRoutes);
 
 app.use('/api/v1', authMiddleware, (req, res, next) => {
   if (String(req.method || '').toUpperCase() === 'GET') {

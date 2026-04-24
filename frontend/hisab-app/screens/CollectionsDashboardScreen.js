@@ -20,16 +20,19 @@ export default function CollectionsDashboardScreen() {
   const [loading, setLoading] = useState(false);
 
   const loadDashboard = useCallback(async () => {
-    try {
-      setLoading(true);
-      const next = await getCollectionsDashboardData();
-      setDashboard(next || null);
-    } catch (error) {
-      Alert.alert('Load Failed', error?.message || 'Unable to load collections dashboard.');
-    } finally {
-      setLoading(false);
-    }
-  }, [getCollectionsDashboardData]);
+  try {
+    setLoading(true);
+    const next = await getCollectionsDashboardData();
+    setDashboard(next || null);
+  } catch (error) {
+    Alert.alert(
+      'লোড ব্যর্থ',
+      error?.message || 'কালেকশন ড্যাশবোর্ড লোড করা যায়নি।'
+    );
+  } finally {
+    setLoading(false);
+  }
+}, [getCollectionsDashboardData]);
 
   useEffect(() => {
     loadDashboard();
@@ -45,8 +48,8 @@ export default function CollectionsDashboardScreen() {
       <ScrollView contentContainerStyle={styles.container}>
         <View style={styles.headerRow}>
           <View>
-            <Text style={styles.title}>Collections Dashboard</Text>
-            <Text style={styles.subtitle}>Overdue trends, aging buckets, and segment performance.</Text>
+            <Text style={styles.title}>সংগ্রহ ড্যাশবোর্ড</Text>
+            <Text style={styles.subtitle}>মেয়াদোত্তীর্ণ বাকি, বয়স ভিত্তিক বিশ্লেষণ।</Text>
           </View>
           <TouchableOpacity
             style={styles.refreshButton}
@@ -55,31 +58,31 @@ export default function CollectionsDashboardScreen() {
               await loadDashboard();
             }}
           >
-            <Text style={styles.refreshText}>{loading || refreshing ? 'Loading...' : 'Refresh'}</Text>
+            <Text style={styles.refreshText}>{loading || refreshing ? 'লোড হচ্ছে...' : 'Refresh'}</Text>
           </TouchableOpacity>
         </View>
 
         <View style={styles.grid}>
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>Outstanding</Text>
+            <Text style={styles.cardTitle}>বকেয়া</Text>
             <Text style={styles.cardValue}>{money(dashboard?.total_outstanding)}</Text>
           </View>
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>Overdue</Text>
+            <Text style={styles.cardTitle}>মেয়াদোত্তীর্ণ</Text>
             <Text style={styles.cardValue}>{money(dashboard?.total_overdue)}</Text>
           </View>
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>Collection Rate</Text>
+            <Text style={styles.cardTitle}>সংগ্রহের হার</Text>
             <Text style={styles.cardValue}>{Number(dashboard?.collection_rate || 0).toFixed(2)}%</Text>
           </View>
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>Pending Promises</Text>
+            <Text style={styles.cardTitle}>মুলতুবি প্রতিশ্রুতি</Text>
             <Text style={styles.cardValue}>{Number(dashboard?.pending_promises?.count || 0)}</Text>
           </View>
         </View>
 
         <View style={styles.cardBlock}>
-          <Text style={styles.sectionTitle}>Aging Buckets</Text>
+          <Text style={styles.sectionTitle}>বয়স ভিত্তিক বাকি</Text>
           {['0_30', '31_60', '61_90', '90_plus'].map((key) => (
             <View key={key} style={styles.row}>
               <Text style={styles.rowLabel}>{key.replace('_', '-')} days</Text>
@@ -89,7 +92,7 @@ export default function CollectionsDashboardScreen() {
         </View>
 
         <View style={styles.cardBlock}>
-          <Text style={styles.sectionTitle}>Segment Snapshot</Text>
+          <Text style={styles.sectionTitle}>সেগমেন্ট স্ন্যাপশট</Text>
           {['low', 'medium', 'high'].map((segment) => (
             <View key={segment} style={styles.row}>
               <Text style={styles.rowLabel}>{segment.toUpperCase()}</Text>
@@ -101,7 +104,7 @@ export default function CollectionsDashboardScreen() {
         </View>
 
         <View style={styles.cardBlock}>
-          <Text style={styles.sectionTitle}>Top Exposure Customers</Text>
+          <Text style={styles.sectionTitle}>সর্বোচ্চ বাকি কাস্টমার</Text>
           {topCustomers.length === 0 ? (
             <Text style={styles.empty}>No customer data yet.</Text>
           ) : (

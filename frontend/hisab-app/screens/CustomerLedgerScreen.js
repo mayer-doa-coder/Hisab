@@ -55,7 +55,7 @@ export default function CustomerLedgerScreen() {
       const rows = await getCustomerLedger(Number(nextCustomerId));
       setRawLedgerRows(normalizeLedgerRows(rows));
     } catch (error) {
-      Alert.alert('Load Failed', error?.message || 'Unable to load customer ledger.');
+      Alert.alert('লোড ব্যর্থ', error?.message || 'খাতা লোড করা যায়নি।');
     } finally {
       setLoading(false);
     }
@@ -77,20 +77,20 @@ export default function CustomerLedgerScreen() {
     <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex}>
         <ScrollView contentContainerStyle={styles.container}>
-          <Text style={styles.title}>Customer Ledger</Text>
-          <Text style={styles.subtitle}>Complete timeline of baki and payments with running due balance.</Text>
+          <Text style={styles.title}>কাস্টমার খাতা</Text>
+          <Text style={styles.subtitle}>বাকি ও পেমেন্টের পূর্ণ ইতিহাস এবং চলমান বাকির হিসাব।</Text>
 
           {customers.length === 0 ? (
-            <Text style={styles.emptyText}>No customers found.</Text>
+            <Text style={styles.emptyText}>কোনো কাস্টমার পাওয়া যায়নি।</Text>
           ) : (
             <>
-              <Text style={styles.label}>Customer</Text>
+              <Text style={styles.label}>কাস্টমার</Text>
               <View style={styles.pickerWrap}>
                 <Picker selectedValue={customerId} onValueChange={(value) => setCustomerId(String(value))}>
                   {customers.map((customer) => (
                     <Picker.Item
                       key={`ledger-customer-${customer.id}`}
-                      label={`${customer.name} (${customer.phone || 'No phone'})`}
+                      label={`${customer.name} (${customer.phone || 'ফোন নেই'})`}
                       value={String(customer.id)}
                     />
                   ))}
@@ -98,23 +98,23 @@ export default function CustomerLedgerScreen() {
               </View>
 
               <View style={styles.summaryRow}>
-                <Text style={[styles.summaryBadge, styles.summaryBaki]}>Baki: ৳{summary.totalBaki.toFixed(2)}</Text>
+                <Text style={[styles.summaryBadge, styles.summaryBaki]}>বাকি: ৳{summary.totalBaki.toFixed(2)}</Text>
                 <Text style={[styles.summaryBadge, styles.summaryPayment]}>
-                  Payments: ৳{summary.totalPayments.toFixed(2)}
+                  পেমেন্ট: ৳{summary.totalPayments.toFixed(2)}
                 </Text>
-                <Text style={[styles.summaryBadge, styles.summaryDue]}>Closing Due: ৳{summary.closingDue.toFixed(2)}</Text>
+                <Text style={[styles.summaryBadge, styles.summaryDue]}>বাকি বাকি: ৳{summary.closingDue.toFixed(2)}</Text>
               </View>
 
               {selectedCustomer ? (
                 <View style={styles.riskCard}>
                   <View style={styles.riskTopRow}>
-                    <Text style={styles.riskTitle}>Trust / Risk Indicator</Text>
+                    <Text style={styles.riskTitle}>বিশ্বস্ততা / ঝুঁকি সূচক</Text>
                     <CustomerRiskBadge riskLevel={selectedCustomer.risk_level} />
                   </View>
-                  <Text style={styles.riskMeta}>Trust Score: {Number(selectedCustomer.trust_score || 0)}/100</Text>
-                  <Text style={styles.riskMeta}>Risk Score: {Number(selectedCustomer.risk_score || 0)}/100</Text>
+                  <Text style={styles.riskMeta}>বিশ্বাস স্কোর: {Number(selectedCustomer.trust_score || 0)}/100</Text>
+                  <Text style={styles.riskMeta}>ঝুঁকি স্কোর: {Number(selectedCustomer.risk_score || 0)}/100</Text>
                   <Text style={styles.riskMeta}>
-                    Avg Payment Delay: {selectedCustomer.average_payment_delay ?? 'N/A'} days
+                    গড় পেমেন্ট বিলম্ব: {selectedCustomer.average_payment_delay ?? 'অজানা'} দিন
                   </Text>
                   {(selectedCustomer.risk_reasons || []).map((reason, index) => (
                     <Text key={`risk-reason-${index}`} style={styles.riskReason}>• {reason}</Text>
@@ -127,14 +127,14 @@ export default function CustomerLedgerScreen() {
                   style={[styles.filterChip, filterType === LEDGER_FILTERS.ALL && styles.filterChipActive]}
                   onPress={() => setFilterType(LEDGER_FILTERS.ALL)}
                 >
-                  <Text style={[styles.filterText, filterType === LEDGER_FILTERS.ALL && styles.filterTextActive]}>All</Text>
+                  <Text style={[styles.filterText, filterType === LEDGER_FILTERS.ALL && styles.filterTextActive]}>সব</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.filterChip, filterType === LEDGER_FILTERS.BAKI && styles.filterChipActive]}
                   onPress={() => setFilterType(LEDGER_FILTERS.BAKI)}
                 >
                   <Text style={[styles.filterText, filterType === LEDGER_FILTERS.BAKI && styles.filterTextActive]}>
-                    Only Baki
+                    শুধু বাকি
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -142,20 +142,20 @@ export default function CustomerLedgerScreen() {
                   onPress={() => setFilterType(LEDGER_FILTERS.PAYMENTS)}
                 >
                   <Text style={[styles.filterText, filterType === LEDGER_FILTERS.PAYMENTS && styles.filterTextActive]}>
-                    Only Payments
+                    শুধু পেমেন্ট
                   </Text>
                 </TouchableOpacity>
               </View>
 
               <View style={styles.headerRow}>
-                <Text style={styles.sectionTitle}>Timeline</Text>
+                <Text style={styles.sectionTitle}>টাইমলাইন</Text>
                 <TouchableOpacity style={styles.refreshButton} onPress={() => loadLedger(customerId)}>
-                  <Text style={styles.refreshText}>{loading ? 'Loading...' : 'Reload'}</Text>
+                  <Text style={styles.refreshText}>{loading ? 'লোড হচ্ছে...' : 'রিলোড'}</Text>
                 </TouchableOpacity>
               </View>
 
               {timelineRows.length === 0 ? (
-                <Text style={styles.emptyText}>{loading ? 'Loading ledger...' : 'No transactions for this filter.'}</Text>
+                <Text style={styles.emptyText}>{loading ? 'খাতা লোড হচ্ছে...' : 'এই ফিল্টারে কোনো লেনদেন নেই।'}</Text>
               ) : (
                 <CustomerLedgerTimeline entries={timelineRows} />
               )}

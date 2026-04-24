@@ -12,9 +12,9 @@ import {
 } from '../services/backend/pilotApi';
 
 const FEEDBACK_CATEGORIES = [
-  { key: 'bug', label: 'Bug' },
-  { key: 'feature', label: 'Feature' },
-  { key: 'ux', label: 'UX' },
+  { key: 'bug', label: 'বাগ' },
+  { key: 'feature', label: 'ফিচার' },
+  { key: 'ux', label: 'ব্যবহারযোগ্যতা' },
 ];
 
 const RATINGS = [1, 2, 3, 4, 5];
@@ -35,7 +35,7 @@ export default function FeedbackScreen() {
 
   const loadData = useCallback(async () => {
     if (!accessToken || !isOnline) {
-      setStatusText('Feedback sync requires online mode.');
+      setStatusText('ফিডব্যাক সিঙ্কের জন্য অনলাইন মোড প্রয়োজন।');
       return;
     }
 
@@ -55,7 +55,7 @@ export default function FeedbackScreen() {
       setSummary(feedbackResponse?.summary || null);
       setStatusText('');
     } catch (error) {
-      setStatusText(error?.message || 'Unable to load feedback data.');
+      setStatusText(error?.message || 'ফিডব্যাক ডেটা লোড হয়নি।');
     }
   }, [accessToken, isOnline, selectedShopId]);
 
@@ -65,22 +65,22 @@ export default function FeedbackScreen() {
 
   const selectedShopName = useMemo(() => {
     const row = pilotShops.find((shop) => String(shop.id) === String(selectedShopId));
-    return row?.shop_name || 'Select a shop';
+    return row?.shop_name || 'শপ বেছে নিন';
   }, [pilotShops, selectedShopId]);
 
   const submit = useCallback(async () => {
     if (!accessToken || !isOnline) {
-      setStatusText('Internet connection is required to submit feedback.');
+      setStatusText('ফিডব্যাক পাঠাতে ইন্টারনেট সংযোগ প্রয়োজন।');
       return;
     }
 
     if (!selectedShopId) {
-      setStatusText('Select a pilot shop first.');
+      setStatusText('প্রথমে একটি পাইলট শপ বেছে নিন।');
       return;
     }
 
     if (!message.trim()) {
-      setStatusText('Feedback message is required.');
+      setStatusText('ফিডব্যাক বার্তা লিখুন।');
       return;
     }
 
@@ -97,10 +97,10 @@ export default function FeedbackScreen() {
 
       setMessage('');
       setRating(0);
-      setStatusText('Feedback submitted. Thank you.');
+      setStatusText('ফিডব্যাক পাঠানো হয়েছে। ধন্যবাদ।');
       await loadData();
     } catch (error) {
-      setStatusText(error?.message || 'Unable to submit feedback.');
+      setStatusText(error?.message || 'ফিডব্যাক পাঠানো যায়নি।');
     } finally {
       setSubmitting(false);
     }
@@ -114,12 +114,12 @@ export default function FeedbackScreen() {
         contentContainerStyle={styles.container}
         ListHeaderComponent={(
           <View style={styles.headerWrap}>
-            <Text style={styles.title}>Feedback Loop</Text>
-            <Text style={styles.subtitle}>Collect operator feedback continuously during pilot rollout.</Text>
+            <Text style={styles.title}>ফিডব্যাক</Text>
+            <Text style={styles.subtitle}>পাইলট রোলআউটের সময় অপারেটরের মতামত সংগ্রহ করুন।</Text>
 
             <AppCard style={styles.card}>
-              <Text style={styles.sectionTitle}>Submit Feedback</Text>
-              <Text style={styles.metaText}>Shop: {selectedShopName}</Text>
+              <Text style={styles.sectionTitle}>ফিডব্যাক দিন</Text>
+              <Text style={styles.metaText}>শপ: {selectedShopName}</Text>
               <View style={styles.segmentRow}>
                 {pilotShops.map((shop) => (
                   <AppButton
@@ -159,12 +159,12 @@ export default function FeedbackScreen() {
               <AppInput
                 value={message}
                 onChangeText={setMessage}
-                placeholder="Write feedback from real usage"
+                placeholder="আপনার মতামত লিখুন"
                 multiline
                 style={styles.messageInput}
               />
               <AppButton
-                title={submitting ? 'Submitting...' : 'Submit Feedback'}
+                title={submitting ? 'পাঠানো হচ্ছে...' : 'ফিডব্যাক পাঠান'}
                 onPress={submit}
                 disabled={submitting}
               />
@@ -172,24 +172,24 @@ export default function FeedbackScreen() {
             </AppCard>
 
             <AppCard style={styles.card}>
-              <Text style={styles.sectionTitle}>Feedback Summary</Text>
-              <Text style={styles.metaText}>Total: {Number(summary?.total || 0)}</Text>
-              <Text style={styles.metaText}>Bug: {Number(summary?.bug || 0)}</Text>
-              <Text style={styles.metaText}>Feature: {Number(summary?.feature || 0)}</Text>
-              <Text style={styles.metaText}>UX: {Number(summary?.ux || 0)}</Text>
-              <Text style={styles.metaText}>Average Rating: {Number(summary?.averageRating || 0).toFixed(2)}</Text>
+              <Text style={styles.sectionTitle}>ফিডব্যাক সারসংক্ষেপ</Text>
+              <Text style={styles.metaText}>মোট: {Number(summary?.total || 0)}</Text>
+              <Text style={styles.metaText}>বাগ: {Number(summary?.bug || 0)}</Text>
+              <Text style={styles.metaText}>ফিচার: {Number(summary?.feature || 0)}</Text>
+              <Text style={styles.metaText}>ব্যবহারযোগ্যতা: {Number(summary?.ux || 0)}</Text>
+              <Text style={styles.metaText}>গড় রেটিং: {Number(summary?.averageRating || 0).toFixed(2)}</Text>
             </AppCard>
 
-            <Text style={styles.sectionTitle}>Recent Feedback</Text>
+            <Text style={styles.sectionTitle}>সাম্প্রতিক ফিডব্যাক</Text>
           </View>
         )}
-        ListEmptyComponent={<Text style={styles.metaText}>No feedback submitted yet.</Text>}
+        ListEmptyComponent={<Text style={styles.metaText}>এখনো কোনো ফিডব্যাক নেই।</Text>}
         renderItem={({ item }) => (
           <AppCard style={styles.card}>
             <Text style={styles.rowTitle}>{String(item?.category || '').toUpperCase()}</Text>
             <Text style={styles.metaText}>{item?.message || '-'}</Text>
-            <Text style={styles.metaText}>Rating: {item?.rating ?? '-'}</Text>
-            <Text style={styles.metaText}>Time: {item?.timestamp ? new Date(item.timestamp).toLocaleString() : '-'}</Text>
+            <Text style={styles.metaText}>রেটিং: {item?.rating ?? '-'}</Text>
+            <Text style={styles.metaText}>সময়: {item?.timestamp ? new Date(item.timestamp).toLocaleString() : '-'}</Text>
           </AppCard>
         )}
       />

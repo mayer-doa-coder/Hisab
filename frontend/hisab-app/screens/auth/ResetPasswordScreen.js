@@ -30,17 +30,17 @@ export default function ResetPasswordScreen({ navigation }) {
     const normalizedConfirmPin = String(confirmPin || '').trim();
 
     if (!normalizedToken || !normalizedNewPin || !normalizedConfirmPin) {
-      setMessage('Reset token and PIN fields are required.');
+      setMessage('রিসেট টোকেন এবং PIN দেওয়া আবশ্যক।');
       return;
     }
 
     if (!/^\d{4,6}$/.test(normalizedNewPin)) {
-      setMessage('PIN must be 4 to 6 digits.');
+      setMessage('PIN ৪ থেকে ৬ সংখ্যার হতে হবে।');
       return;
     }
 
     if (normalizedNewPin !== normalizedConfirmPin) {
-      setMessage('PINs do not match.');
+      setMessage('PIN মিলছে না।');
       return;
     }
 
@@ -51,10 +51,10 @@ export default function ResetPasswordScreen({ navigation }) {
         resetToken: normalizedToken,
         newPin: normalizedNewPin,
       });
-      setMessage('PIN reset successful. Please login with your new PIN.');
+      setMessage('PIN রিসেট সম্পন্ন। নতুন PIN দিয়ে লগইন করুন।');
       navigation.navigate('Login');
     } catch (error) {
-      setMessage(error?.message || 'PIN reset failed.');
+      setMessage(error?.message || 'PIN রিসেট ব্যর্থ হয়েছে।');
     } finally {
       setLoading(false);
     }
@@ -62,14 +62,14 @@ export default function ResetPasswordScreen({ navigation }) {
 
   return (
     <AuthScene
-      eyebrow="Hisab Recovery"
-      title="Reset PIN"
-      subtitle="Use your recovery token to set a new PIN"
+      eyebrow="হিসাব রিকভারি"
+      title="PIN রিসেট"
+      subtitle="নতুন PIN সেট করতে রিকভারি টোকেন ব্যবহার করুন"
     >
       <TextInput
         value={resetToken}
         onChangeText={setResetToken}
-        placeholder="Recovery token"
+        placeholder="রিকভারি টোকেন"
         autoCapitalize="none"
         style={AUTH_FORM_STYLES.input}
       />
@@ -83,7 +83,7 @@ export default function ResetPasswordScreen({ navigation }) {
       <TextInput
         value={newPin}
         onChangeText={setNewPin}
-        placeholder="New PIN"
+        placeholder="নতুন PIN"
         keyboardType="number-pad"
         maxLength={6}
         secureTextEntry
@@ -93,7 +93,7 @@ export default function ResetPasswordScreen({ navigation }) {
       <TextInput
         value={confirmPin}
         onChangeText={setConfirmPin}
-        placeholder="Confirm new PIN"
+        placeholder="PIN নিশ্চিত করুন"
         keyboardType="number-pad"
         maxLength={6}
         secureTextEntry
@@ -105,15 +105,15 @@ export default function ResetPasswordScreen({ navigation }) {
         onPress={handleResetPin}
         disabled={loading}
       >
-        {loading ? <ActivityIndicator size="small" color={UI_COLORS.onAccent} /> : <Text style={AUTH_FORM_STYLES.primaryButtonText}>Reset PIN</Text>}
+        {loading ? <ActivityIndicator size="small" color={UI_COLORS.onAccent} /> : <Text style={AUTH_FORM_STYLES.primaryButtonText}>PIN রিসেট করুন</Text>}
       </TouchableOpacity>
 
       <TouchableOpacity style={AUTH_FORM_STYLES.linkButton} onPress={() => navigation.navigate('AccountRecovery')}>
-        <Text style={AUTH_FORM_STYLES.linkText}>Need a new recovery token?</Text>
+        <Text style={AUTH_FORM_STYLES.linkText}>নতুন রিকভারি টোকেন লাগবে?</Text>
       </TouchableOpacity>
 
       <TouchableOpacity style={AUTH_FORM_STYLES.linkButton} onPress={() => navigation.navigate('Login')}>
-        <Text style={AUTH_FORM_STYLES.linkText}>Back to login</Text>
+        <Text style={AUTH_FORM_STYLES.linkText}>লগইনে ফিরুন</Text>
       </TouchableOpacity>
     </AuthScene>
   );

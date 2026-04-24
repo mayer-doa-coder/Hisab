@@ -51,16 +51,16 @@ export default function ProfitReportScreen() {
         contentContainerStyle={styles.container}
         ListHeaderComponent={
           <View>
-            <Text style={styles.title}>Profit Report</Text>
-            <Text style={styles.subtitle}>Revenue, COGS, expenses, and SKU margin contribution.</Text>
+            <Text style={styles.title}>লাভ রিপোর্ট</Text>
+            <Text style={styles.subtitle}>আয়, খরচ, ব্যয় এবং পণ্যভিত্তিক মার্জিন।</Text>
 
             <AppCard style={styles.card}>
-              <Text style={styles.sectionTitle}>Window</Text>
-              <AppInput value={days} onChangeText={setDays} keyboardType="number-pad" placeholder="Days (e.g., 30)" />
+              <Text style={styles.sectionTitle}>সময়কাল</Text>
+              <AppInput value={days} onChangeText={setDays} keyboardType="number-pad" placeholder="দিন (যেমন: ৩০)" />
               <View style={styles.buttonRow}>
-                <AppButton title={loading ? 'Loading...' : 'Apply'} onPress={load} style={styles.buttonFlex} />
+                <AppButton title={loading ? 'লোড হচ্ছে...' : 'Apply'} onPress={load} style={styles.buttonFlex} />
                 <AppButton
-                  title={refreshing ? 'Refreshing...' : 'Refresh'}
+                  title={refreshing ? 'Refreshing...' : 'রিফ্রেশ'}
                   variant="secondary"
                   style={styles.buttonFlex}
                   onPress={async () => {
@@ -73,7 +73,7 @@ export default function ProfitReportScreen() {
 
             {report?.summary ? (
               <AppCard style={styles.card}>
-                <Text style={styles.sectionTitle}>Summary</Text>
+                <Text style={styles.sectionTitle}>সারসংক্ষেপ</Text>
                 <Text style={styles.meta}>Revenue: {formatMoney(report.summary.revenue)}</Text>
                 <Text style={styles.meta}>COGS: {formatMoney(report.summary.cogs)}</Text>
                 <Text style={styles.meta}>Gross Profit: {formatMoney(report.summary.gross_profit)}</Text>
@@ -83,10 +83,10 @@ export default function ProfitReportScreen() {
               </AppCard>
             ) : null}
 
-            <Text style={styles.sectionTitle}>Daily Trend</Text>
+            <Text style={styles.sectionTitle}>দৈনিক ধারা</Text>
           </View>
         }
-        ListEmptyComponent={<Text style={styles.emptyText}>{loading ? 'Loading...' : 'No report rows available.'}</Text>}
+        ListEmptyComponent={<Text style={styles.emptyText}>{loading ? 'লোড হচ্ছে...' : 'No report rows available.'}</Text>}
         renderItem={({ item }) => (
           <AppCard style={styles.rowCard}>
             <Text style={styles.rowTitle}>{item.date}</Text>

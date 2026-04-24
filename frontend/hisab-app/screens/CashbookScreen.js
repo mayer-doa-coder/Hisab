@@ -59,15 +59,15 @@ export default function CashbookScreen() {
         contentContainerStyle={styles.container}
         ListHeaderComponent={
           <View>
-            <Text style={styles.title}>Cashbook</Text>
-            <Text style={styles.subtitle}>Unified cash journal from sales, payments, and expenses.</Text>
+            <Text style={styles.title}>ক্যাশবুক</Text>
+            <Text style={styles.subtitle}>বিক্রি, পেমেন্ট ও খরচের সমন্বিত নগদ জার্নাল।</Text>
 
             <AppCard style={styles.card}>
-              <Text style={styles.sectionTitle}>Filters</Text>
+              <Text style={styles.sectionTitle}>ফিল্টার</Text>
 
               <View style={styles.row}>
                 <View style={styles.flexItem}>
-                  <Text style={styles.label}>Entry Type</Text>
+                  <Text style={styles.label}>এন্ট্রির ধরন</Text>
                   <View style={styles.pickerWrap}>
                     <Picker selectedValue={entryType} onValueChange={(value) => setEntryType(String(value))}>
                       {ENTRY_TYPES.map((option) => (
@@ -78,15 +78,15 @@ export default function CashbookScreen() {
                 </View>
 
                 <View style={styles.flexItem}>
-                  <Text style={styles.label}>Summary Window (days)</Text>
-                  <AppInput value={days} onChangeText={setDays} keyboardType="number-pad" placeholder="30" />
+                  <Text style={styles.label}>সারসংক্ষেপ (দিন)</Text>
+                  <AppInput value={days} onChangeText={setDays} keyboardType="number-pad" placeholder="৩০" />
                 </View>
               </View>
 
               <View style={styles.buttonRow}>
-                <AppButton title={loading ? 'Loading...' : 'Apply'} onPress={load} style={styles.buttonFlex} />
+                <AppButton title={loading ? 'লোড হচ্ছে...' : 'Apply'} onPress={load} style={styles.buttonFlex} />
                 <AppButton
-                  title={refreshing ? 'Refreshing...' : 'Refresh'}
+                  title={refreshing ? 'রিফ্রেশ হচ্ছে...' : 'রিফ্রেশ'}
                   variant="secondary"
                   style={styles.buttonFlex}
                   onPress={async () => {
@@ -99,17 +99,17 @@ export default function CashbookScreen() {
 
             {summary ? (
               <AppCard style={styles.card}>
-                <Text style={styles.sectionTitle}>Cashflow Summary</Text>
+                <Text style={styles.sectionTitle}>নগদ প্রবাহ সারসংক্ষেপ</Text>
                 <Text style={styles.meta}>Inflow: {formatMoney(summary.total_in)}</Text>
                 <Text style={styles.meta}>Outflow: {formatMoney(summary.total_out)}</Text>
                 <Text style={styles.meta}>Net: {formatMoney(summary.net_cashflow)}</Text>
               </AppCard>
             ) : null}
 
-            <Text style={styles.sectionTitle}>Journal Entries</Text>
+            <Text style={styles.sectionTitle}>জার্নাল এন্ট্রি</Text>
           </View>
         }
-        ListEmptyComponent={<Text style={styles.emptyText}>{loading ? 'Loading...' : 'No cashbook entries found.'}</Text>}
+        ListEmptyComponent={<Text style={styles.emptyText}>{loading ? 'লোড হচ্ছে...' : 'No cashbook entries found.'}</Text>}
         renderItem={({ item }) => (
           <AppCard style={styles.rowCard}>
             <View style={styles.rowHeader}>

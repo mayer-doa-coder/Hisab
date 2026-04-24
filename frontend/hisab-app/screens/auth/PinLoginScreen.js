@@ -14,21 +14,21 @@ import { useAuth } from '../../context/AuthContext';
 const formatRetryDuration = (totalSeconds) => {
   const seconds = Math.max(0, Number(totalSeconds) || 0);
   if (seconds <= 0) {
-    return 'less than 1 min';
+    return '১ মিনিটেরও কম';
   }
 
   const hours = Math.floor(seconds / 3600);
   const minutes = Math.ceil((seconds % 3600) / 60);
 
   if (hours > 0 && minutes > 0) {
-    return `${hours} ${hours === 1 ? 'hour' : 'hours'} ${minutes} ${minutes === 1 ? 'min' : 'mins'}`;
+    return `${hours} ঘণ্টা ${minutes} মিনিট`;
   }
 
   if (hours > 0) {
-    return `${hours} ${hours === 1 ? 'hour' : 'hours'}`;
+    return `${hours} ঘণ্টা`;
   }
 
-  return `${minutes} ${minutes === 1 ? 'min' : 'mins'}`;
+  return `${minutes} মিনিট`;
 };
 
 const resolveRetrySeconds = (error) => {
@@ -64,17 +64,17 @@ export default function PinLoginScreen({ navigation }) {
     const normalizedPin = String(pin || '').trim();
 
     if (!normalizedEmail) {
-      setMessage('Email is required.');
+      setMessage('ইমেইল দিন।');
       return;
     }
 
     if (!normalizedPin) {
-      setMessage('PIN is required.');
+      setMessage('PIN দিন।');
       return;
     }
 
     if (!/^\d{4,6}$/.test(normalizedPin)) {
-      setMessage('PIN must be 4 to 6 digits.');
+      setMessage('PIN ৪ থেকে ৬ সংখ্যার হতে হবে।');
       return;
     }
 
@@ -97,16 +97,16 @@ export default function PinLoginScreen({ navigation }) {
       }
 
       if (String(error?.code || '').toUpperCase() === 'EMAIL_NOT_REGISTERED') {
-        setMessage('Email is not registered.');
+        setMessage('ইমেইল নিবন্ধিত নয়।');
       } else if (String(error?.code || '').toUpperCase() === 'PIN_LOCKED') {
         const retrySeconds = resolveRetrySeconds(error);
         if (retrySeconds > 0) {
-          setMessage(`PIN login is temporarily blocked. Try again in ${formatRetryDuration(retrySeconds)}.`);
+          setMessage(`PIN লগইন সাময়িকভাবে বন্ধ। ${formatRetryDuration(retrySeconds)} পর আবার চেষ্টা করুন।`);
         } else {
-          setMessage(error?.message || 'PIN login is temporarily blocked. Try again later.');
+          setMessage(error?.message || 'PIN লগইন সাময়িকভাবে বন্ধ। পরে চেষ্টা করুন।');
         }
       } else {
-        setMessage(error?.message || 'PIN login failed.');
+        setMessage(error?.message || 'প্রবেশ ব্যর্থ হয়েছে।');
       }
     } finally {
       setLoading(false);
@@ -115,14 +115,14 @@ export default function PinLoginScreen({ navigation }) {
 
   return (
     <AuthScene
-      eyebrow="Hisab Access"
-      title="PIN Login"
-      subtitle="Use your email and PIN"
+      eyebrow="হিসাব"
+      title="PIN দিয়ে প্রবেশ"
+      subtitle="আপনার ইমেইল ও PIN দিন"
     >
       <TextInput
         value={email}
         onChangeText={setEmail}
-        placeholder="Email"
+        placeholder="ইমেইল"
         autoCapitalize="none"
         keyboardType="email-address"
         style={AUTH_FORM_STYLES.input}
@@ -137,7 +137,7 @@ export default function PinLoginScreen({ navigation }) {
       <TextInput
         value={pin}
         onChangeText={setPin}
-        placeholder="PIN"
+        placeholder="আপনার PIN"
         keyboardType="number-pad"
         maxLength={6}
         secureTextEntry
@@ -146,9 +146,9 @@ export default function PinLoginScreen({ navigation }) {
 
       <TouchableOpacity style={AUTH_FORM_STYLES.checkboxRow} onPress={() => setRememberMe((prev) => !prev)}>
         <View style={[AUTH_FORM_STYLES.checkbox, rememberMe && AUTH_FORM_STYLES.checkboxActive]}>
-          {rememberMe ? <Text style={AUTH_FORM_STYLES.checkboxTick}>v</Text> : null}
+          {rememberMe ? <Text style={AUTH_FORM_STYLES.checkboxTick}>✓</Text> : null}
         </View>
-        <Text style={AUTH_FORM_STYLES.checkboxText}>Remember me</Text>
+        <Text style={AUTH_FORM_STYLES.checkboxText}>এই ডিভাইসে মনে রাখুন</Text>
       </TouchableOpacity>
 
       <TouchableOpacity
@@ -156,17 +156,16 @@ export default function PinLoginScreen({ navigation }) {
         onPress={handleLogin}
         disabled={loading}
       >
-        {loading ? <ActivityIndicator size="small" color={UI_COLORS.onAccent} /> : <Text style={AUTH_FORM_STYLES.primaryButtonText}>Log In</Text>}
+        {loading ? <ActivityIndicator size="small" color={UI_COLORS.onAccent} /> : <Text style={AUTH_FORM_STYLES.primaryButtonText}>প্রবেশ করুন</Text>}
       </TouchableOpacity>
 
       <TouchableOpacity style={AUTH_FORM_STYLES.linkButton} onPress={() => navigation.navigate('AccountRecovery')}>
-        <Text style={AUTH_FORM_STYLES.linkText}>Forgot Password?</Text>
+        <Text style={AUTH_FORM_STYLES.linkText}>পাসওয়ার্ড ভুলে গেছেন?</Text>
       </TouchableOpacity>
 
       <TouchableOpacity style={AUTH_FORM_STYLES.linkButton} onPress={() => navigation.navigate('Signup')}>
-        <Text style={AUTH_FORM_STYLES.linkText}>Do not have an account? Sign Up</Text>
+        <Text style={AUTH_FORM_STYLES.linkText}>নতুন অ্যাকাউন্ট খুলুন</Text>
       </TouchableOpacity>
     </AuthScene>
   );
 }
-

@@ -126,7 +126,7 @@ export default function BackupRestoreScreen() {
 
     Alert.alert(
       'Confirm Restore',
-      'Restoring replaces active user scoped records. Continue?',
+      'পুনরুদ্ধারে সক্রিয় ব্যবহারকারীর তথ্য প্রতিস্থাপিত হবে। চালিয়ে যাবেন?',
       [
         {
           text: 'Cancel',
@@ -166,11 +166,11 @@ export default function BackupRestoreScreen() {
         contentContainerStyle={styles.container}
         ListHeaderComponent={(
           <View style={styles.headerWrap}>
-            <Text style={styles.title}>Backup & Restore</Text>
+            <Text style={styles.title}>ব্যাকআপ ও পুনরুদ্ধার</Text>
             <Text style={styles.subtitle}>Create resilient snapshots, upload retention-managed backups, and recover safely.</Text>
 
             <AppCard style={styles.card}>
-              <Text style={styles.sectionTitle}>Snapshot Actions</Text>
+              <Text style={styles.sectionTitle}>স্ন্যাপশট কার্যক্রম</Text>
               <View style={styles.buttonRow}>
                 <AppButton
                   title={busy ? 'Working...' : 'Create Local Backup'}
@@ -205,11 +205,11 @@ export default function BackupRestoreScreen() {
 
             {latestLocal ? (
               <AppCard style={styles.card}>
-                <Text style={styles.sectionTitle}>Latest Local Backup</Text>
+                <Text style={styles.sectionTitle}>সর্বশেষ স্থানীয় ব্যাকআপ</Text>
                 <Text style={styles.metaText}>Created: {formatDateTime(latestLocal.createdAt)}</Text>
                 <Text style={styles.metaText}>Size: {Number(latestLocal.sizeBytes || 0)} bytes</Text>
                 <AppButton
-                  title="Restore Latest Local"
+                  title="সর্বশেষ লোকাল রিস্টোর"
                   onPress={() => restoreFromSnapshot(latestLocal.payload, 'local backup')}
                   disabled={busy}
                 />
@@ -217,21 +217,21 @@ export default function BackupRestoreScreen() {
             ) : null}
 
             <AppCard style={styles.card}>
-              <Text style={styles.sectionTitle}>Retention Policy</Text>
+              <Text style={styles.sectionTitle}>ধারণ নীতি</Text>
               <AppInput
                 value={retentionMaxBackups}
                 onChangeText={setRetentionMaxBackups}
                 keyboardType="number-pad"
-                placeholder="Max backups per user"
+                placeholder="সর্বোচ্চ ব্যাকআপ সংখ্যা"
               />
               <AppInput
                 value={retentionMaxDays}
                 onChangeText={setRetentionMaxDays}
                 keyboardType="number-pad"
-                placeholder="Max backup age (days)"
+                placeholder="ব্যাকআপের সর্বোচ্চ বয়স (দিন)"
               />
               <AppButton
-                title="Apply Retention"
+                title="ধারণ প্রয়োগ করুন"
                 variant="secondary"
                 onPress={async () => {
                   if (!isOnline || !accessToken) {
@@ -268,7 +268,7 @@ export default function BackupRestoreScreen() {
               ) : null}
             </AppCard>
 
-            <Text style={styles.sectionTitle}>Remote Backups</Text>
+            <Text style={styles.sectionTitle}>রিমোট ব্যাকআপ</Text>
           </View>
         )}
         ListEmptyComponent={<Text style={styles.metaText}>{isOnline ? 'No remote backups found.' : 'Remote backups require online mode.'}</Text>}
@@ -280,7 +280,7 @@ export default function BackupRestoreScreen() {
             <Text style={styles.metaText}>Checksum: {String(item?.checksum || '-')}</Text>
             <View style={styles.buttonRow}>
               <AppButton
-                title="Restore"
+                title="রিস্টোর করুন"
                 style={styles.buttonFlex}
                 onPress={async () => {
                   if (!isOnline || !accessToken) {
@@ -309,7 +309,7 @@ export default function BackupRestoreScreen() {
                 disabled={busy}
               />
               <AppButton
-                title="Delete"
+                title="মুছুন"
                 variant="secondary"
                 style={styles.buttonFlex}
                 onPress={async () => {

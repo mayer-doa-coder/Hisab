@@ -80,7 +80,7 @@ export default function GoodsReceiveScreen() {
   const handleReceive = async () => {
     const orderId = Number(selectedOrderId);
     if (!Number.isInteger(orderId) || orderId <= 0) {
-      Alert.alert('Required', 'Select a purchase order first.');
+      Alert.alert('প্রয়োজনীয়', 'Select a purchase order first.');
       return;
     }
 
@@ -92,7 +92,7 @@ export default function GoodsReceiveScreen() {
       .filter((item) => Number.isInteger(item.quantity) && item.quantity > 0);
 
     if (!payload.length) {
-      Alert.alert('No Quantity', 'Enter quantity for at least one pending item.');
+      Alert.alert('পরিমাণ নেই', 'Enter quantity for at least one pending item.');
       return;
     }
 
@@ -112,9 +112,9 @@ export default function GoodsReceiveScreen() {
       await loadOrderDetails();
       await loadConsistency();
 
-      Alert.alert('Received', 'Stock updated and movement entries were recorded automatically.');
+      Alert.alert('গৃহীত হয়েছে', 'Stock updated and movement entries were recorded automatically.');
     } catch (error) {
-      Alert.alert('Receive Failed', error?.message || 'Unable to receive goods.');
+      Alert.alert('গ্রহণ ব্যর্থ', error?.message || 'পণ্য গ্রহণ করা যায়নি।');
     } finally {
       setSubmitting(false);
     }
@@ -128,11 +128,11 @@ export default function GoodsReceiveScreen() {
         contentContainerStyle={styles.container}
         ListHeaderComponent={
           <View>
-            <Text style={styles.title}>Goods Receiving</Text>
-            <Text style={styles.subtitle}>Receive purchase items and auto-post stock-in movements.</Text>
+            <Text style={styles.title}>পণ্য গ্রহণ</Text>
+            <Text style={styles.subtitle}>ক্রয় করা পণ্য গ্রহণ করুন এবং স্টক আপডেট হবে।</Text>
 
             <AppCard style={styles.card}>
-              <Text style={styles.sectionTitle}>Open Orders</Text>
+              <Text style={styles.sectionTitle}>খোলা আদেশ</Text>
               <View style={styles.pickerWrap}>
                 <Picker selectedValue={selectedOrderId} onValueChange={(value) => setSelectedOrderId(String(value))}>
                   {openOrders.map((order) => (
@@ -178,7 +178,7 @@ export default function GoodsReceiveScreen() {
 
             {consistency ? (
               <AppCard style={styles.card}>
-                <Text style={styles.sectionTitle}>Integrity Check</Text>
+                <Text style={styles.sectionTitle}>অখণ্ডতা যাচাই</Text>
                 <Text style={styles.metaText}>Purchase Received Qty: {consistency.purchase_received_quantity}</Text>
                 <Text style={styles.metaText}>Movement Purchase IN Qty: {consistency.movement_purchase_in_quantity}</Text>
                 <Text style={styles.metaText}>
@@ -187,7 +187,7 @@ export default function GoodsReceiveScreen() {
               </AppCard>
             ) : null}
 
-            <Text style={styles.sectionTitle}>Pending Items</Text>
+            <Text style={styles.sectionTitle}>মুলতুবি পণ্য</Text>
           </View>
         }
         ListEmptyComponent={
@@ -203,7 +203,7 @@ export default function GoodsReceiveScreen() {
               value={String(receiveMap[String(item.id)] || '')}
               onChangeText={(value) => setReceiveMap((prev) => ({ ...prev, [String(item.id)]: value }))}
               keyboardType="number-pad"
-              placeholder="Receive quantity"
+              placeholder="প্রাপ্ত পরিমাণ"
             />
           </AppCard>
         )}

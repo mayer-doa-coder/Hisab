@@ -21,14 +21,14 @@ export default function FilterBar({
 }) {
   return (
     <View style={styles.root}>
-      <Text style={styles.sectionTitle}>Filters</Text>
+      <Text style={styles.sectionTitle}>ফিল্টার</Text>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
         {URGENCY.map((token) => (
           <Chip
             key={`urgency-${token}`}
             active={filters.urgency === token}
-            label={token === 'all' ? 'Urgency: All' : `Urgency: ${token}`}
+            label={token === 'all' ? 'জরুরিতা: সব' : `জরুরিতা: ${token}`}
             onPress={() => onChange({ urgency: token })}
           />
         ))}
@@ -39,7 +39,7 @@ export default function FilterBar({
           <Chip
             key={`confidence-${threshold}`}
             active={filters.confidenceThreshold === threshold}
-            label={threshold <= 0 ? 'Confidence: Any' : `Confidence: ${Math.round(threshold * 100)}%+`}
+            label={threshold <= 0 ? 'আস্থা: যেকোনো' : `আস্থা: ${Math.round(threshold * 100)}%+`}
             onPress={() => onChange({ confidenceThreshold: threshold })}
           />
         ))}
@@ -50,7 +50,7 @@ export default function FilterBar({
           <Chip
             key={`horizon-${token}`}
             active={filters.horizon === token}
-            label={token === 'all' ? 'Horizon: All' : `Horizon: ${token}`}
+            label={token === 'all' ? 'সময়সীমা: সব' : `সময়সীমা: ${token}`}
             onPress={() => onChange({ horizon: token })}
           />
         ))}
@@ -60,7 +60,7 @@ export default function FilterBar({
         <Chip
           key="category-all"
           active={filters.category === 'all'}
-          label="Category: All"
+          label="বিভাগ: সব"
           onPress={() => onChange({ category: 'all' })}
         />
         {categories.map((category) => (

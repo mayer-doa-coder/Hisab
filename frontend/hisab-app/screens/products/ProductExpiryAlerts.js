@@ -45,7 +45,7 @@ export default function ProductExpiryAlerts({ expiringSoonProducts, expiredProdu
         ))
       )}
 
-      <Text style={styles.sectionHeading}>Expired Products</Text>
+      <Text style={styles.sectionHeading}>মেয়াদোত্তীর্ণ পণ্য</Text>
       {expiredProducts.length === 0 ? (
         <Text style={styles.emptyText}>No expired products.</Text>
       ) : (

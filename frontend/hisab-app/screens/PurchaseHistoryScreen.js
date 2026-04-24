@@ -129,12 +129,12 @@ export default function PurchaseHistoryScreen() {
     const purchaseOrderIdValue = Number(paymentPurchaseOrderId);
 
     if (!Number.isInteger(supplierIdValue) || supplierIdValue <= 0) {
-      Alert.alert('Required', 'Select supplier for payment.');
+      Alert.alert('প্রয়োজনীয়', 'পেমেন্টের জন্য সরবরাহকারী বেছে নিন।');
       return;
     }
 
     if (!Number.isFinite(amountValue) || amountValue <= 0) {
-      Alert.alert('Required', 'Valid payment amount is required.');
+      Alert.alert('প্রয়োজনীয়', 'সঠিক পেমেন্টের পরিমাণ দিন।');
       return;
     }
 
@@ -162,9 +162,9 @@ export default function PurchaseHistoryScreen() {
       await loadPayables();
       await loadConsistency();
 
-      Alert.alert('Payment Saved', 'Supplier due updated successfully.');
+      Alert.alert('পেমেন্ট সেভ হয়েছে', 'সরবরাহকারীর বাকি আপডেট হয়েছে।');
     } catch (error) {
-      Alert.alert('Payment Failed', error?.message || 'Unable to record supplier payment.');
+      Alert.alert('পেমেন্ট ব্যর্থ', error?.message || 'Unable to record supplier payment.');
     } finally {
       setSavingPayment(false);
     }
@@ -178,14 +178,14 @@ export default function PurchaseHistoryScreen() {
         contentContainerStyle={styles.container}
         ListHeaderComponent={
           <View>
-            <Text style={styles.title}>Purchase History</Text>
-            <Text style={styles.subtitle}>Filter purchases and record supplier payments against dues.</Text>
+            <Text style={styles.title}>ক্রয়ের ইতিহাস</Text>
+            <Text style={styles.subtitle}>ক্রয় ফিল্টার করুন এবং সরবরাহকারীর পেমেন্ট রেকর্ড করুন।</Text>
 
             <AppCard style={styles.card}>
-              <Text style={styles.sectionTitle}>Filters</Text>
-              <AppInput value={searchText} onChangeText={setSearchText} placeholder="Search code, note, supplier" />
+              <Text style={styles.sectionTitle}>ফিল্টার</Text>
+              <AppInput value={searchText} onChangeText={setSearchText} placeholder="কোড, নোট বা সরবরাহকারী দিয়ে খুঁজুন" />
 
-              <Text style={styles.label}>Status</Text>
+              <Text style={styles.label}>স্ট্যাটাস</Text>
               <View style={styles.pickerWrap}>
                 <Picker selectedValue={statusFilter} onValueChange={(value) => setStatusFilter(String(value))}>
                   {PURCHASE_STATUS_OPTIONS.map((option) => (
@@ -194,10 +194,10 @@ export default function PurchaseHistoryScreen() {
                 </Picker>
               </View>
 
-              <Text style={styles.label}>Supplier</Text>
+              <Text style={styles.label}>সরবরাহকারী</Text>
               <View style={styles.pickerWrap}>
                 <Picker selectedValue={supplierFilter} onValueChange={(value) => setSupplierFilter(String(value))}>
-                  <Picker.Item label="All Suppliers" value="" />
+                  <Picker.Item label="সব সরবরাহকারী" value="" />
                   {suppliers.map((supplier) => (
                     <Picker.Item key={`history-supplier-${supplier.id}`} label={supplier.name} value={String(supplier.id)} />
                   ))}
@@ -205,9 +205,9 @@ export default function PurchaseHistoryScreen() {
               </View>
 
               <View style={styles.buttonRow}>
-                <AppButton title={loading ? 'Loading...' : 'Apply Filters'} onPress={loadRows} style={styles.buttonFlex} />
+                <AppButton title={loading ? 'লোড হচ্ছে...' : 'Apply Filters'} onPress={loadRows} style={styles.buttonFlex} />
                 <AppButton
-                  title={refreshing ? 'Refreshing...' : 'Refresh'}
+                  title={refreshing ? 'Refreshing...' : 'রিফ্রেশ'}
                   variant="secondary"
                   style={styles.buttonFlex}
                   onPress={async () => {
@@ -224,12 +224,12 @@ export default function PurchaseHistoryScreen() {
             </AppCard>
 
             <AppCard style={styles.card}>
-              <Text style={styles.sectionTitle}>Post Supplier Payment</Text>
+              <Text style={styles.sectionTitle}>সরবরাহকারী পেমেন্ট</Text>
               <Text style={styles.summaryText}>
                 Current Supplier Due: {formatMoney(payableSummary?.outstanding_due || 0)}
               </Text>
 
-              <Text style={styles.label}>Supplier</Text>
+              <Text style={styles.label}>সরবরাহকারী</Text>
               <View style={styles.pickerWrap}>
                 <Picker selectedValue={paymentSupplierId} onValueChange={(value) => setPaymentSupplierId(String(value))}>
                   {suppliers.map((supplier) => (
@@ -242,10 +242,10 @@ export default function PurchaseHistoryScreen() {
                 </Picker>
               </View>
 
-              <Text style={styles.label}>Purchase Order (Optional)</Text>
+              <Text style={styles.label}>ক্রয় আদেশ (ঐচ্ছিক)</Text>
               <View style={styles.pickerWrap}>
                 <Picker selectedValue={paymentPurchaseOrderId} onValueChange={(value) => setPaymentPurchaseOrderId(String(value))}>
-                  <Picker.Item label="Apply to supplier due only" value="" />
+                  <Picker.Item label="শুধু সরবরাহকারীর বাকিতে প্রয়োগ করুন" value="" />
                   {purchaseRowsForPaymentSupplier.map((row) => (
                     <Picker.Item
                       key={`payment-order-${row.id}`}
@@ -262,20 +262,20 @@ export default function PurchaseHistoryScreen() {
                   value={paymentAmount}
                   onChangeText={setPaymentAmount}
                   keyboardType="decimal-pad"
-                  placeholder="Amount"
+                  placeholder="পরিমাণ"
                 />
                 <View style={[styles.pickerWrap, styles.inputFlex]}>
                   <Picker selectedValue={paymentMethod} onValueChange={(value) => setPaymentMethod(String(value))}>
-                    <Picker.Item label="CASH" value="CASH" />
-                    <Picker.Item label="BKASH" value="BKASH" />
-                    <Picker.Item label="NAGAD" value="NAGAD" />
-                    <Picker.Item label="BANK" value="BANK" />
-                    <Picker.Item label="CARD" value="CARD" />
+                    <Picker.Item label="নগদ" value="CASH" />
+                    <Picker.Item label="বিকাশ" value="BKASH" />
+                    <Picker.Item label="নগাদ" value="NAGAD" />
+                    <Picker.Item label="ব্যাংক" value="BANK" />
+                    <Picker.Item label="কার্ড" value="CARD" />
                   </Picker>
                 </View>
               </View>
 
-              <AppInput value={paymentNote} onChangeText={setPaymentNote} placeholder="Note (optional)" />
+              <AppInput value={paymentNote} onChangeText={setPaymentNote} placeholder="নোট (ঐচ্ছিক)" />
 
               <AppButton
                 title={savingPayment ? 'Posting...' : 'Post Payment'}
@@ -286,7 +286,7 @@ export default function PurchaseHistoryScreen() {
 
             {consistency ? (
               <AppCard style={styles.card}>
-                <Text style={styles.sectionTitle}>Integrity Check</Text>
+                <Text style={styles.sectionTitle}>সততা যাচাই</Text>
                 <Text style={styles.summaryText}>Purchase Received Qty: {consistency.purchase_received_quantity}</Text>
                 <Text style={styles.summaryText}>Movement Purchase IN Qty: {consistency.movement_purchase_in_quantity}</Text>
                 <Text style={styles.summaryText}>
@@ -295,10 +295,10 @@ export default function PurchaseHistoryScreen() {
               </AppCard>
             ) : null}
 
-            <Text style={styles.sectionTitle}>Purchase Rows</Text>
+            <Text style={styles.sectionTitle}>ক্রয় তালিকা</Text>
           </View>
         }
-        ListEmptyComponent={<Text style={styles.emptyText}>{loading ? 'Loading...' : 'No purchase rows found.'}</Text>}
+        ListEmptyComponent={<Text style={styles.emptyText}>{loading ? 'লোড হচ্ছে...' : 'No purchase rows found.'}</Text>}
         renderItem={({ item }) => (
           <AppCard style={styles.rowCard}>
             <View style={styles.rowHeader}>
@@ -315,7 +315,7 @@ export default function PurchaseHistoryScreen() {
         ListFooterComponent={
           payables.length ? (
             <View style={styles.footerWrap}>
-              <Text style={styles.sectionTitle}>Recent Supplier Payables</Text>
+              <Text style={styles.sectionTitle}>সাম্প্রতিক সরবরাহকারী বাকি</Text>
               {payables.slice(0, 20).map((row) => (
                 <AppCard key={`payable-row-${row.id}`} style={styles.payableCard}>
                   <Text style={styles.rowMeta}>

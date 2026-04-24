@@ -34,12 +34,12 @@ export default function ProductSelector({
 
   return (
     <AppCard style={styles.card}>
-      <Text style={styles.heading}>Quick Sell</Text>
+      <Text style={styles.heading}>দ্রুত বিক্রি</Text>
 
-      <Text style={styles.label}>Repeat Items</Text>
+      <Text style={styles.label}>বারবার বিক্রি</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quickRow}>
         {recentProducts.length === 0 ? (
-          <Text style={styles.emptyHint}>No recent products yet.</Text>
+          <Text style={styles.emptyHint}>এখনো কোনো পণ্য নেই।</Text>
         ) : (
           recentProducts.map((item) => (
             <TouchableOpacity
@@ -56,10 +56,10 @@ export default function ProductSelector({
         )}
       </ScrollView>
 
-      <Text style={styles.label}>Search Product</Text>
-      <AppInput value={searchText} onChangeText={setSearchText} placeholder="Type product name" />
+      <Text style={styles.label}>পণ্য খুঁজুন</Text>
+      <AppInput value={searchText} onChangeText={setSearchText} placeholder="পণ্যের নাম লিখুন" />
 
-      <Text style={styles.label}>Product</Text>
+      <Text style={styles.label}>পণ্য</Text>
       <View style={styles.pickerWrap}>
         <Picker selectedValue={selectedProductId} onValueChange={(value) => onSelectProductId?.(String(value))}>
           {pickerSource.map((item) => (
@@ -78,12 +78,12 @@ export default function ProductSelector({
           <AppInput value={quantity} onChangeText={onChangeQuantity} keyboardType="number-pad" placeholder="1" />
         </View>
         <View style={styles.col}>
-          <Text style={styles.label}>Price</Text>
-          <AppInput value={unitPrice} onChangeText={onChangeUnitPrice} keyboardType="decimal-pad" placeholder="Auto" />
+          <Text style={styles.label}>দাম</Text>
+          <AppInput value={unitPrice} onChangeText={onChangeUnitPrice} keyboardType="decimal-pad" placeholder="স্বয়ংক্রিয়" />
         </View>
       </View>
 
-      <AppButton title="Add To Cart" onPress={onAddItem} />
+      <AppButton title="কার্টে যোগ করুন" onPress={onAddItem} />
     </AppCard>
   );
 }

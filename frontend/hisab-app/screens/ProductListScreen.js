@@ -102,7 +102,7 @@ export default function ProductListScreen() {
           lowStockThreshold: Number(lowStockThreshold),
           expiryDate,
         });
-        Alert.alert('Success', 'Product updated successfully.');
+        Alert.alert('সফল', 'পণ্য আপডেট হয়েছে।');
       } else {
         await addProduct({
           name,
@@ -111,12 +111,12 @@ export default function ProductListScreen() {
           lowStockThreshold: Number(lowStockThreshold),
           expiryDate,
         });
-        Alert.alert('Success', 'Product saved successfully.');
+        Alert.alert('সফল', 'পণ্য সেভ হয়েছে।');
       }
 
       resetForm();
     } catch (error) {
-      Alert.alert('Save Failed', error?.message || 'Unable to save product.');
+      Alert.alert('সেভ ব্যর্থ', error?.message || 'পণ্য সেভ করা যায়নি।');
     } finally {
       setSaving(false);
     }
@@ -132,8 +132,8 @@ export default function ProductListScreen() {
   };
 
   const handleDelete = (product) => {
-    Alert.alert('Delete Product', `Delete ${product.name}?`, [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert('পণ্য মুছুন', `${product.name} মুছে ফেলবেন?`, [
+      { text: 'বাতিল', style: 'cancel' },
       {
         text: 'Delete',
         style: 'destructive',
@@ -143,9 +143,9 @@ export default function ProductListScreen() {
             if (Number(editingId) === Number(product.id)) {
               resetForm();
             }
-            Alert.alert('Deleted', 'Product deleted successfully.');
+            Alert.alert('মুছে ফেলা হয়েছে', 'পণ্য মুছে ফেলা হয়েছে।');
           } catch (error) {
-            Alert.alert('Delete Failed', error?.message || 'Unable to delete product.');
+            Alert.alert('মুছতে ব্যর্থ', error?.message || 'পণ্য মুছে ফেলা যায়নি।');
           }
         },
       },
@@ -162,8 +162,8 @@ export default function ProductListScreen() {
           keyboardShouldPersistTaps="handled"
           ListHeaderComponent={
             <View>
-              <Text style={styles.title}>Inventory List</Text>
-              <Text style={styles.subtitle}>Manage product stock, value, and updates in real time.</Text>
+              <Text style={styles.title}>পণ্য তালিকা</Text>
+              <Text style={styles.subtitle}>পণ্যের স্টক, মূল্য এবং তথ্য রিয়েল টাইমে পরিচালনা করুন।</Text>
 
               <ProductSummaryCards
                 totalItems={productSummary.totalItems}
@@ -174,7 +174,7 @@ export default function ProductListScreen() {
               <TextInput
                 value={search}
                 onChangeText={setSearch}
-                placeholder="Search by product name or ID"
+                placeholder="পণ্যের নাম বা আইডি দিয়ে খুঁজুন"
                 style={styles.input}
               />
 
@@ -183,7 +183,7 @@ export default function ProductListScreen() {
                 onPress={() => setLowStockOnly((prev) => !prev)}
               >
                 <Text style={[styles.filterToggleText, lowStockOnly && styles.filterToggleTextActive]}>
-                  {lowStockOnly ? 'Showing: Low Stock Only' : 'Show Low Stock Only'}
+                  {lowStockOnly ? 'দেখাচ্ছে: কম স্টক' : 'শুধু কম স্টক দেখুন'}
                 </Text>
               </TouchableOpacity>
 
@@ -215,9 +215,9 @@ export default function ProductListScreen() {
               />
 
               <View style={styles.headerRow}>
-                <Text style={styles.sectionTitle}>Product Records</Text>
+                <Text style={styles.sectionTitle}>পণ্যের তালিকা</Text>
                 <TouchableOpacity style={styles.refreshButton} onPress={refreshAll}>
-                  <Text style={styles.refreshText}>{refreshing ? 'Refreshing...' : 'Refresh'}</Text>
+                  <Text style={styles.refreshText}>{refreshing ? 'রিফ্রেশ হচ্ছে...' : 'রিফ্রেশ'}</Text>
                 </TouchableOpacity>
               </View>
             </View>

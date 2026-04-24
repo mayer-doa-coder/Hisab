@@ -23,7 +23,7 @@ export default function PaymentSelector({
 
   return (
     <AppCard style={styles.card}>
-      <Text style={styles.heading}>Payment</Text>
+      <Text style={styles.heading}>পেমেন্ট</Text>
       <View style={styles.methodRow}>
         {PAYMENT_METHOD_OPTIONS.map((method) => (
           <Text
@@ -38,7 +38,7 @@ export default function PaymentSelector({
 
       {paymentMode === 'MIXED' ? (
         <View style={styles.splitWrap}>
-          <Text style={styles.label}>Cash</Text>
+          <Text style={styles.label}>নগদ</Text>
           <AppInput
             value={splitPayments.cash}
             onChangeText={(value) => onSplitPaymentsChange?.({ ...splitPayments, cash: value })}
@@ -54,7 +54,7 @@ export default function PaymentSelector({
             placeholder="0"
           />
 
-          <Text style={styles.label}>Nagad</Text>
+          <Text style={styles.label}>নগদ</Text>
           <AppInput
             value={splitPayments.nagad}
             onChangeText={(value) => onSplitPaymentsChange?.({ ...splitPayments, nagad: value })}
@@ -63,7 +63,7 @@ export default function PaymentSelector({
           />
 
           <Text style={[styles.dueText, Math.abs(due) > 0.009 ? styles.dueWarning : null]}>
-            Remaining: ৳{due.toFixed(2)}
+            বাকি: ৳{due.toFixed(2)}
           </Text>
         </View>
       ) : null}

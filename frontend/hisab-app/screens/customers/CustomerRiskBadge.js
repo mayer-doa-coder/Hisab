@@ -30,7 +30,11 @@ export default function CustomerRiskBadge({ riskLevel, compact = false }) {
 
   return (
     <View style={[styles.baseWrap, riskStyle.container, compact && styles.compactWrap]}>
-      <Text style={[styles.baseText, riskStyle.text]}>{normalizedRiskLevel}</Text>
+      <Text style={[styles.baseText, riskStyle.text]}>{
+      normalizedRiskLevel === 'HIGH' ? 'বেশি ঝুঁকি' :
+      normalizedRiskLevel === 'MEDIUM' ? 'মাঝারি ঝুঁকি' :
+      'কম ঝুঁকি'
+    }</Text>
     </View>
   );
 }

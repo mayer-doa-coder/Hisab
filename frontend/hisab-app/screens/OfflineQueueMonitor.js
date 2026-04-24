@@ -176,11 +176,11 @@ export default function OfflineQueueMonitor() {
         contentContainerStyle={styles.container}
         ListHeaderComponent={(
           <View style={styles.headerWrap}>
-            <Text style={styles.title}>Offline Queue Monitor</Text>
+            <Text style={styles.title}>অফলাইন সারি</Text>
             <Text style={styles.subtitle}>Track pending sync pressure, retry timing, and failure concentration by entity.</Text>
 
             <AppCard style={styles.card}>
-              <Text style={styles.sectionTitle}>Local Queue Health</Text>
+              <Text style={styles.sectionTitle}>স্থানীয় সারির অবস্থা</Text>
               <Text style={styles.metaText}>Total pending: {localSummary.total}</Text>
               <Text style={styles.metaText}>Failed attempts: {localSummary.failed}</Text>
               <Text style={styles.metaText}>Max attempts: {localSummary.maxAttempts}</Text>
@@ -201,7 +201,7 @@ export default function OfflineQueueMonitor() {
                   disabled={publishing}
                 />
                 <AppButton
-                  title="Run Sync"
+                  title="সিঙ্ক চালান"
                   style={styles.buttonFlex}
                   onPress={async () => {
                     setStatusText('Running online sync...');
@@ -216,7 +216,7 @@ export default function OfflineQueueMonitor() {
 
             {serverSummary?.latest ? (
               <AppCard style={styles.card}>
-                <Text style={styles.sectionTitle}>Server Snapshot</Text>
+                <Text style={styles.sectionTitle}>সার্ভার স্ন্যাপশট</Text>
                 <Text style={styles.metaText}>Latest pending: {Number(serverSummary.latest.pending || 0)}</Text>
                 <Text style={styles.metaText}>Latest failed: {Number(serverSummary.latest.failed || 0)}</Text>
                 <Text style={styles.metaText}>Captured: {formatDateTime(serverSummary.latest.createdAt)}</Text>
@@ -225,9 +225,9 @@ export default function OfflineQueueMonitor() {
             ) : null}
 
             <AppCard style={styles.card}>
-              <Text style={styles.sectionTitle}>Remote Retry Evaluator</Text>
+              <Text style={styles.sectionTitle}>রিমোট রিট্রাই মূল্যায়ন</Text>
               <AppButton
-                title="Evaluate First Failed Item"
+                title="প্রথম ব্যর্থটি মূল্যায়ন করুন"
                 variant="secondary"
                 onPress={async () => {
                   const firstFailed = rowsWithRetry.find((row) => Number(row?.attempts || 0) > 0);
@@ -262,7 +262,7 @@ export default function OfflineQueueMonitor() {
               />
             </AppCard>
 
-            <Text style={styles.sectionTitle}>Queue Items</Text>
+            <Text style={styles.sectionTitle}>সারির আইটেম</Text>
           </View>
         )}
         ListEmptyComponent={
