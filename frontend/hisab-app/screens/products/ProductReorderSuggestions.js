@@ -29,7 +29,7 @@ export default function ProductReorderSuggestions({ suggestions }) {
         <Text style={styles.badgeText}>{actionable.length} items need reorder</Text>
       </View>
 
-      <Text style={styles.sectionHeading}>Reorder Suggestions</Text>
+      <Text style={styles.sectionHeading}>পুনরায় অর্ডারের পরামর্শ</Text>
       {actionable.length === 0 ? (
         <Text style={styles.emptyText}>No reorder action required right now.</Text>
       ) : (

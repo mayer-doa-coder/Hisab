@@ -1,0 +1,71 @@
+{
+  "sample_count": 2665,
+  "intent_accuracy": 0.9992,
+  "slot_accuracy": {
+    "name": 0.9996,
+    "amount": 1,
+    "date": 0.8897
+  },
+  "amount_accuracy": 1,
+  "name_accuracy": 0.9996,
+  "date_accuracy": 0.8897,
+  "false_execution_rate": 0,
+  "cancellation_rate": 0.0011,
+  "execution_attempts": 2662,
+  "failure_samples_top20": [
+    {
+      "id": 2648,
+      "text": "karim 100",
+      "expected": {
+        "intent": null,
+        "name": "Karim",
+        "amount": 100,
+        "date": null
+      },
+      "predicted": {
+        "intent": null,
+        "name": "Karim",
+        "amount": 100,
+        "date": null,
+        "confidence": 0.774,
+        "shouldClarify": true
+      }
+    },
+    {
+      "id": 2649,
+      "text": "noise xxx rahim 50",
+      "expected": {
+        "intent": null,
+        "name": "Rahim",
+        "amount": 50,
+        "date": null
+      },
+      "predicted": {
+        "intent": null,
+        "name": "Rahim",
+        "amount": 50,
+        "date": null,
+        "confidence": 0.774,
+        "shouldClarify": true
+      }
+    }
+  ],
+  "analytics_failure_summary": {
+    "total": 0,
+    "counts": {},
+    "topFailureSignals": [
+      {
+        "signal": "execution_blocked",
+        "value": 0
+      },
+      {
+        "signal": "flow_cancellation",
+        "value": 0
+      },
+      {
+        "signal": "user_correction",
+        "value": 0
+      }
+    ]
+  }
+}

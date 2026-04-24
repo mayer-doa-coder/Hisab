@@ -32,6 +32,7 @@ export const COLORS = {
   borderDanger: '#E3B7C1',
   borderStrong: BRAND.primaryMedium,
   onAccent: BRAND.primaryDark,
+  success: '#16a34a',
   danger: '#A53A49',
   textOnPrimary: '#FFFFFF',
   shadow: '#A8773A',

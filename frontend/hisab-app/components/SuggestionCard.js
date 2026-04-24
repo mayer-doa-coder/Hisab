@@ -10,19 +10,19 @@ const ACTION_META = {
     icon: 'shopping-cart-checkout',
     bg: UI_COLORS.surfaceSuccess,
     text: UI_COLORS.textSuccess,
-    label: 'Buy Now',
+    label: 'কিনুন',
   },
   WATCH: {
     icon: 'visibility',
     bg: UI_COLORS.surfaceWarning,
     text: UI_COLORS.textWarning,
-    label: 'Watch',
+    label: 'নজর রাখুন',
   },
   HOLD: {
     icon: 'pause-circle-outline',
     bg: UI_COLORS.surfaceInfo,
     text: UI_COLORS.textSecondary,
-    label: 'Hold',
+    label: 'অপেক্ষা করুন',
   },
 };
 
@@ -41,7 +41,7 @@ export default function SuggestionCard({
   const quantity = Math.max(0, Math.trunc(toNumber(suggestion?.buy_quantity, 0)));
   const horizon = String(suggestion?.horizon || '1W').trim().toUpperCase() === '1M' ? '1M' : '1W';
   const symbol = String(suggestion?.symbol || 'UNKNOWN');
-  const outlook = String(suggestion?.outlook || '').trim() || `${horizon === '1M' ? 'Monthly' : 'Weekly'} outlook available`;
+  const outlook = String(suggestion?.outlook || '').trim() || `${horizon === '1M' ? 'মাসিক' : 'সাপ্তাহিক'} পূর্বাভাস আছে`;
   const demandExpected = toNumber(suggestion?.confidence_band?.expected, 0);
   const demandLower = toNumber(suggestion?.confidence_band?.lower, 0);
   const demandUpper = toNumber(suggestion?.confidence_band?.upper, 0);
@@ -51,7 +51,7 @@ export default function SuggestionCard({
       <View style={styles.headerRow}>
         <View style={styles.symbolWrap}>
           <Text style={styles.symbol}>{symbol}</Text>
-          <Text style={styles.category}>{String(suggestion?.category || 'General')}</Text>
+          <Text style={styles.category}>{String(suggestion?.category || 'সাধারণ')}</Text>
         </View>
 
         <View style={[styles.actionPill, { backgroundColor: action.bg }]}>
@@ -62,23 +62,23 @@ export default function SuggestionCard({
 
       <View style={styles.metricsRow}>
         <View style={styles.metricBlock}>
-          <Text style={styles.metricLabel}>Suggested Qty</Text>
+          <Text style={styles.metricLabel}>পরামর্শকৃত পরিমাণ</Text>
           <Text style={styles.metricValue}>{quantity}</Text>
         </View>
 
         <View style={styles.metricBlock}>
-          <Text style={styles.metricLabel}>Horizon</Text>
+          <Text style={styles.metricLabel}>সময়সীমা</Text>
           <Text style={styles.metricValue}>{horizon}</Text>
         </View>
 
         <View style={styles.metricBlock}>
-          <Text style={styles.metricLabel}>Urgency</Text>
+          <Text style={styles.metricLabel}>জরুরিত্ব</Text>
           <Text style={styles.metricValue}>{String(suggestion?.urgency || 'low').toUpperCase()}</Text>
         </View>
       </View>
 
       <View style={styles.confidenceWrap}>
-        <Text style={styles.metricLabel}>Confidence</Text>
+        <Text style={styles.metricLabel}>আস্থা</Text>
         <ConfidenceBar value={toNumber(suggestion?.confidence, 0)} />
       </View>
 
@@ -88,9 +88,9 @@ export default function SuggestionCard({
       </View>
 
       <View style={styles.bandBox}>
-        <Text style={styles.bandLabel}>Demand Band ({horizon})</Text>
+        <Text style={styles.bandLabel}>চাহিদার পরিসর ({horizon})</Text>
         <Text style={styles.bandValue}>
-          {`${Math.round(demandExpected)} units expected (${Math.round(demandLower)}-${Math.round(demandUpper)})`}
+          {`${Math.round(demandExpected)} ইউনিট প্রত্যাশিত (${Math.round(demandLower)}-${Math.round(demandUpper)})`}
         </Text>
       </View>
 
@@ -104,7 +104,7 @@ export default function SuggestionCard({
       />
 
       <Pressable style={styles.tapTarget} onPress={onToggleExplain}>
-        <Text style={styles.tapTargetText}>{explainOpen ? 'Hide details' : 'Show details'}</Text>
+        <Text style={styles.tapTargetText}>{explainOpen ? 'বিস্তারিত লুকান' : 'বিস্তারিত দেখুন'}</Text>
       </Pressable>
     </View>
   );

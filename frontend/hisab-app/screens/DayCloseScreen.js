@@ -46,7 +46,7 @@ export default function DayCloseScreen() {
 
   const handleCloseDay = async () => {
     if (!businessDate.trim()) {
-      Alert.alert('Required', 'Business date is required (YYYY-MM-DD).');
+      Alert.alert('প্রয়োজনীয়', 'Business date is required (YYYY-MM-DD).');
       return;
     }
 
@@ -66,9 +66,9 @@ export default function DayCloseScreen() {
       setNote('');
       await refreshAll();
       await load();
-      Alert.alert('Closed', `Day ${businessDate} closed successfully.`);
+      Alert.alert('সম্পন্ন', `Day ${businessDate} closed successfully.`);
     } catch (error) {
-      Alert.alert('Day Close Failed', error?.message || 'Unable to close the business day.');
+      Alert.alert('দিন বন্ধ ব্যর্থ', error?.message || 'Unable to close the business day.');
     } finally {
       setClosing(false);
     }
@@ -82,23 +82,23 @@ export default function DayCloseScreen() {
         contentContainerStyle={styles.container}
         ListHeaderComponent={
           <View>
-            <Text style={styles.title}>Day Close</Text>
-            <Text style={styles.subtitle}>Finalize daily cash position and store reconciliation snapshot.</Text>
+            <Text style={styles.title}>দিন বন্ধ</Text>
+            <Text style={styles.subtitle}>দৈনিক নগদ অবস্থান চূড়ান্ত করুন।</Text>
 
             <AppCard style={styles.card}>
-              <Text style={styles.sectionTitle}>Close Form</Text>
+              <Text style={styles.sectionTitle}>বন্ধ ফর্ম</Text>
               <AppInput
                 value={businessDate}
                 onChangeText={setBusinessDate}
-                placeholder="Business date (YYYY-MM-DD)"
+                placeholder="ব্যবসার তারিখ (YYYY-MM-DD)"
               />
               <AppInput
                 value={cashOnHand}
                 onChangeText={setCashOnHand}
                 keyboardType="decimal-pad"
-                placeholder="Cash on hand (optional)"
+                placeholder="হাতে নগদ (ঐচ্ছিক)"
               />
-              <AppInput value={note} onChangeText={setNote} placeholder="Closing note (optional)" />
+              <AppInput value={note} onChangeText={setNote} placeholder="বন্ধের নোট (ঐচ্ছিক)" />
 
               <View style={styles.buttonRow}>
                 <AppButton
@@ -134,7 +134,7 @@ export default function DayCloseScreen() {
               </AppCard>
             ) : null}
 
-            <Text style={styles.sectionTitle}>Recent Day Closes</Text>
+            <Text style={styles.sectionTitle}>সাম্প্রতিক দিন বন্ধ</Text>
           </View>
         }
         ListEmptyComponent={<Text style={styles.emptyText}>{loading ? 'Loading...' : 'No day close records yet.'}</Text>}

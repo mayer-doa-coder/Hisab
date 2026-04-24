@@ -1,0 +1,68 @@
+{
+  "generatedAt": "2026-04-21T18:43:19.182Z",
+  "decision": "BLOCK_RELEASE",
+  "blockers": [
+    "pilot_go_no_go: expected GO or unavailable, got NO_GO"
+  ],
+  "checks": [
+    {
+      "id": "voice_evaluation_script",
+      "ok": true,
+      "expected": "runVoiceEvaluation.cjs exits with code 0",
+      "actual": "passed"
+    },
+    {
+      "id": "bn_parser_regression_script",
+      "ok": true,
+      "expected": "runBnParserRegression.cjs exits with code 0",
+      "actual": "passed"
+    },
+    {
+      "id": "intent_accuracy",
+      "ok": true,
+      "expected": ">= 0.9",
+      "actual": 0.9992
+    },
+    {
+      "id": "amount_accuracy",
+      "ok": true,
+      "expected": ">= 0.95",
+      "actual": 1
+    },
+    {
+      "id": "name_accuracy",
+      "ok": true,
+      "expected": ">= 0.9",
+      "actual": 0.9996
+    },
+    {
+      "id": "false_execution_rate",
+      "ok": true,
+      "expected": "<= 0.02",
+      "actual": 0
+    },
+    {
+      "id": "cancellation_rate",
+      "ok": true,
+      "expected": "<= 0.3",
+      "actual": 0.0011
+    },
+    {
+      "id": "parser_pass_rate",
+      "ok": true,
+      "expected": "== 1",
+      "actual": 1
+    },
+    {
+      "id": "pilot_go_no_go",
+      "ok": false,
+      "expected": "GO or unavailable",
+      "actual": "NO_GO"
+    }
+  ],
+  "artifacts": {
+    "metrics_path": "D:\\Hisab\\frontend\\hisab-app\\services\\voice\\evaluation\\metricsReport.json",
+    "parser_report_path": "D:\\Hisab\\frontend\\hisab-app\\services\\voice\\evaluation\\parserRegressionReport.json",
+    "pilot_go_no_go_path": "D:\\Hisab\\frontend\\hisab-app\\services\\voice\\pilot\\pilotGoNoGo.latest.json"
+  }
+}

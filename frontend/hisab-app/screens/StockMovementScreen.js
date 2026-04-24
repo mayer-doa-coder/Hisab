@@ -89,7 +89,7 @@ export default function StockMovementScreen() {
       const rows = await getStockMovementHistory({ productId: Number(nextProductId), limit: 50 });
       setHistoryRows(rows);
     } catch (error) {
-      Alert.alert('Load Failed', error?.message || 'Unable to load movement history.');
+      Alert.alert('লোড ব্যর্থ', error?.message || 'মুভমেন্ট ইতিহাস লোড করা যায়নি।');
     } finally {
       setLoadingHistory(false);
     }
@@ -118,9 +118,9 @@ export default function StockMovementScreen() {
       setNote('');
       await refreshAll();
       await loadHistory(productId);
-      Alert.alert('Success', 'Stock movement recorded.');
+      Alert.alert('সফল', 'স্টক মুভমেন্ট রেকর্ড হয়েছে।');
     } catch (error) {
-      Alert.alert('Save Failed', error?.message || 'Unable to save stock movement.');
+      Alert.alert('সেভ ব্যর্থ', error?.message || 'স্টক মুভমেন্ট সেভ করা যায়নি।');
     } finally {
       setSaving(false);
     }
@@ -136,14 +136,14 @@ export default function StockMovementScreen() {
           keyboardShouldPersistTaps="handled"
           ListHeaderComponent={
             <View style={styles.formWrap}>
-              <Text style={styles.title}>Stock Movement</Text>
-              <Text style={styles.subtitle}>Record every inventory change with before/after quantity history.</Text>
+              <Text style={styles.title}>স্টক চলাচল</Text>
+              <Text style={styles.subtitle}>প্রতিটি ইনভেন্টরি পরিবর্তন রেকর্ড করুন।</Text>
 
               {products.length === 0 ? (
-                <Text style={styles.emptyText}>No products available. Add a product first.</Text>
+                <Text style={styles.emptyText}>কোনো পণ্য নেই। প্রথমে পণ্য যোগ করুন।</Text>
               ) : (
                 <>
-                  <Text style={styles.label}>Product *</Text>
+                  <Text style={styles.label}>পণ্য *</Text>
                   <View style={styles.pickerWrap}>
                     <Picker selectedValue={productId} onValueChange={(value) => setProductId(String(value))}>
                       {products.map((item) => (
@@ -156,7 +156,7 @@ export default function StockMovementScreen() {
                     </Picker>
                   </View>
 
-                  <Text style={styles.label}>Movement Type *</Text>
+                  <Text style={styles.label}>চলাচলের ধরন *</Text>
                   <View style={styles.pickerWrap}>
                     <Picker selectedValue={movementType} onValueChange={(value) => setMovementType(String(value))}>
                       {MOVEMENT_OPTIONS.map((option) => (
@@ -167,7 +167,7 @@ export default function StockMovementScreen() {
 
                   {movementType === 'out' ? (
                     <>
-                      <Text style={styles.label}>Stock-Out Reason *</Text>
+                      <Text style={styles.label}>স্টক-আউটের কারণ *</Text>
                       <View style={styles.pickerWrap}>
                         <Picker selectedValue={stockOutReason} onValueChange={(value) => setStockOutReason(String(value))}>
                           {STOCK_OUT_REASON_OPTIONS.map((option) => (
@@ -175,24 +175,24 @@ export default function StockMovementScreen() {
                           ))}
                         </Picker>
                       </View>
-                      <Text style={styles.reasonHint}>Sales stock-out is recorded from Sales flow, not manual movement.</Text>
+                      <Text style={styles.reasonHint}>বিক্রির স্টক-আউট বিক্রি স্ক্রিন থেকে রেকর্ড হয়।</Text>
                     </>
                   ) : null}
 
-                  <Text style={styles.label}>Quantity *</Text>
+                  <Text style={styles.label}>পরিমাণ *</Text>
                   <TextInput
                     value={quantity}
                     onChangeText={setQuantity}
-                    placeholder="Enter quantity"
+                    placeholder="পরিমাণ লিখুন"
                     style={styles.input}
                     keyboardType="numeric"
                   />
 
-                  <Text style={styles.label}>Note</Text>
+                  <Text style={styles.label}>নোট</Text>
                   <TextInput
                     value={note}
                     onChangeText={setNote}
-                    placeholder="Reason for movement"
+                    placeholder="কারণ লিখুন"
                     style={[styles.input, styles.noteInput]}
                     multiline
                   />
@@ -214,7 +214,7 @@ export default function StockMovementScreen() {
               )}
 
               <View style={styles.headerRow}>
-                <Text style={styles.sectionTitle}>Movement History</Text>
+                <Text style={styles.sectionTitle}>মুভমেন্ট ইতিহাস</Text>
                 <TouchableOpacity style={styles.refreshButton} onPress={() => loadHistory(productId)}>
                   <Text style={styles.refreshText}>{loadingHistory ? 'Loading...' : 'Reload'}</Text>
                 </TouchableOpacity>

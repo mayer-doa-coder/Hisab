@@ -1,9 +1,12 @@
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   FlatList,
   KeyboardAvoidingView,
+  Modal,
   Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -36,6 +39,7 @@ export default function CustomerListScreen() {
   const [searchText, setSearchText] = useState('');
   const [dueFilter, setDueFilter] = useState(CUSTOMER_DUE_FILTERS.ALL);
   const [sortBy, setSortBy] = useState(CUSTOMER_SORT_OPTIONS.RECENT);
+  const [showForm, setShowForm] = useState(false);
 
   const debouncedSearchText = useDebouncedValue(searchText, 250);
 
@@ -80,6 +84,11 @@ export default function CustomerListScreen() {
     setEditingCustomerId(null);
   };
 
+  const handleCancel = () => {
+    resetForm();
+    setShowForm(false);
+  };
+
   const handleSaveCustomer = async () => {
     if (saving) {
       return;
@@ -99,8 +108,9 @@ export default function CustomerListScreen() {
           dueTermsDays: Number.isInteger(numericDueTermsDays) && numericDueTermsDays > 0 ? numericDueTermsDays : 30,
         });
         console.log('[DB] customer updated:', updated);
+        setShowForm(false);
         resetForm();
-        Alert.alert('Success', 'Customer updated successfully.');
+        Alert.alert('সফল', 'কাস্টমার আপডেট হয়েছে।');
       } else {
         const saved = await addCustomer({
           name,
@@ -110,12 +120,13 @@ export default function CustomerListScreen() {
           dueTermsDays: Number.isInteger(numericDueTermsDays) && numericDueTermsDays > 0 ? numericDueTermsDays : 30,
         });
         console.log('[DB] customer saved:', saved);
+        setShowForm(false);
         resetForm();
-        Alert.alert('Success', 'Customer saved successfully.');
+        Alert.alert('সফল', 'কাস্টমার সেভ হয়েছে।');
       }
     } catch (error) {
       console.error('[DB] customer save failed:', error);
-      Alert.alert('Save Failed', error?.message || 'Unable to save customer data.');
+      Alert.alert('সেভ ব্যর্থ', error?.message || 'কাস্টমার সেভ হয়নি।');
     } finally {
       setSaving(false);
     }
@@ -128,13 +139,14 @@ export default function CustomerListScreen() {
     setAddress(String(customer.address || ''));
     setCreditLimit(String(customer.credit_limit ?? 0));
     setDueTermsDays(String(customer.due_terms_days ?? 30));
+    setShowForm(true);
   };
 
   const handleDelete = (customer) => {
-    Alert.alert('Delete Customer', `Delete ${customer.name}? This will also remove related baki entries.`, [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert('কাস্টমার মুছুন', `${customer.name} মুছে ফেলবেন? সংশ্লিষ্ট বাকির তথ্যও মুছে যাবে।`, [
+      { text: 'বাতিল', style: 'cancel' },
       {
-        text: 'Delete',
+        text: 'মুছুন',
         style: 'destructive',
         onPress: async () => {
           try {
@@ -142,28 +154,42 @@ export default function CustomerListScreen() {
             if (Number(editingCustomerId) === Number(customer.id)) {
               resetForm();
             }
-            Alert.alert('Deleted', 'Customer deleted successfully.');
+            Alert.alert('মুছে ফেলা হয়েছে', 'কাস্টমার মুছে ফেলা হয়েছে।');
           } catch (error) {
-            Alert.alert('Delete Failed', error?.message || 'Unable to delete customer.');
+            Alert.alert('মুছতে পারেনি', error?.message || 'কাস্টমার মুছে ফেলা যায়নি।');
           }
         },
       },
     ]);
   };
 
+  const DUE_FILTER_CHIPS = [
+    { label: `সব (${fullCustomers.length})`, value: CUSTOMER_DUE_FILTERS.ALL },
+    { label: `বাকি আছে (${dueOnlyCount})`, value: CUSTOMER_DUE_FILTERS.DUE_ONLY },
+    { label: `বাকি নেই (${noDueCount})`, value: CUSTOMER_DUE_FILTERS.NO_DUE },
+  ];
+
   return (
     <SafeAreaView style={styles.safeArea}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex}>
-        <FlatList
-          data={displayedCustomers}
-          keyExtractor={(item) => String(item.id)}
-          contentContainerStyle={styles.container}
-          keyboardShouldPersistTaps="handled"
-          ListHeaderComponent={
-            <View>
-              <Text style={styles.title}>Customer Manager</Text>
-              <Text style={styles.subtitle}>Create, update, and quickly find customers by name, phone, or due.</Text>
 
+      {/* Add / Edit modal */}
+      <Modal
+        visible={showForm}
+        animationType="slide"
+        transparent
+        onRequestClose={handleCancel}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalSheet}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>
+                {editingCustomerId ? 'কাস্টমার সম্পাদনা' : 'নতুন কাস্টমার'}
+              </Text>
+              <TouchableOpacity onPress={handleCancel} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                <MaterialIcons name="close" size={24} color={UI_COLORS.textPrimary} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView keyboardShouldPersistTaps="handled">
               <CustomerForm
                 editingCustomerId={editingCustomerId}
                 name={name}
@@ -177,9 +203,23 @@ export default function CustomerListScreen() {
                 setCreditLimit={setCreditLimit}
                 setDueTermsDays={setDueTermsDays}
                 onSave={handleSaveCustomer}
-                onCancel={resetForm}
+                onCancel={handleCancel}
                 saving={saving}
               />
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex}>
+        <FlatList
+          data={displayedCustomers}
+          keyExtractor={(item) => String(item.id)}
+          contentContainerStyle={styles.container}
+          keyboardShouldPersistTaps="handled"
+          ListHeaderComponent={
+            <View>
+              <Text style={styles.title}>কাস্টমার</Text>
 
               <CustomerSearchControls
                 searchText={searchText}
@@ -191,31 +231,45 @@ export default function CustomerListScreen() {
                 onClear={clearCustomerControls}
               />
 
-              <View style={styles.statsWrap}>
-                <Text style={styles.statBadge}>Total: {fullCustomers.length}</Text>
-                <Text style={styles.statBadge}>Due {'>'} 0: {dueOnlyCount}</Text>
-                <Text style={styles.statBadge}>No Due: {noDueCount}</Text>
+              {/* Filter chips with live counts */}
+              <View style={styles.chipRow}>
+                {DUE_FILTER_CHIPS.map((chip) => (
+                  <TouchableOpacity
+                    key={chip.value}
+                    style={[styles.chip, dueFilter === chip.value && styles.chipActive]}
+                    onPress={() => setDueFilter(chip.value)}
+                  >
+                    <Text style={[styles.chipText, dueFilter === chip.value && styles.chipTextActive]}>
+                      {chip.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
               </View>
 
               <View style={styles.headerRow}>
-                <Text style={styles.sectionTitle}>Customer List</Text>
+                <Text style={styles.sectionTitle}>কাস্টমার তালিকা</Text>
                 <TouchableOpacity style={styles.refreshButton} onPress={refreshAll}>
-                  <Text style={styles.refreshText}>{refreshing ? 'Refreshing...' : 'Refresh'}</Text>
+                  <Text style={styles.refreshText}>{refreshing ? 'রিফ্রেশ হচ্ছে...' : 'রিফ্রেশ'}</Text>
                 </TouchableOpacity>
               </View>
             </View>
           }
           ListEmptyComponent={
             <Text style={styles.emptyText}>
-              {fullCustomers.length === 0
-                ? 'No customers yet.'
-                : hasActiveCustomerControls
-                  ? 'No customer matched your search/filter.'
-                  : 'No customers yet.'}
+              {hasActiveCustomerControls ? 'কোনো কাস্টমার পাওয়া যায়নি।' : 'কোনো কাস্টমার নেই।'}
             </Text>
           }
           renderItem={({ item }) => <CustomerListItem item={item} onEdit={handleEdit} onDelete={handleDelete} />}
         />
+
+        {/* FAB */}
+        <TouchableOpacity
+          style={styles.fab}
+          activeOpacity={0.85}
+          onPress={() => { resetForm(); setShowForm(true); }}
+        >
+          <MaterialIcons name="add" size={28} color={UI_COLORS.textOnPrimary} />
+        </TouchableOpacity>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -224,26 +278,34 @@ export default function CustomerListScreen() {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: UI_COLORS.background },
   flex: { flex: 1 },
-  container: { padding: 20, gap: 12 },
-  title: { fontSize: 28, fontWeight: '700', color: UI_COLORS.textPrimary },
-  subtitle: { fontSize: 14, color: UI_COLORS.textSecondary, marginBottom: 8 },
-  statsWrap: {
-    marginTop: 8,
-    marginBottom: 6,
+  container: { padding: 20, gap: 12, paddingBottom: 96 },
+  title: { fontSize: 28, fontWeight: '700', color: UI_COLORS.textPrimary, marginBottom: 12 },
+  chipRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
+    marginTop: 10,
+    marginBottom: 4,
   },
-  statBadge: {
-    fontSize: 12,
-    color: UI_COLORS.primary,
-    backgroundColor: UI_COLORS.surfaceSubtle,
-    borderColor: UI_COLORS.borderSoft,
-    borderWidth: 1,
+  chip: {
     borderRadius: 99,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    fontWeight: '700',
+    borderWidth: 1,
+    borderColor: UI_COLORS.borderSoft,
+    backgroundColor: UI_COLORS.surfaceSubtle,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+  },
+  chipActive: {
+    backgroundColor: UI_COLORS.primary,
+    borderColor: UI_COLORS.primary,
+  },
+  chipText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: UI_COLORS.primary,
+  },
+  chipTextActive: {
+    color: UI_COLORS.textOnPrimary,
   },
   headerRow: {
     marginTop: 16,
@@ -257,11 +319,53 @@ const styles = StyleSheet.create({
     backgroundColor: UI_COLORS.surfaceSubtle,
     borderWidth: 1,
     borderColor: UI_COLORS.borderSoft,
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    minHeight: 38,
+    justifyContent: 'center',
   },
-  refreshText: { color: UI_COLORS.primary, fontSize: 12, fontWeight: '600' },
+  refreshText: { color: UI_COLORS.primary, fontSize: 13, fontWeight: '600' },
   emptyText: { fontSize: 14, color: UI_COLORS.textMuted },
+  fab: {
+    position: 'absolute',
+    bottom: 24,
+    right: 20,
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    backgroundColor: UI_COLORS.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'flex-end',
+  },
+  modalSheet: {
+    backgroundColor: UI_COLORS.background,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingTop: 16,
+    paddingHorizontal: 16,
+    paddingBottom: 32,
+    maxHeight: '90%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: UI_COLORS.textPrimary,
+  },
 });
-

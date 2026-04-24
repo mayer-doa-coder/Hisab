@@ -27,6 +27,7 @@ export const requestBackendJson = async ({
   method = 'GET',
   body = null,
   accessToken = null,
+  extraHeaders = null,
   timeoutMs = 8000,
   timeoutMessage = 'Request timed out. Please try again.',
   networkErrorMessage = 'Unable to reach server.',
@@ -46,6 +47,15 @@ export const requestBackendJson = async ({
 
     if (accessToken) {
       headers.Authorization = `Bearer ${accessToken}`;
+    }
+
+    if (extraHeaders && typeof extraHeaders === 'object') {
+      Object.entries(extraHeaders).forEach(([key, value]) => {
+        if (!key || value === undefined || value === null || value === '') {
+          return;
+        }
+        headers[String(key)] = String(value);
+      });
     }
 
     const response = await fetch(`${baseUrl}${path}`, {

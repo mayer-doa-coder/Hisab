@@ -135,7 +135,7 @@ export default function SyncConflictScreen() {
     }
 
     if (!isOnline || !accessToken) {
-      Alert.alert('Online Required', 'Conflict resolution requires online mode to update the server state.');
+      Alert.alert('অনলাইন প্রয়োজন', 'Conflict resolution requires online mode to update the server state.');
       return;
     }
 
@@ -175,11 +175,11 @@ export default function SyncConflictScreen() {
         contentContainerStyle={styles.container}
         ListHeaderComponent={(
           <View style={styles.headerWrap}>
-            <Text style={styles.title}>Sync Conflict Center</Text>
+            <Text style={styles.title}>সিঙ্ক দ্বন্দ্ব</Text>
             <Text style={styles.subtitle}>Inspect, triage, and resolve sync conflicts before they grow into data divergence.</Text>
 
             <AppCard style={styles.card}>
-              <Text style={styles.sectionTitle}>Overview</Text>
+              <Text style={styles.sectionTitle}>সারসংক্ষেপ</Text>
               <Text style={styles.metaText}>Total: {summary.total}</Text>
               <Text style={styles.metaText}>Open: {summary.open}</Text>
               <Text style={styles.metaText}>Resolved: {summary.resolved}</Text>
@@ -209,18 +209,18 @@ export default function SyncConflictScreen() {
             </AppCard>
 
             <AppCard style={styles.card}>
-              <Text style={styles.sectionTitle}>Resolution Note</Text>
+              <Text style={styles.sectionTitle}>সমাধানের নোট</Text>
               <AppInput
                 value={resolutionNote}
                 onChangeText={setResolutionNote}
-                placeholder="Optional note for audit trail"
+                placeholder="অডিট ট্রেইলের জন্য নোট (ঐচ্ছিক)"
                 multiline
                 style={styles.noteInput}
               />
               {statusText ? <Text style={styles.statusText}>{statusText}</Text> : null}
             </AppCard>
 
-            <Text style={styles.sectionTitle}>Conflict Items</Text>
+            <Text style={styles.sectionTitle}>দ্বন্দ্বের তালিকা</Text>
           </View>
         )}
         ListEmptyComponent={
@@ -241,20 +241,20 @@ export default function SyncConflictScreen() {
               ) : (
                 <View style={styles.buttonRow}>
                   <AppButton
-                    title="Server Wins"
+                    title="সার্ভার ডেটা রাখুন"
                     variant="secondary"
                     style={styles.buttonFlex}
                     onPress={() => handleResolve(item, 'server_wins')}
                     disabled={submitting}
                   />
                   <AppButton
-                    title="Client Wins"
+                    title="লোকাল ডেটা রাখুন"
                     style={styles.buttonFlex}
                     onPress={() => handleResolve(item, 'client_wins')}
                     disabled={submitting}
                   />
                   <AppButton
-                    title="Merge"
+                    title="মার্জ করুন"
                     variant="secondary"
                     style={styles.buttonFlex}
                     onPress={() => handleResolve(item, 'merge')}

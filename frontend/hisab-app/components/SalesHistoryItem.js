@@ -8,7 +8,7 @@ const formatMoney = (value) => `৳${Number(value || 0).toFixed(2)}`;
 const formatDateTime = (value) => {
   const parsed = new Date(value || '');
   if (Number.isNaN(parsed.getTime())) {
-    return 'N/A';
+    return 'অজানা';
   }
 
   return parsed.toISOString().replace('T', ' ').slice(0, 16);
@@ -22,14 +22,14 @@ export default function SalesHistoryItem({ item, onOpenReceipt, onReprint }) {
         <Text style={styles.amount}>{formatMoney(item.total_amount)}</Text>
       </View>
 
-      <Text style={styles.meta}>Customer: {item.customer_name || 'Walk-in'}</Text>
-      <Text style={styles.meta}>Payment: {item.payment_mode}</Text>
-      <Text style={styles.meta}>Items: {Number(item.item_count || 0)}</Text>
-      <Text style={styles.meta}>Time: {formatDateTime(item.timestamp)}</Text>
+      <Text style={styles.meta}>কাস্টমার: {item.customer_name || 'ওয়াক-ইন'}</Text>
+      <Text style={styles.meta}>পেমেন্ট: {item.payment_mode}</Text>
+      <Text style={styles.meta}>পণ্য: {Number(item.item_count || 0)}</Text>
+      <Text style={styles.meta}>সময়: {formatDateTime(item.timestamp)}</Text>
 
       <TouchableOpacity style={styles.reprintButton} onPress={onReprint}>
         <MaterialIcons name="print" size={14} color={UI_COLORS.primary} />
-        <Text style={styles.reprintText}>Reprint</Text>
+        <Text style={styles.reprintText}>পুনরায় প্রিন্ট</Text>
       </TouchableOpacity>
     </TouchableOpacity>
   );

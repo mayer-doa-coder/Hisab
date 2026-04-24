@@ -6,11 +6,11 @@ export default function BakiSummaryCards({ totalRows, totalDue, creditCount, pay
   return (
     <View style={styles.summaryRow}>
       <View style={styles.summaryCard}>
-        <Text style={styles.summaryLabel}>Customers</Text>
+        <Text style={styles.summaryLabel}>কাস্টমার</Text>
         <Text style={styles.summaryValue}>{totalRows}</Text>
       </View>
       <View style={styles.summaryCard}>
-        <Text style={styles.summaryLabel}>Due Total</Text>
+        <Text style={styles.summaryLabel}>মোট বাকি</Text>
         <Text style={styles.summaryValue}>৳{Number(totalDue || 0).toFixed(2)}</Text>
       </View>
       <View style={styles.summaryCard}>

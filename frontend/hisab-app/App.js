@@ -116,6 +116,8 @@ import OnboardingScreen from './screens/OnboardingScreen';
 import HelpCenterScreen from './screens/HelpCenterScreen';
 import FeedbackScreen from './screens/FeedbackScreen';
 import ProfileScreen from './screens/ProfileScreen';
+import VoiceAssistantScreen from './screens/VoiceAssistantScreen';
+import VoicePackDownloadScreen from './screens/VoicePackDownloadScreen';
 import AccountRecoveryScreen from './screens/auth/AccountRecoveryScreen';
 import LoginScreen from './screens/auth/LoginScreen';
 import PinLoginScreen from './screens/auth/PinLoginScreen';
@@ -166,9 +168,9 @@ const MainStack = createNativeStackNavigator();
 const DEFAULT_TRUST_PREDICTION_HORIZON = '1_month';
 
 const RISK_LEVEL_TOKEN_LABELS = Object.freeze({
-  LOW: 'Low Risk',
-  MEDIUM: 'Medium Risk',
-  HIGH: 'High Risk',
+  LOW: 'কম ঝুঁকি',
+  MEDIUM: 'মাঝারি ঝুঁকি',
+  HIGH: 'বেশি ঝুঁকি',
 });
 
 const ROUTE_REQUIRED_ACTIONS = Object.freeze({
@@ -202,13 +204,15 @@ const ROUTE_REQUIRED_ACTIONS = Object.freeze({
   Onboarding: RBAC_ACTIONS.REPORTS_VIEW,
   HelpCenter: RBAC_ACTIONS.REPORTS_VIEW,
   Feedback: RBAC_ACTIONS.REPORTS_VIEW,
+  VoiceAssistant: RBAC_ACTIONS.CUSTOMERS_VIEW,
+  VoicePackDownload: RBAC_ACTIONS.CUSTOMERS_VIEW,
   Movement: RBAC_ACTIONS.STOCK_MANAGE,
   Details: RBAC_ACTIONS.PRODUCTS_VIEW,
 });
 
 const toUiRiskLabel = (value) => {
   const token = String(value || '').trim().toUpperCase();
-  return RISK_LEVEL_TOKEN_LABELS[token] || String(value || 'Low Risk');
+  return RISK_LEVEL_TOKEN_LABELS[token] || String(value || 'কম ঝুঁকি');
 };
 
 const AppTheme = {
@@ -338,6 +342,14 @@ function MainSidebarNavigator() {
             return <MaterialIcons name="forum" size={size} color={color} />;
           }
 
+          if (route.name === 'VoiceAssistant') {
+            return <MaterialIcons name="keyboard-voice" size={size} color={color} />;
+          }
+
+          if (route.name === 'VoicePackDownload') {
+            return <MaterialIcons name="download-for-offline" size={size} color={color} />;
+          }
+
           if (route.name === 'Movement') {
             return <MaterialIcons name="swap-horiz" size={size} color={color} />;
           }
@@ -441,8 +453,8 @@ function MainSidebarNavigator() {
         name="Dashboard"
         component={DashboardScreen}
         options={({ navigation }) => ({
-          title: 'Dashboard',
-          headerTitle: 'Business Dashboard',
+          title: 'ড্যাশবোর্ড',
+          headerTitle: 'ব্যবসার ড্যাশবোর্ড',
           headerRight: () => (
             <MaterialIcons
               name="account-circle"
@@ -458,264 +470,280 @@ function MainSidebarNavigator() {
         name="Reports"
         component={ReportsScreen}
         options={{
-          title: 'Reports',
-          headerTitle: 'Reports & Compliance',
+          title: 'রিপোর্ট',
+          headerTitle: 'রিপোর্ট ও সম্মতি',
         }}
       />
       <Drawer.Screen
         name="SyncConflicts"
         component={SyncConflictScreen}
         options={{
-          title: 'Sync Conflicts',
-          headerTitle: 'Sync Conflict Center',
+          title: 'সিঙ্ক দ্বন্দ্ব',
+          headerTitle: 'সিঙ্ক দ্বন্দ্ব',
         }}
       />
       <Drawer.Screen
         name="OfflineQueue"
         component={OfflineQueueMonitor}
         options={{
-          title: 'Offline Queue',
-          headerTitle: 'Offline Queue Monitor',
+          title: 'অফলাইন সারি',
+          headerTitle: 'অফলাইন সারি',
         }}
       />
       <Drawer.Screen
         name="BackupRestore"
         component={BackupRestoreScreen}
         options={{
-          title: 'Backup & Restore',
-          headerTitle: 'Backup and Restore',
+          title: 'ব্যাকআপ',
+          headerTitle: 'ব্যাকআপ ও পুনরুদ্ধার',
         }}
       />
       <Drawer.Screen
         name="StockSuggestions"
         component={StockSuggestionsScreen}
         options={{
-          title: 'Suggestions',
-          headerTitle: 'Stock Suggestions',
+          title: 'পরামর্শ',
+          headerTitle: 'স্টক পরামর্শ',
         }}
       />
       <Drawer.Screen
         name="Profile"
         component={ProfileScreen}
         options={{
-          title: 'Profile',
-          headerTitle: 'Profile & Settings',
+          title: 'প্রোফাইল',
+          headerTitle: 'প্রোফাইল ও সেটিংস',
         }}
       />
       <Drawer.Screen
         name="Audit"
         component={AuditHistoryScreen}
         options={{
-          title: 'Audit',
-          headerTitle: 'Audit History',
+          title: 'অডিট',
+          headerTitle: 'অডিট ইতিহাস',
         }}
       />
       <Drawer.Screen
         name="ApprovalRequests"
         component={ApprovalRequestsScreen}
         options={{
-          title: 'Approvals',
-          headerTitle: 'Approval Requests',
+          title: 'অনুমোদন',
+          headerTitle: 'অনুমোদনের অনুরোধ',
         }}
       />
       <Drawer.Screen
         name="Sales"
         component={SalesScreen}
         options={{
-          title: 'Sales',
-          headerTitle: 'Sales & Receipts',
+          title: 'বিক্রি',
+          headerTitle: 'বিক্রি ও রসিদ',
         }}
       />
       <Drawer.Screen
         name="SalesHistory"
         component={SalesHistoryScreen}
         options={{
-          title: 'Sales History',
-          headerTitle: 'Sales History',
+          title: 'বিক্রির ইতিহাস',
+          headerTitle: 'বিক্রির ইতিহাস',
         }}
       />
       <Drawer.Screen
         name="Suppliers"
         component={SupplierScreen}
         options={{
-          title: 'Suppliers',
-          headerTitle: 'Supplier Manager',
+          title: 'সরবরাহকারী',
+          headerTitle: 'সরবরাহকারী',
         }}
       />
       <Drawer.Screen
         name="PurchaseOrders"
         component={PurchaseOrderScreen}
         options={{
-          title: 'Purchase Orders',
-          headerTitle: 'Create Purchase Orders',
+          title: 'ক্রয় আদেশ',
+          headerTitle: 'ক্রয় আদেশ',
         }}
       />
       <Drawer.Screen
         name="GoodsReceive"
         component={GoodsReceiveScreen}
         options={{
-          title: 'Goods Receive',
-          headerTitle: 'Goods Receiving',
+          title: 'পণ্য গ্রহণ',
+          headerTitle: 'পণ্য গ্রহণ',
         }}
       />
       <Drawer.Screen
         name="PurchaseHistory"
         component={PurchaseHistoryScreen}
         options={{
-          title: 'Purchase History',
-          headerTitle: 'Purchase History & Payables',
+          title: 'ক্রয়ের ইতিহাস',
+          headerTitle: 'ক্রয়ের ইতিহাস ও পরিশোধযোগ্য',
         }}
       />
       <Drawer.Screen
         name="Cashbook"
         component={CashbookScreen}
         options={{
-          title: 'Cashbook',
-          headerTitle: 'Cashbook & Journal',
+          title: 'ক্যাশবুক',
+          headerTitle: 'ক্যাশবুক ও জার্নাল',
         }}
       />
       <Drawer.Screen
         name="Expenses"
         component={ExpenseScreen}
         options={{
-          title: 'Expenses',
-          headerTitle: 'Expense Manager',
+          title: 'খরচ',
+          headerTitle: 'খরচ ব্যবস্থাপনা',
         }}
       />
       <Drawer.Screen
         name="ProfitReport"
         component={ProfitReportScreen}
         options={{
-          title: 'Profit Report',
-          headerTitle: 'Profit & Margin Report',
+          title: 'লাভ রিপোর্ট',
+          headerTitle: 'লাভ ও মার্জিন রিপোর্ট',
         }}
       />
       <Drawer.Screen
         name="DayClose"
         component={DayCloseScreen}
         options={{
-          title: 'Day Close',
-          headerTitle: 'Day Close Summary',
+          title: 'দিন বন্ধ',
+          headerTitle: 'দিন বন্ধের সারসংক্ষেপ',
         }}
       />
       <Drawer.Screen
         name="InventoryBatches"
         component={InventoryBatchViewScreen}
         options={{
-          title: 'Inventory Batches',
-          headerTitle: 'Batch & FEFO View',
+          title: 'ইনভেন্টরি ব্যাচ',
+          headerTitle: 'ব্যাচ ও মেয়াদ ক্রম',
         }}
       />
       <Drawer.Screen
         name="Alerts"
         component={AlertsScreen}
         options={{
-          title: 'Alerts',
-          headerTitle: 'Inventory Alerts',
+          title: 'সতর্কতা',
+          headerTitle: 'স্টক সতর্কতা',
         }}
       />
       <Drawer.Screen
         name="CycleCount"
         component={CycleCountScreen}
         options={{
-          title: 'Cycle Count',
-          headerTitle: 'Cycle Count & Reconciliation',
+          title: 'চক্র গণনা',
+          headerTitle: 'চক্র গণনা ও সামঞ্জস্য',
         }}
       />
       <Drawer.Screen
         name="Products"
         component={ProductListScreen}
         options={{
-          title: 'Products',
-          headerTitle: 'Inventory Manager',
+          title: 'পণ্য',
+          headerTitle: 'পণ্য তালিকা',
         }}
       />
       <Drawer.Screen
         name="Customers"
         component={CustomerListScreen}
         options={{
-          title: 'Customers',
-          headerTitle: 'Customer Manager',
+          title: 'কাস্টমার',
+          headerTitle: 'কাস্টমার',
         }}
       />
       <Drawer.Screen
         name="Ledger"
         component={CustomerLedgerScreen}
         options={{
-          title: 'Ledger',
-          headerTitle: 'Customer Ledger',
+          title: 'খাতা',
+          headerTitle: 'কাস্টমার খাতা',
         }}
       />
       <Drawer.Screen
         name="Baki"
         component={BakiListScreen}
         options={{
-          title: 'Baki',
-          headerTitle: 'Baki List Manager',
+          title: 'বাকি',
+          headerTitle: 'বাকির তালিকা',
         }}
       />
       <Drawer.Screen
         name="CustomerCredit"
         component={CustomerCreditScreen}
         options={{
-          title: 'Credit',
-          headerTitle: 'Customer Credit',
+          title: 'ক্রেডিট',
+          headerTitle: 'কাস্টমার ক্রেডিট',
         }}
       />
       <Drawer.Screen
         name="Collections"
         component={CollectionsDashboardScreen}
         options={{
-          title: 'Collections',
-          headerTitle: 'Collections Dashboard',
+          title: 'সংগ্রহ',
+          headerTitle: 'সংগ্রহ ড্যাশবোর্ড',
         }}
       />
       <Drawer.Screen
         name="CustomerStatement"
         component={CustomerStatementScreen}
         options={{
-          title: 'Statement',
-          headerTitle: 'Customer Statement',
+          title: 'বিবৃতি',
+          headerTitle: 'কাস্টমার বিবৃতি',
         }}
       />
       <Drawer.Screen
         name="Onboarding"
         component={OnboardingScreen}
         options={{
-          title: 'Onboarding',
-          headerTitle: 'Pilot Onboarding',
+          title: 'অনবোর্ডিং',
+          headerTitle: 'পাইলট অনবোর্ডিং',
         }}
       />
       <Drawer.Screen
         name="HelpCenter"
         component={HelpCenterScreen}
         options={{
-          title: 'Help Center',
-          headerTitle: 'Help Center',
+          title: 'সাহায্য',
+          headerTitle: 'সাহায্য কেন্দ্র',
         }}
       />
       <Drawer.Screen
         name="Feedback"
         component={FeedbackScreen}
         options={{
-          title: 'Feedback',
-          headerTitle: 'Feedback Loop',
+          title: 'ফিডব্যাক',
+          headerTitle: 'ফিডব্যাক',
+        }}
+      />
+      <Drawer.Screen
+        name="VoiceAssistant"
+        component={VoiceAssistantScreen}
+        options={{
+          title: 'ভয়েস সহকারী',
+          headerTitle: 'ভয়েস কমান্ড',
+        }}
+      />
+      <Drawer.Screen
+        name="VoicePackDownload"
+        component={VoicePackDownloadScreen}
+        options={{
+          title: 'ভয়েস প্যাক',
+          headerTitle: 'ভয়েস প্যাক ডাউনলোড',
         }}
       />
       <Drawer.Screen
         name="Movement"
         component={StockMovementScreen}
         options={{
-          title: 'Movement',
-          headerTitle: 'Stock Movement',
+          title: 'চলাচল',
+          headerTitle: 'স্টক চলাচল',
         }}
       />
       <Drawer.Screen
         name="Details"
         component={ProductDetailsScreen}
         options={{
-          title: 'Details',
-          headerTitle: 'Product Details',
+          title: 'বিবরণ',
+          headerTitle: 'পণ্যের বিবরণ',
         }}
       />
     </Drawer.Navigator>
@@ -730,7 +758,7 @@ function MainStackNavigator() {
         name="Receipt"
         component={ReceiptScreen}
         options={{
-          title: 'Receipt',
+          title: 'রসিদ',
           headerStyle: { backgroundColor: UI_COLORS.textPrimary },
           headerTintColor: UI_COLORS.surface,
           contentStyle: { backgroundColor: UI_COLORS.background },
@@ -740,7 +768,7 @@ function MainStackNavigator() {
         name="UpdatePassword"
         component={UpdatePasswordScreen}
         options={{
-          title: 'Update PIN',
+          title: 'PIN আপডেট',
           headerStyle: { backgroundColor: UI_COLORS.textPrimary },
           headerTintColor: UI_COLORS.surface,
           contentStyle: { backgroundColor: UI_COLORS.background },
@@ -750,7 +778,7 @@ function MainStackNavigator() {
         name="SetupPin"
         component={SetupPinScreen}
         options={{
-          title: 'Setup PIN',
+          title: 'PIN সেটআপ',
           headerStyle: { backgroundColor: UI_COLORS.textPrimary },
           headerTintColor: UI_COLORS.surface,
           contentStyle: { backgroundColor: UI_COLORS.background },
@@ -770,18 +798,18 @@ function AuthStackNavigator() {
         headerTitleStyle: { fontWeight: '700' },
         contentStyle: { backgroundColor: UI_COLORS.background },
       }}>
-      <AuthStack.Screen name="Login" component={LoginScreen} options={{ title: 'Login' }} />
-      <AuthStack.Screen name="PinLogin" component={PinLoginScreen} options={{ title: 'PIN Login' }} />
-      <AuthStack.Screen name="Signup" component={SignupScreen} options={{ title: 'Signup' }} />
-      <AuthStack.Screen name="VerifyEmail" component={VerifyEmailScreen} options={{ title: 'Verify Email' }} />
-      <AuthStack.Screen name="AccountRecovery" component={AccountRecoveryScreen} options={{ title: 'Account Recovery' }} />
-      <AuthStack.Screen name="ResetPassword" component={ResetPasswordScreen} options={{ title: 'Reset PIN' }} />
+      <AuthStack.Screen name="Login" component={LoginScreen} options={{ title: 'লগইন' }} />
+      <AuthStack.Screen name="PinLogin" component={PinLoginScreen} options={{ title: 'PIN লগইন' }} />
+      <AuthStack.Screen name="Signup" component={SignupScreen} options={{ title: 'নিবন্ধন' }} />
+      <AuthStack.Screen name="VerifyEmail" component={VerifyEmailScreen} options={{ title: 'ইমেইল যাচাই' }} />
+      <AuthStack.Screen name="AccountRecovery" component={AccountRecoveryScreen} options={{ title: 'অ্যাকাউন্ট পুনরুদ্ধার' }} />
+      <AuthStack.Screen name="ResetPassword" component={ResetPasswordScreen} options={{ title: 'PIN রিসেট' }} />
     </AuthStack.Navigator>
   );
 }
 
 function MainDataShell() {
-  const { user, session, isOnline } = useAuth();
+  const { user, session, isOnline, ensureValidAccessToken } = useAuth();
   const activeRole = canonicalizeRole(user?.role);
   const trustRolloutController = useMemo(() => createTrustRolloutController({
     config: {
@@ -1055,7 +1083,7 @@ function MainDataShell() {
   }, [loadAllData]);
 
   const runOnlineSync = useCallback(async () => {
-    if (!isOnline || !session?.access_token || !user?.id) {
+    if (!isOnline || !session?.token || !user?.id) {
       return { synced: 0, appliedServerChanges: 0, skipped: true };
     }
 
@@ -1066,15 +1094,33 @@ function MainDataShell() {
     syncInFlightRef.current = true;
     setSyncingData(true);
     try {
-      console.info('[SYNC][APP][TRIGGERED]', {
-        userId: Number(user.id),
-        reason: 'interval_or_foreground',
-      });
+      const activeAccessToken = await ensureValidAccessToken({ minValidityMs: 45 * 1000 });
+      if (!activeAccessToken) {
+        return { synced: 0, appliedServerChanges: 0, skipped: true };
+      }
+
+      const syncVerboseLogs = (typeof __DEV__ !== 'undefined' && __DEV__)
+        || String(process?.env?.EXPO_PUBLIC_SYNC_VERBOSE || '').trim() === '1';
 
       const result = await runDataSync({
         userId: Number(user.id),
-        accessToken: session.access_token,
+        accessToken: activeAccessToken,
       });
+
+      if (
+        syncVerboseLogs
+        || Number(result?.synced || 0) > 0
+        || Number(result?.appliedServerChanges || 0) > 0
+        || Boolean(result?.hasMoreServerChanges)
+      ) {
+        console.info('[SYNC][APP][TRIGGERED]', {
+          userId: Number(user.id),
+          reason: 'interval_or_foreground',
+          synced: Number(result?.synced || 0),
+          appliedServerChanges: Number(result?.appliedServerChanges || 0),
+          hasMoreServerChanges: Boolean(result?.hasMoreServerChanges),
+        });
+      }
 
       if (Number(result?.synced || 0) > 0 || Number(result?.appliedServerChanges || 0) > 0) {
         await loadAllData();
@@ -1086,7 +1132,7 @@ function MainDataShell() {
         if (requestRows.length > 0) {
           const snapshot = trustMonitoringEngine.computeSnapshot();
           await pushTrustMonitoringSnapshotOnline({
-            accessToken: session.access_token,
+            accessToken: activeAccessToken,
             source: 'phase8_runtime_react_native',
             appVersion: '1.0.0',
             snapshot: {
@@ -1111,7 +1157,7 @@ function MainDataShell() {
       syncInFlightRef.current = false;
       setSyncingData(false);
     }
-  }, [isOnline, loadAllData, session?.access_token, trustMonitoringEngine, trustRolloutController, user?.id]);
+  }, [ensureValidAccessToken, isOnline, loadAllData, session?.token, trustMonitoringEngine, trustRolloutController, user?.id]);
 
   useEffect(() => {
     if (!isOnline || !session?.access_token || !user?.id) {
@@ -1809,7 +1855,7 @@ function MainDataShell() {
   );
 
   if (booting) {
-    return <BootLoading title="Preparing Hisab" subtitle="Loading products, customers, and baki data..." />;
+    return <BootLoading title="হিসাব লোড হচ্ছে..." subtitle="পণ্য, কাস্টমার এবং বাকি ডেটা লোড হচ্ছে..." />;
   }
 
   return (

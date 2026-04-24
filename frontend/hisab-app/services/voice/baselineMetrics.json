@@ -1,0 +1,31 @@
+{
+  "date": "2026-04-21T16:39:22.813Z",
+  "transcription_availability": 0,
+  "intent_accuracy": null,
+  "slot_accuracy": {
+    "name_accuracy": null,
+    "amount_accuracy": null
+  },
+  "latency_p95": null,
+  "error_rate": 0,
+  "cancellation_rate": 0,
+  "stt_monthly_spend_usd": 0,
+  "sample_size": {
+    "events": 0,
+    "transcriptions": 0,
+    "commands": 0
+  },
+  "thresholds": {
+    "transcription_availability": 0.95,
+    "intent_accuracy": 0.9,
+    "slot_accuracy": {
+      "name_accuracy": 0.9,
+      "amount_accuracy": 0.95
+    },
+    "false_execution_rate": 0.01,
+    "p95_latency_ms": 1500,
+    "monthly_stt_spend_usd": 100
+  },
+  "source": "D:\\Hisab\\frontend\\hisab-app\\services\\voice\\pilot\\pilotEvents.sample.json",
+  "generatedAt": "2026-04-21T16:39:22.814Z"
+}

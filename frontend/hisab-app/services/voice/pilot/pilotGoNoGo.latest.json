@@ -1,0 +1,75 @@
+{
+  "week": "2026-W17",
+  "decision": "NO_GO",
+  "kpis": {
+    "transcription_availability": 0,
+    "intent_accuracy": 0,
+    "slot_accuracy": {
+      "name": 1,
+      "amount": 1
+    },
+    "false_execution_rate": 0,
+    "cancellation_rate": 0,
+    "p95_latency_ms": 0,
+    "stt_failure_rate": 0,
+    "retry_rate": 0
+  },
+  "blockers": [
+    "Insufficient command volume for pilot confidence.",
+    "Success rate below pilot threshold."
+  ],
+  "recommendations": [
+    "No threshold changes required; continue one more weekly monitoring cycle."
+  ],
+  "diagnostics": {
+    "failure_summary": {
+      "total": 0,
+      "counts": {},
+      "topFailureSignals": [
+        {
+          "signal": "execution_blocked",
+          "value": 0
+        },
+        {
+          "signal": "flow_cancellation",
+          "value": 0
+        },
+        {
+          "signal": "user_correction",
+          "value": 0
+        }
+      ]
+    },
+    "sessions": {
+      "total": 0,
+      "avgRetriesPerSession": 0
+    },
+    "stt": {
+      "requestCount": 0,
+      "failureCount": 0,
+      "retryCount": 0
+    },
+    "blocked_flow_count": 0,
+    "critical_safety_issues": 0,
+    "integrity_issues": 0
+  },
+  "source": "D:\\Hisab\\frontend\\hisab-app\\services\\voice\\pilot\\pilotEvents.sample.json",
+  "eventCount": 0,
+  "cycleDays": 7,
+  "thresholds": {
+    "minCommands": 20,
+    "minSuccessRate": 0.95,
+    "maxCorrectionRate": 0.35,
+    "maxCancellationRate": 0.25,
+    "maxBlockedRate": 0.2,
+    "maxFalseExecutionRate": 0.05,
+    "maxP95LatencyMs": 1800,
+    "maxCriticalSafetyIssues": 0,
+    "maxIntegrityIssues": 0,
+    "maxSttFailureRate": 0.2,
+    "maxRetryRate": 0.45,
+    "maxBrokenFlowCount": 0,
+    "maxUserConfusionRate": 0.35
+  },
+  "generatedAt": "2026-04-21T18:32:11.803Z"
+}

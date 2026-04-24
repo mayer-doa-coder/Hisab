@@ -39,14 +39,17 @@ export default function CustomerStatementScreen() {
     }
 
     try {
-      setLoading(true);
-      const next = await getCustomerStatementData({ customerId: Number(customerId) });
-      setStatement(next || null);
-    } catch (error) {
-      Alert.alert('Load Failed', error?.message || 'Unable to load customer statement.');
-    } finally {
-      setLoading(false);
-    }
+  setLoading(true);
+  const next = await getCustomerStatementData({ customerId: Number(customerId) });
+  setStatement(next || null);
+} catch (error) {
+  Alert.alert(
+    'লোড ব্যর্থ',
+    error?.message || 'কাস্টমার স্টেটমেন্ট লোড করা যায়নি।'
+  );
+} finally {
+  setLoading(false);
+}
   }, [customerId, getCustomerStatementData]);
 
   useEffect(() => {
@@ -68,15 +71,15 @@ export default function CustomerStatementScreen() {
         message: String(csv || ''),
       });
     } catch (error) {
-      Alert.alert('Export Failed', error?.message || 'Unable to export statement CSV.');
+      Alert.alert('এক্সপোর্ট ব্যর্থ', error?.message || 'স্টেটমেন্ট CSV এক্সপোর্ট করা যায়নি।');
     }
   };
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.title}>Customer Statement</Text>
-        <Text style={styles.subtitle}>Statement summary, entries, reminders, and promises.</Text>
+        <Text style={styles.title}>কাস্টমার বিবৃতি</Text>
+        <Text style={styles.subtitle}>বিবৃতির সারসংক্ষেপ, এন্ট্রি, রিমাইন্ডার ও প্রতিশ্রুতি।</Text>
 
         {customers.length > 0 ? (
           <View style={styles.pickerWrap}>
@@ -91,35 +94,35 @@ export default function CustomerStatementScreen() {
             </Picker>
           </View>
         ) : (
-          <Text style={styles.empty}>No customers found.</Text>
+          <Text style={styles.empty}>কোনো কাস্টমার পাওয়া যায়নি।</Text>
         )}
 
         <View style={styles.summaryRow}>
           <View style={styles.summaryCard}>
-            <Text style={styles.summaryLabel}>Total Credit</Text>
+            <Text style={styles.summaryLabel}>মোট বাকি</Text>
             <Text style={styles.summaryValue}>৳{Number(summary.total_credit || 0).toFixed(2)}</Text>
           </View>
           <View style={styles.summaryCard}>
-            <Text style={styles.summaryLabel}>Total Payment</Text>
+            <Text style={styles.summaryLabel}>মোট পেমেন্ট</Text>
             <Text style={styles.summaryValue}>৳{Number(summary.total_payment || 0).toFixed(2)}</Text>
           </View>
           <View style={styles.summaryCard}>
-            <Text style={styles.summaryLabel}>Closing Balance</Text>
+            <Text style={styles.summaryLabel}>সমাপনী বাকি</Text>
             <Text style={styles.summaryValue}>৳{Number(summary.closing_balance || 0).toFixed(2)}</Text>
           </View>
         </View>
 
         <View style={styles.actionsRow}>
           <TouchableOpacity style={styles.button} onPress={loadStatement}>
-            <Text style={styles.buttonText}>{loading ? 'Loading...' : 'Reload Statement'}</Text>
+            <Text style={styles.buttonText}>{loading ? 'লোড হচ্ছে...' : 'Reload Statement'}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.buttonSecondary} onPress={handleExport}>
-            <Text style={styles.buttonSecondaryText}>Export CSV</Text>
+            <Text style={styles.buttonSecondaryText}>CSV রপ্তানি</Text>
           </TouchableOpacity>
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Ledger Entries</Text>
+          <Text style={styles.sectionTitle}>খাতার এন্ট্রি</Text>
           {entries.length === 0 ? (
             <Text style={styles.empty}>No statement entries found.</Text>
           ) : (

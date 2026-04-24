@@ -31,17 +31,17 @@ export default function SignupScreen({ navigation }) {
     const normalizedConfirm = String(confirmPin || '').trim();
 
     if (!normalizedEmail || !normalizedPin || !normalizedConfirm) {
-      setMessage('All fields are required.');
+      setMessage('সব তথ্য পূরণ করুন।');
       return;
     }
 
     if (!/^\d{4,6}$/.test(normalizedPin)) {
-      setMessage('PIN must be 4 to 6 digits.');
+      setMessage('PIN ৪ থেকে ৬ সংখ্যার হতে হবে।');
       return;
     }
 
     if (normalizedPin !== normalizedConfirm) {
-      setMessage('PINs do not match.');
+      setMessage('PIN মিলছে না।');
       return;
     }
 
@@ -53,7 +53,7 @@ export default function SignupScreen({ navigation }) {
       if (result?.verificationRequired) {
         const delivery = result?.emailDelivery || null;
         if (delivery && delivery.delivered === false && !delivery.transportConfigured) {
-          setMessage('Email service is not configured. Please contact support.');
+          setMessage('ইমেইল সেবা চালু নেই। সাপোর্টে যোগাযোগ করুন।');
         }
 
         navigation.navigate('VerifyEmail', {
@@ -63,7 +63,7 @@ export default function SignupScreen({ navigation }) {
         });
       }
     } catch (error) {
-      setMessage(error?.message || 'Signup failed.');
+      setMessage(error?.message || 'অ্যাকাউন্ট খোলা যায়নি।');
     } finally {
       setLoading(false);
     }
@@ -71,14 +71,14 @@ export default function SignupScreen({ navigation }) {
 
   return (
     <AuthScene
-      eyebrow="Hisab Join"
-      title="Sign Up"
-      subtitle="Create your account with email and PIN"
+      eyebrow="হিসাব"
+      title="অ্যাকাউন্ট খুলুন"
+      subtitle="ইমেইল ও PIN দিয়ে অ্যাকাউন্ট খুলুন"
     >
       <TextInput
         value={email}
         onChangeText={setEmail}
-        placeholder="Email"
+        placeholder="ইমেইল"
         autoCapitalize="none"
         keyboardType="email-address"
         style={AUTH_FORM_STYLES.input}
@@ -93,7 +93,7 @@ export default function SignupScreen({ navigation }) {
       <TextInput
         value={pin}
         onChangeText={setPin}
-        placeholder="Set PIN"
+        placeholder="PIN সেট করুন"
         keyboardType="number-pad"
         maxLength={6}
         secureTextEntry
@@ -103,7 +103,7 @@ export default function SignupScreen({ navigation }) {
       <TextInput
         value={confirmPin}
         onChangeText={setConfirmPin}
-        placeholder="Confirm PIN"
+        placeholder="PIN নিশ্চিত করুন"
         keyboardType="number-pad"
         maxLength={6}
         secureTextEntry
@@ -114,7 +114,7 @@ export default function SignupScreen({ navigation }) {
         <View style={[AUTH_FORM_STYLES.checkbox, rememberMe && AUTH_FORM_STYLES.checkboxActive]}>
           {rememberMe ? <Text style={AUTH_FORM_STYLES.checkboxTick}>✓</Text> : null}
         </View>
-        <Text style={AUTH_FORM_STYLES.checkboxText}>Remember me on this device</Text>
+        <Text style={AUTH_FORM_STYLES.checkboxText}>এই ডিভাইসে মনে রাখুন</Text>
       </TouchableOpacity>
 
       <TouchableOpacity
@@ -122,11 +122,11 @@ export default function SignupScreen({ navigation }) {
         onPress={handleSignup}
         disabled={loading}
       >
-        {loading ? <ActivityIndicator size="small" color={UI_COLORS.onAccent} /> : <Text style={AUTH_FORM_STYLES.primaryButtonText}>Create Account</Text>}
+        {loading ? <ActivityIndicator size="small" color={UI_COLORS.onAccent} /> : <Text style={AUTH_FORM_STYLES.primaryButtonText}>অ্যাকাউন্ট খুলুন</Text>}
       </TouchableOpacity>
 
       <TouchableOpacity style={AUTH_FORM_STYLES.linkButton} onPress={() => navigation.goBack()}>
-        <Text style={AUTH_FORM_STYLES.linkText}>Already have an account? Login</Text>
+        <Text style={AUTH_FORM_STYLES.linkText}>আগে থেকে অ্যাকাউন্ট আছে? প্রবেশ করুন</Text>
       </TouchableOpacity>
     </AuthScene>
   );

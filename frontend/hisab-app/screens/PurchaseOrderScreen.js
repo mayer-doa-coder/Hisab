@@ -83,18 +83,18 @@ export default function PurchaseOrderScreen() {
     const product = products.find((item) => Number(item.id) === normalizedProductId);
 
     if (!product) {
-      Alert.alert('Select Product', 'Please select a product first.');
+      Alert.alert('পণ্য বেছে নিন', 'Please select a product first.');
       return;
     }
 
     if (!Number.isInteger(normalizedQty) || normalizedQty <= 0) {
-      Alert.alert('Invalid Quantity', 'Ordered quantity must be a positive integer.');
+      Alert.alert('অবৈধ পরিমাণ', 'অর্ডারের পরিমাণ একটি পজিটিভ পূর্ণসংখ্যা হতে হবে।');
       return;
     }
 
     const effectiveUnitCost = unitCost === '' ? Number(product.price || 0) : Number(unitCost);
     if (!Number.isFinite(effectiveUnitCost) || effectiveUnitCost < 0) {
-      Alert.alert('Invalid Cost', 'Unit cost must be a valid non-negative number.');
+      Alert.alert('অবৈধ মূল্য', 'একক মূল্য একটি সঠিক ধনাত্মক সংখ্যা হতে হবে।');
       return;
     }
 
@@ -121,12 +121,12 @@ export default function PurchaseOrderScreen() {
   const handleCreateOrder = async () => {
     const normalizedSupplierId = Number(supplierId);
     if (!Number.isInteger(normalizedSupplierId) || normalizedSupplierId <= 0) {
-      Alert.alert('Required', 'Supplier is required.');
+      Alert.alert('প্রয়োজনীয়', 'সরবরাহকারী দিন।');
       return;
     }
 
     if (!cartItems.length) {
-      Alert.alert('Empty Order', 'Add at least one item to create a purchase order.');
+      Alert.alert('খালি অর্ডার', 'ক্রয় আদেশ তৈরি করতে কমপক্ষে একটি পণ্য যোগ করুন।');
       return;
     }
 
@@ -155,9 +155,9 @@ export default function PurchaseOrderScreen() {
       await loadMeta();
       await loadHistory();
 
-      Alert.alert('Purchase Order Created', `${result.purchase_code} | ${formatMoney(result.total_amount)}`);
+      Alert.alert('ক্রয় আদেশ তৈরি হয়েছে', `${result.purchase_code} | ${formatMoney(result.total_amount)}`);
     } catch (error) {
-      Alert.alert('Create Failed', error?.message || 'Unable to create purchase order.');
+      Alert.alert('তৈরি ব্যর্থ', error?.message || 'ক্রয় আদেশ তৈরি করা যায়নি।');
     } finally {
       setSaving(false);
     }
@@ -171,13 +171,13 @@ export default function PurchaseOrderScreen() {
         contentContainerStyle={styles.container}
         ListHeaderComponent={
           <View>
-            <Text style={styles.title}>Purchase Orders</Text>
-            <Text style={styles.subtitle}>Create orders quickly and track pending receiving at a glance.</Text>
+            <Text style={styles.title}>ক্রয় আদেশ</Text>
+            <Text style={styles.subtitle}>দ্রুত ক্রয় আদেশ তৈরি করুন।</Text>
 
             <AppCard style={styles.card}>
-              <Text style={styles.sectionTitle}>Create Order</Text>
+              <Text style={styles.sectionTitle}>আদেশ তৈরি করুন</Text>
 
-              <Text style={styles.label}>Supplier</Text>
+              <Text style={styles.label}>সরবরাহকারী</Text>
               <View style={styles.pickerWrap}>
                 <Picker selectedValue={supplierId} onValueChange={(value) => setSupplierId(String(value))}>
                   {suppliers.map((item) => (
@@ -190,7 +190,7 @@ export default function PurchaseOrderScreen() {
                 </Picker>
               </View>
 
-              <Text style={styles.label}>Product</Text>
+              <Text style={styles.label}>পণ্য</Text>
               <View style={styles.pickerWrap}>
                 <Picker selectedValue={productId} onValueChange={(value) => setProductId(String(value))}>
                   {products.map((item) => (
@@ -205,18 +205,18 @@ export default function PurchaseOrderScreen() {
                   value={orderedQty}
                   onChangeText={setOrderedQty}
                   keyboardType="number-pad"
-                  placeholder="Qty"
+                  placeholder="পরিমাণ"
                 />
                 <AppInput
                   style={styles.inputFlex}
                   value={unitCost}
                   onChangeText={setUnitCost}
                   keyboardType="decimal-pad"
-                  placeholder="Unit cost"
+                  placeholder="একক মূল্য"
                 />
               </View>
 
-              <AppButton title="Add Item" onPress={handleAddItem} variant="secondary" />
+              <AppButton title="আইটেম যোগ করুন" onPress={handleAddItem} variant="secondary" />
 
               {cartItems.map((item) => (
                 <View key={item.key} style={styles.cartRow}>
@@ -225,7 +225,7 @@ export default function PurchaseOrderScreen() {
                     <Text style={styles.cartMeta}>{item.ordered_qty} x {formatMoney(item.unit_cost)} = {formatMoney(item.subtotal)}</Text>
                   </View>
                   <TouchableOpacity onPress={() => handleRemoveItem(item.key)} style={styles.removeButton}>
-                    <Text style={styles.removeText}>Remove</Text>
+                    <Text style={styles.removeText}>সরান</Text>
                   </TouchableOpacity>
                 </View>
               ))}
@@ -238,13 +238,13 @@ export default function PurchaseOrderScreen() {
                   value={paidAmount}
                   onChangeText={setPaidAmount}
                   keyboardType="decimal-pad"
-                  placeholder="Initial paid amount"
+                  placeholder="প্রাথমিক পরিশোধ"
                 />
                 <AppInput
                   style={styles.inputFlex}
                   value={orderNote}
                   onChangeText={setOrderNote}
-                  placeholder="Note (optional)"
+                  placeholder="নোট (ঐচ্ছিক)"
                 />
               </View>
 
@@ -268,11 +268,11 @@ export default function PurchaseOrderScreen() {
               </View>
             </AppCard>
 
-            <Text style={styles.sectionTitle}>Recent Purchase Orders</Text>
+            <Text style={styles.sectionTitle}>সাম্প্রতিক ক্রয় আদেশ</Text>
           </View>
         }
         ListEmptyComponent={
-          <Text style={styles.emptyText}>{loadingHistory ? 'Loading...' : 'No purchase orders yet.'}</Text>
+          <Text style={styles.emptyText}>{loadingHistory ? 'লোড হচ্ছে...' : 'No purchase orders yet.'}</Text>
         }
         renderItem={({ item }) => (
           <AppCard style={styles.historyCard}>

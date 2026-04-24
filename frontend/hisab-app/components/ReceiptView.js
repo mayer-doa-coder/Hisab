@@ -8,7 +8,7 @@ const formatMoney = (value) => `৳${Number(value || 0).toFixed(2)}`;
 const formatDateTime = (value) => {
   const parsed = new Date(value || '');
   if (Number.isNaN(parsed.getTime())) {
-    return 'N/A';
+    return 'অজানা';
   }
 
   return parsed.toISOString().replace('T', ' ').slice(0, 16);
@@ -23,15 +23,15 @@ export default function ReceiptView({ receipt }) {
     <View style={styles.root}>
       <AppCard style={styles.card}>
         <Text style={styles.receiptId}>{receipt.receipt_id}</Text>
-        <Text style={styles.meta}>Time: {formatDateTime(receipt.timestamp)}</Text>
-        <Text style={styles.meta}>Customer: {receipt.customer_name || 'Walk-in'}</Text>
-        <Text style={styles.meta}>Payment Mode: {receipt.payment_mode}</Text>
-        <Text style={styles.meta}>Status: {String(receipt.status || '').toUpperCase()}</Text>
-        {receipt.note ? <Text style={styles.meta}>Note: {receipt.note}</Text> : null}
+        <Text style={styles.meta}>সময়: {formatDateTime(receipt.timestamp)}</Text>
+        <Text style={styles.meta}>কাস্টমার: {receipt.customer_name || 'ওয়াক-ইন'}</Text>
+        <Text style={styles.meta}>পেমেন্ট পদ্ধতি: {receipt.payment_mode}</Text>
+        <Text style={styles.meta}>স্ট্যাটাস: {String(receipt.status || '').toUpperCase()}</Text>
+        {receipt.note ? <Text style={styles.meta}>নোট: {receipt.note}</Text> : null}
       </AppCard>
 
       <AppCard style={styles.card}>
-        <Text style={styles.sectionTitle}>Items</Text>
+        <Text style={styles.sectionTitle}>পণ্যসমূহ</Text>
         {(receipt.items || []).map((item) => (
           <View key={`receipt-item-${item.id}`} style={styles.lineRow}>
             <View style={styles.lineLeft}>
@@ -46,7 +46,7 @@ export default function ReceiptView({ receipt }) {
       </AppCard>
 
       <AppCard style={styles.card}>
-        <Text style={styles.sectionTitle}>Payments</Text>
+        <Text style={styles.sectionTitle}>পেমেন্টসমূহ</Text>
         {(receipt.payments || []).map((payment) => (
           <View key={`receipt-payment-${payment.id}`} style={styles.paymentRow}>
             <Text style={styles.lineMeta}>
@@ -56,7 +56,7 @@ export default function ReceiptView({ receipt }) {
           </View>
         ))}
         <View style={styles.totalRow}>
-          <Text style={styles.totalLabel}>Total</Text>
+          <Text style={styles.totalLabel}>মোট</Text>
           <Text style={styles.totalAmount}>{formatMoney(receipt.total_amount)}</Text>
         </View>
       </AppCard>

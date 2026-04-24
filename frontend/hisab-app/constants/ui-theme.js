@@ -27,6 +27,7 @@ export const UI_COLORS = {
   borderDanger: COLORS.borderDanger,
   primary: COLORS.primary,
   accent: COLORS.accent,
+  success: COLORS.success,
   danger: COLORS.danger,
   textOnPrimary: COLORS.textOnPrimary,
   onAccent: COLORS.onAccent,

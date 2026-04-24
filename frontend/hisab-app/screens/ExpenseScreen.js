@@ -20,7 +20,14 @@ const CATEGORY_OPTIONS = [
   'OTHER',
 ];
 
-const PAYMENT_OPTIONS = ['CASH', 'BKASH', 'NAGAD', 'CARD', 'BANK', 'OTHER'];
+const PAYMENT_OPTIONS = [
+  { value: 'CASH', label: 'নগদ' },
+  { value: 'BKASH', label: 'বিকাশ' },
+  { value: 'NAGAD', label: 'নগাদ' },
+  { value: 'CARD', label: 'কার্ড' },
+  { value: 'BANK', label: 'ব্যাংক' },
+  { value: 'OTHER', label: 'অন্যান্য' },
+];
 
 export default function ExpenseScreen() {
   const {
@@ -57,12 +64,12 @@ export default function ExpenseScreen() {
   const handleSave = async () => {
     const amountValue = Number(amount);
     if (!title.trim()) {
-      Alert.alert('Required', 'Expense title is required.');
+      Alert.alert('প্রয়োজনীয়', 'খরচের শিরোনাম দিন।');
       return;
     }
 
     if (!Number.isFinite(amountValue) || amountValue <= 0) {
-      Alert.alert('Required', 'Enter a valid expense amount.');
+      Alert.alert('প্রয়োজনীয়', 'সঠিক পরিমাণ লিখুন।');
       return;
     }
 
@@ -90,9 +97,9 @@ export default function ExpenseScreen() {
 
       await refreshAll();
       await load();
-      Alert.alert('Saved', 'Expense recorded successfully.');
+      Alert.alert('সফল', 'খরচ সেভ হয়েছে।');
     } catch (error) {
-      Alert.alert('Failed', error?.message || 'Unable to save expense.');
+      Alert.alert('ব্যর্থ', error?.message || 'খরচ সেভ করা যায়নি।');
     } finally {
       setSaving(false);
     }
@@ -106,20 +113,20 @@ export default function ExpenseScreen() {
         contentContainerStyle={styles.container}
         ListHeaderComponent={
           <View>
-            <Text style={styles.title}>Expense Manager</Text>
-            <Text style={styles.subtitle}>Add expense entries and auto-post cash outflow journal.</Text>
+            <Text style={styles.title}>খরচ ব্যবস্থাপনা</Text>
+            <Text style={styles.subtitle}>খরচ যোগ করুন এবং স্বয়ংক্রিয়ভাবে নগদ জার্নালে পোস্ট হবে।</Text>
 
             <AppCard style={styles.card}>
-              <Text style={styles.sectionTitle}>New Expense</Text>
-              <AppInput value={title} onChangeText={setTitle} placeholder="Expense title" />
-              <AppInput value={amount} onChangeText={setAmount} keyboardType="decimal-pad" placeholder="Amount" />
+              <Text style={styles.sectionTitle}>নতুন খরচ</Text>
+              <AppInput value={title} onChangeText={setTitle} placeholder="খরচের শিরোনাম" />
+              <AppInput value={amount} onChangeText={setAmount} keyboardType="decimal-pad" placeholder="পরিমাণ" />
               <AppInput
                 value={expenseDate}
                 onChangeText={setExpenseDate}
-                placeholder="Expense date (optional ISO, e.g., 2026-01-31)"
+                placeholder="তারিখ (ঐচ্ছিক, যেমন: ২০২৬-০১-৩১)"
               />
 
-              <Text style={styles.label}>Category</Text>
+              <Text style={styles.label}>বিভাগ</Text>
               <View style={styles.pickerWrap}>
                 <Picker selectedValue={category} onValueChange={(value) => setCategory(String(value))}>
                   {CATEGORY_OPTIONS.map((option) => (
@@ -128,7 +135,7 @@ export default function ExpenseScreen() {
                 </Picker>
               </View>
 
-              <Text style={styles.label}>Payment Method</Text>
+              <Text style={styles.label}>পেমেন্ট পদ্ধতি</Text>
               <View style={styles.pickerWrap}>
                 <Picker selectedValue={paymentMethod} onValueChange={(value) => setPaymentMethod(String(value))}>
                   {PAYMENT_OPTIONS.map((option) => (
@@ -137,12 +144,12 @@ export default function ExpenseScreen() {
                 </Picker>
               </View>
 
-              <AppInput value={note} onChangeText={setNote} placeholder="Note (optional)" />
+              <AppInput value={note} onChangeText={setNote} placeholder="নোট (ঐচ্ছিক)" />
 
               <View style={styles.buttonRow}>
-                <AppButton title={saving ? 'Saving...' : 'Save Expense'} onPress={handleSave} disabled={saving} style={styles.buttonFlex} />
+                <AppButton title={saving ? 'সেভ হচ্ছে...' : 'খরচ সেভ করুন'} onPress={handleSave} disabled={saving} style={styles.buttonFlex} />
                 <AppButton
-                  title={refreshing ? 'Refreshing...' : 'Refresh'}
+                  title={refreshing ? 'রিফ্রেশ হচ্ছে...' : 'রিফ্রেশ'}
                   variant="secondary"
                   style={styles.buttonFlex}
                   onPress={async () => {
@@ -153,19 +160,19 @@ export default function ExpenseScreen() {
               </View>
             </AppCard>
 
-            <Text style={styles.sectionTitle}>Recent Expenses</Text>
+            <Text style={styles.sectionTitle}>সাম্প্রতিক খরচ</Text>
           </View>
         }
-        ListEmptyComponent={<Text style={styles.emptyText}>{loading ? 'Loading...' : 'No expenses recorded.'}</Text>}
+        ListEmptyComponent={<Text style={styles.emptyText}>{loading ? 'লোড হচ্ছে...' : 'কোনো খরচ নেই।'}</Text>}
         renderItem={({ item }) => (
           <AppCard style={styles.rowCard}>
             <View style={styles.rowHeader}>
               <Text style={styles.rowTitle}>{item.title}</Text>
               <Text style={styles.rowAmount}>{formatMoney(item.amount)}</Text>
             </View>
-            <Text style={styles.meta}>{item.category} | {item.payment_method || 'N/A'}</Text>
-            <Text style={styles.meta}>{item.expense_date || 'N/A'}</Text>
-            <Text style={styles.meta}>{item.note || 'No note'}</Text>
+            <Text style={styles.meta}>{(CATEGORY_OPTIONS.find(o => o.value === item.category) || {label: item.category}).label} | {(PAYMENT_OPTIONS.find(o => o.value === item.payment_method) || {label: item.payment_method || 'অজানা'}).label}</Text>
+            <Text style={styles.meta}>{item.expense_date || 'অজানা'}</Text>
+            <Text style={styles.meta}>{item.note || 'নোট নেই'}</Text>
           </AppCard>
         )}
       />

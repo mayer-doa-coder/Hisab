@@ -62,7 +62,7 @@ export default function SupplierScreen() {
 
   const handleSave = async () => {
     if (!name.trim()) {
-      Alert.alert('Required', 'Supplier name is required.');
+      Alert.alert('প্রয়োজনীয়', 'সরবরাহকারীর নাম দিন।');
       return;
     }
 
@@ -80,9 +80,9 @@ export default function SupplierScreen() {
 
       await loadRows();
       resetForm();
-      Alert.alert('Saved', 'Supplier saved successfully.');
+      Alert.alert('সফল', 'সরবরাহকারী সেভ হয়েছে।');
     } catch (error) {
-      Alert.alert('Save Failed', error?.message || 'Unable to save supplier.');
+      Alert.alert('সেভ ব্যর্থ', error?.message || 'সরবরাহকারী সেভ করা যায়নি।');
     } finally {
       setSaving(false);
     }
@@ -91,9 +91,9 @@ export default function SupplierScreen() {
   const handleDelete = (row) => {
     Alert.alert(
       'Delete Supplier',
-      `Delete ${row.name}? This is blocked if due exists or open purchases remain.`,
+      `${row.name} মুছে ফেলবেন? বাকি বা খোলা ক্রয় থাকলে মুছা যাবে না।`,
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: 'বাতিল', style: 'cancel' },
         {
           text: 'Delete',
           style: 'destructive',
@@ -105,7 +105,7 @@ export default function SupplierScreen() {
                 resetForm();
               }
             } catch (error) {
-              Alert.alert('Delete Failed', error?.message || 'Unable to delete supplier.');
+              Alert.alert('মুছতে ব্যর্থ', error?.message || 'সরবরাহকারী মুছে ফেলা যায়নি।');
             }
           },
         },
@@ -121,39 +121,39 @@ export default function SupplierScreen() {
         contentContainerStyle={styles.container}
         ListHeaderComponent={
           <View>
-            <Text style={styles.title}>Supplier Manager</Text>
-            <Text style={styles.subtitle}>Create and maintain suppliers with live payable visibility.</Text>
+            <Text style={styles.title}>সরবরাহকারী</Text>
+            <Text style={styles.subtitle}>সরবরাহকারী যোগ ও পরিচালনা করুন।</Text>
 
             <AppCard style={styles.card}>
-              <Text style={styles.sectionTitle}>{editingId ? 'Edit Supplier' : 'Add Supplier'}</Text>
-              <AppInput value={name} onChangeText={setName} placeholder="Supplier name" />
-              <AppInput value={phone} onChangeText={setPhone} placeholder="Phone (optional)" keyboardType="phone-pad" />
-              <AppInput value={address} onChangeText={setAddress} placeholder="Address (optional)" />
+              <Text style={styles.sectionTitle}>{editingId ? 'সরবরাহকারী সম্পাদনা' : 'নতুন সরবরাহকারী'}</Text>
+              <AppInput value={name} onChangeText={setName} placeholder="সরবরাহকারীর নাম" />
+              <AppInput value={phone} onChangeText={setPhone} placeholder="ফোন (ঐচ্ছিক)" keyboardType="phone-pad" />
+              <AppInput value={address} onChangeText={setAddress} placeholder="ঠিকানা (ঐচ্ছিক)" />
 
               <View style={styles.buttonRow}>
                 <AppButton
-                  title={saving ? 'Saving...' : editingId ? 'Update Supplier' : 'Create Supplier'}
+                  title={saving ? 'সেভ হচ্ছে...' : editingId ? 'আপডেট করুন' : 'যোগ করুন'}
                   onPress={handleSave}
                   disabled={saving}
                   style={styles.buttonFlex}
                 />
                 {editingId ? (
-                  <AppButton title="Cancel" onPress={resetForm} variant="secondary" style={styles.buttonFlex} />
+                  <AppButton title="বাতিল" onPress={resetForm} variant="secondary" style={styles.buttonFlex} />
                 ) : null}
               </View>
             </AppCard>
 
             <AppCard style={styles.card}>
-              <Text style={styles.sectionTitle}>Search</Text>
+              <Text style={styles.sectionTitle}>অনুসন্ধান</Text>
               <AppInput
                 value={searchText}
                 onChangeText={setSearchText}
-                placeholder="Search name, phone, address"
+                placeholder="নাম, ফোন বা ঠিকানা দিয়ে খুঁজুন"
               />
               <View style={styles.buttonRow}>
-                <AppButton title={loading ? 'Filtering...' : 'Apply'} onPress={loadRows} style={styles.buttonFlex} />
+                <AppButton title={loading ? 'ফিল্টার হচ্ছে...' : 'প্রয়োগ করুন'} onPress={loadRows} style={styles.buttonFlex} />
                 <AppButton
-                  title={refreshing ? 'Refreshing...' : 'Refresh All'}
+                  title={refreshing ? 'রিফ্রেশ হচ্ছে...' : 'সব রিফ্রেশ'}
                   variant="secondary"
                   style={styles.buttonFlex}
                   onPress={async () => {
@@ -162,21 +162,21 @@ export default function SupplierScreen() {
                   }}
                 />
               </View>
-              <Text style={styles.summaryText}>Suppliers: {rows.length} | Total Due: {formatMoney(totalDue)}</Text>
+              <Text style={styles.summaryText}>সরবরাহকারী: {rows.length} | মোট বাকি: {formatMoney(totalDue)}</Text>
             </AppCard>
 
-            <Text style={styles.sectionTitle}>Supplier List</Text>
+            <Text style={styles.sectionTitle}>সরবরাহকারী তালিকা</Text>
           </View>
         }
-        ListEmptyComponent={<Text style={styles.emptyText}>No supplier found.</Text>}
+        ListEmptyComponent={<Text style={styles.emptyText}>কোনো সরবরাহকারী পাওয়া যায়নি।</Text>}
         renderItem={({ item }) => (
           <AppCard style={styles.rowCard}>
             <View style={styles.rowHeader}>
               <Text style={styles.rowTitle}>{item.name}</Text>
               <Text style={styles.rowDue}>{formatMoney(item.due_amount)}</Text>
             </View>
-            <Text style={styles.rowMeta}>{item.phone || 'No phone'}</Text>
-            <Text style={styles.rowMeta}>{item.address || 'No address'}</Text>
+            <Text style={styles.rowMeta}>{item.phone || 'ফোন নেই'}</Text>
+            <Text style={styles.rowMeta}>{item.address || 'ঠিকানা নেই'}</Text>
             <View style={styles.buttonRow}>
               <TouchableOpacity
                 style={[styles.smallButton, styles.secondaryButton]}
@@ -186,12 +186,12 @@ export default function SupplierScreen() {
                   setPhone(String(item.phone || ''));
                   setAddress(String(item.address || ''));
                 }}>
-                <Text style={styles.secondaryButtonLabel}>Edit</Text>
+                <Text style={styles.secondaryButtonLabel}>সম্পাদনা</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.smallButton, styles.dangerButton]}
                 onPress={() => handleDelete(item)}>
-                <Text style={styles.dangerButtonLabel}>Delete</Text>
+                <Text style={styles.dangerButtonLabel}>মুছুন</Text>
               </TouchableOpacity>
             </View>
           </AppCard>

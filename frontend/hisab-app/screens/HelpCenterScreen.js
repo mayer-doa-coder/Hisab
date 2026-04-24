@@ -55,18 +55,18 @@ export default function HelpCenterScreen() {
         contentContainerStyle={styles.container}
         ListHeaderComponent={(
           <View style={styles.headerWrap}>
-            <Text style={styles.title}>Help Center</Text>
-            <Text style={styles.subtitle}>Learn how to sell, manage baki, and review reports quickly.</Text>
+            <Text style={styles.title}>সাহায্য কেন্দ্র</Text>
+            <Text style={styles.subtitle}>বিক্রি, বাকি ব্যবস্থাপনা ও রিপোর্ট দেখার পদ্ধতি জানুন।</Text>
             <AppInput
               value={query}
               onChangeText={setQuery}
-              placeholder="Search help topics"
+              placeholder="সাহায্যের বিষয় খুঁজুন"
             />
             {statusText ? <Text style={styles.statusText}>{statusText}</Text> : null}
-            <Text style={styles.sectionTitle}>Articles</Text>
+            <Text style={styles.sectionTitle}>নিবন্ধসমূহ</Text>
           </View>
         )}
-        ListEmptyComponent={<Text style={styles.metaText}>No matching articles found.</Text>}
+        ListEmptyComponent={<Text style={styles.metaText}>কোনো নিবন্ধ পাওয়া যায়নি।</Text>}
         renderItem={({ item }) => (
           <AppCard style={styles.card}>
             <Text style={styles.rowTitle}>{item?.title || 'Untitled'}</Text>

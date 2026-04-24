@@ -145,6 +145,53 @@ export function AuthProvider({ children }) {
     [updateAuthStatus]
   );
 
+  const ensureValidAccessToken = useCallback(async ({ minValidityMs = 45 * 1000, forceRefresh = false } = {}) => {
+    const accessToken = String(session?.access_token || '').trim();
+    const refreshToken = String(session?.refresh_token || '').trim();
+    const sessionToken = session?.token || null;
+
+    if (!accessToken) {
+      return null;
+    }
+
+    const shouldRefresh = Boolean(forceRefresh)
+      || isLikelyExpired(session?.access_expires_at, Number(minValidityMs) || 45 * 1000);
+
+    if (!shouldRefresh) {
+      return accessToken;
+    }
+
+    if (!refreshToken || !sessionToken) {
+      await hardLogout({
+        sessionToken,
+        message: 'Session expired. Please login again.',
+        reason: 'ACCESS_EXPIRED_NO_REFRESH',
+      });
+      return null;
+    }
+
+    try {
+      const refreshed = await refreshSessionWithServer({
+        sessionToken,
+        refreshToken,
+        fallbackUser: user,
+      });
+      return String(refreshed?.access_token || '').trim() || null;
+    } catch (error) {
+      const refreshCode = String(error?.code || '');
+      if (refreshCode === 'REFRESH_TOKEN_EXPIRED' || refreshCode === 'INVALID_REFRESH_TOKEN' || Number(error?.status) === 401) {
+        await hardLogout({
+          sessionToken,
+          message: 'Session expired. Please login again.',
+          reason: refreshCode || 'REFRESH_INVALID_FORCE_LOGOUT',
+        });
+        return null;
+      }
+
+      throw error;
+    }
+  }, [hardLogout, refreshSessionWithServer, session?.access_expires_at, session?.access_token, session?.refresh_token, session?.token, user]);
+
   const validateSessionOnline = useCallback(
     async (currentPayload) => {
       if (!currentPayload?.user || !currentPayload?.session?.token) {
@@ -659,6 +706,7 @@ export function AuthProvider({ children }) {
       updatePassword,
       setupPin,
       logout,
+      ensureValidAccessToken,
     }),
     [
       authBooting,
@@ -674,6 +722,7 @@ export function AuthProvider({ children }) {
       resetPin,
       resetPassword,
       session,
+      ensureValidAccessToken,
       setupPin,
       signup,
       updatePin,

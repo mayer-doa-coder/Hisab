@@ -27,7 +27,7 @@ export default function VerifyEmailScreen({ navigation, route }) {
 
   useEffect(() => {
     if (emailDelivery && emailDelivery.delivered === false && !emailDelivery.transportConfigured) {
-      setMessage('Email delivery is currently unavailable. Please contact support.');
+      setMessage('ইমেইল ডেলিভারি এখন অনুপলব্ধ। সাপোর্টে যোগাযোগ করুন।');
     }
   }, [emailDelivery]);
 
@@ -40,7 +40,7 @@ export default function VerifyEmailScreen({ navigation, route }) {
     const normalizedCode = String(verificationCode || '').trim();
 
     if (!normalizedEmail || !normalizedCode) {
-      setMessage('Email and verification code are required.');
+      setMessage('ইমেইল ও যাচাই কোড দেওয়া আবশ্যক।');
       return;
     }
 
@@ -53,7 +53,7 @@ export default function VerifyEmailScreen({ navigation, route }) {
         rememberMe,
       });
     } catch (error) {
-      setMessage(error?.message || 'Verification failed.');
+      setMessage(error?.message || 'যাচাই ব্যর্থ হয়েছে।');
     } finally {
       setSubmitting(false);
     }
@@ -66,7 +66,7 @@ export default function VerifyEmailScreen({ navigation, route }) {
 
     const normalizedEmail = String(email || '').trim();
     if (!normalizedEmail) {
-      setMessage('Email is required to resend code.');
+      setMessage('কোড পুনরায় পাঠাতে ইমেইল দিন।');
       return;
     }
 
@@ -74,9 +74,9 @@ export default function VerifyEmailScreen({ navigation, route }) {
       setMessage('');
       setResending(true);
       await requestEmailVerification(normalizedEmail);
-      setMessage('Verification code sent. Check your email.');
+      setMessage('যাচাই কোড পাঠানো হয়েছে। ইমেইল চেক করুন।');
     } catch (error) {
-      setMessage(error?.message || 'Could not resend verification code.');
+      setMessage(error?.message || 'যাচাই কোড পাঠানো যায়নি।');
     } finally {
       setResending(false);
     }
@@ -84,14 +84,14 @@ export default function VerifyEmailScreen({ navigation, route }) {
 
   return (
     <AuthScene
-      eyebrow="Hisab Verify"
-      title="Verify Email"
-      subtitle="Enter the code sent to your email"
+      eyebrow="হিসাব যাচাই"
+      title="ইমেইল যাচাই"
+      subtitle="আপনার ইমেইলে পাঠানো কোড দিন"
     >
       <TextInput
         value={email}
         onChangeText={setEmail}
-        placeholder="Email"
+        placeholder="ইমেইল"
         autoCapitalize="none"
         keyboardType="email-address"
         style={AUTH_FORM_STYLES.input}
@@ -100,7 +100,7 @@ export default function VerifyEmailScreen({ navigation, route }) {
       <TextInput
         value={verificationCode}
         onChangeText={setVerificationCode}
-        placeholder="Verification code"
+        placeholder="যাচাই কোড"
         autoCapitalize="characters"
         style={AUTH_FORM_STYLES.input}
       />
@@ -109,7 +109,7 @@ export default function VerifyEmailScreen({ navigation, route }) {
         <View style={[AUTH_FORM_STYLES.checkbox, rememberMe && AUTH_FORM_STYLES.checkboxActive]}>
           {rememberMe ? <Text style={AUTH_FORM_STYLES.checkboxTick}>v</Text> : null}
         </View>
-        <Text style={AUTH_FORM_STYLES.checkboxText}>Remember me after verification</Text>
+        <Text style={AUTH_FORM_STYLES.checkboxText}>যাচাইয়ের পর মনে রাখুন</Text>
       </TouchableOpacity>
 
       {message ? (
@@ -123,7 +123,7 @@ export default function VerifyEmailScreen({ navigation, route }) {
         onPress={handleVerify}
         disabled={submitting}
       >
-        {submitting ? <ActivityIndicator size="small" color={UI_COLORS.onAccent} /> : <Text style={AUTH_FORM_STYLES.primaryButtonText}>Verify Email</Text>}
+        {submitting ? <ActivityIndicator size="small" color={UI_COLORS.onAccent} /> : <Text style={AUTH_FORM_STYLES.primaryButtonText}>ইমেইল যাচাই করুন</Text>}
       </TouchableOpacity>
 
       <TouchableOpacity
@@ -131,11 +131,11 @@ export default function VerifyEmailScreen({ navigation, route }) {
         onPress={handleResend}
         disabled={resending}
       >
-        {resending ? <ActivityIndicator size="small" color={UI_COLORS.primary} /> : <Text style={AUTH_FORM_STYLES.secondaryButtonText}>Resend Code</Text>}
+        {resending ? <ActivityIndicator size="small" color={UI_COLORS.primary} /> : <Text style={AUTH_FORM_STYLES.secondaryButtonText}>কোড পুনরায় পাঠান</Text>}
       </TouchableOpacity>
 
       <TouchableOpacity style={AUTH_FORM_STYLES.linkButton} onPress={() => navigation.navigate('Login')}>
-        <Text style={AUTH_FORM_STYLES.linkText}>Back to login</Text>
+        <Text style={AUTH_FORM_STYLES.linkText}>লগইনে ফিরুন</Text>
       </TouchableOpacity>
     </AuthScene>
   );

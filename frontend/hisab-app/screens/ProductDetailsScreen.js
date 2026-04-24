@@ -82,7 +82,7 @@ export default function ProductDetailsScreen() {
       const rows = await getStockMovementHistory({ productId: Number(nextProductId), limit: 30 });
       setHistoryRows(rows);
     } catch (error) {
-      Alert.alert('Load Failed', error?.message || 'Unable to load movement history.');
+      Alert.alert('লোড ব্যর্থ', error?.message || 'Unable to load movement history.');
     } finally {
       setLoadingHistory(false);
     }
@@ -107,14 +107,14 @@ export default function ProductDetailsScreen() {
           keyboardShouldPersistTaps="handled"
           ListHeaderComponent={
             <View>
-              <Text style={styles.title}>Product Details</Text>
-              <Text style={styles.subtitle}>Inspect product status, thresholds, expiry, and movement timeline.</Text>
+              <Text style={styles.title}>পণ্যের বিবরণ</Text>
+              <Text style={styles.subtitle}>পণ্যের স্ট্যাটাস, সীমা, মেয়াদ ও চলাচলের ইতিহাস।</Text>
 
               {products.length === 0 ? (
-                <Text style={styles.emptyText}>No products available.</Text>
+                <Text style={styles.emptyText}>কোনো পণ্য নেই।</Text>
               ) : (
                 <>
-                  <Text style={styles.label}>Select Product</Text>
+                  <Text style={styles.label}>পণ্য বেছে নিন</Text>
                   <View style={styles.pickerWrap}>
                     <Picker selectedValue={productId} onValueChange={(value) => setProductId(String(value))}>
                       {products.map((item) => (
@@ -131,7 +131,7 @@ export default function ProductDetailsScreen() {
                     <View style={styles.summaryCard}>
                       <View style={styles.rowBetween}>
                         <Text style={styles.rowTitle}>{selectedProduct.name}</Text>
-                        {isLowStock ? <Text style={styles.lowStockBadge}>Low Stock</Text> : null}
+                        {isLowStock ? <Text style={styles.lowStockBadge}>কম স্টক</Text> : null}
                       </View>
                       <Text style={styles.meta}>Product ID: {selectedProduct.id}</Text>
                       <Text style={styles.meta}>Current Quantity: {quantity}</Text>
@@ -145,7 +145,7 @@ export default function ProductDetailsScreen() {
                   ) : null}
 
                   <View style={styles.headerRow}>
-                    <Text style={styles.sectionTitle}>Recent Movements</Text>
+                    <Text style={styles.sectionTitle}>সাম্প্রতিক চলাচল</Text>
                     <TouchableOpacity style={styles.refreshButton} onPress={handleRefresh}>
                       <Text style={styles.refreshText}>{refreshing || loadingHistory ? 'Refreshing...' : 'Refresh'}</Text>
                     </TouchableOpacity>

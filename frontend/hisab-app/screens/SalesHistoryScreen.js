@@ -96,34 +96,34 @@ export default function SalesHistoryScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={UI_COLORS.primary} />}
         ListHeaderComponent={
           <View>
-            <Text style={styles.title}>Sales History</Text>
-            <Text style={styles.subtitle}>Filter by date, customer, product, payment, or receipt id.</Text>
+            <Text style={styles.title}>বিক্রির ইতিহাস</Text>
+            <Text style={styles.subtitle}>তারিখ, কাস্টমার, পণ্য, পেমেন্ট বা রসিদ আইডি দিয়ে ফিল্টার করুন।</Text>
 
             <AppCard style={styles.filterCard}>
-              <Text style={styles.label}>Search</Text>
-              <AppInput value={searchText} onChangeText={setSearchText} placeholder="Receipt, customer, or note" />
+              <Text style={styles.label}>অনুসন্ধান</Text>
+              <AppInput value={searchText} onChangeText={setSearchText} placeholder="রসিদ, কাস্টমার বা নোট" />
 
-              <Text style={styles.label}>Customer</Text>
+              <Text style={styles.label}>কাস্টমার</Text>
               <View style={styles.pickerWrap}>
                 <Picker selectedValue={customerId} onValueChange={(value) => setCustomerId(String(value))}>
-                  <Picker.Item label="All Customers" value="" />
+                  <Picker.Item label="সব কাস্টমার" value="" />
                   {customers.map((item) => (
                     <Picker.Item key={`sales-history-customer-${item.id}`} label={String(item.name || '')} value={String(item.id)} />
                   ))}
                 </Picker>
               </View>
 
-              <Text style={styles.label}>Product</Text>
+              <Text style={styles.label}>পণ্য</Text>
               <View style={styles.pickerWrap}>
                 <Picker selectedValue={productId} onValueChange={(value) => setProductId(String(value))}>
-                  <Picker.Item label="All Products" value="" />
+                  <Picker.Item label="সব পণ্য" value="" />
                   {products.map((item) => (
                     <Picker.Item key={`sales-history-product-${item.id}`} label={String(item.name || '')} value={String(item.id)} />
                   ))}
                 </Picker>
               </View>
 
-              <Text style={styles.label}>Payment</Text>
+              <Text style={styles.label}>পেমেন্ট</Text>
               <View style={styles.rowWrap}>
                 {PAYMENT_FILTERS.map((method) => (
                   <TouchableOpacity
@@ -136,7 +136,7 @@ export default function SalesHistoryScreen() {
                 ))}
               </View>
 
-              <Text style={styles.label}>Date Range</Text>
+              <Text style={styles.label}>তারিখের পরিসর</Text>
               <View style={styles.rowWrap}>
                 {DATE_PRESETS.map((preset) => (
                   <TouchableOpacity
@@ -153,7 +153,7 @@ export default function SalesHistoryScreen() {
 
               <View style={styles.buttonRow}>
                 <TouchableOpacity style={styles.secondaryButton} onPress={loadRows}>
-                  <Text style={styles.secondaryButtonText}>Apply Filters</Text>
+                  <Text style={styles.secondaryButtonText}>ফিল্টার প্রয়োগ</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.secondaryButton}
@@ -165,7 +165,7 @@ export default function SalesHistoryScreen() {
                     setDatePreset('LAST_7');
                   }}
                 >
-                  <Text style={styles.secondaryButtonText}>Reset</Text>
+                  <Text style={styles.secondaryButtonText}>রিসেট</Text>
                 </TouchableOpacity>
               </View>
             </AppCard>

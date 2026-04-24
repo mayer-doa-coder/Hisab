@@ -22,50 +22,50 @@ export default function ProfileScreen() {
               <MaterialIcons name="person" size={28} color={UI_COLORS.primary} />
             </View>
             <View style={styles.profileMeta}>
-              <Text style={styles.profileTitle}>Profile</Text>
-              <Text style={styles.profileSubtitle}>{String(user?.email || 'No email')}</Text>
+              <Text style={styles.profileTitle}>প্রোফাইল</Text>
+              <Text style={styles.profileSubtitle}>{String(user?.email || 'ইমেইল নেই')}</Text>
             </View>
           </View>
 
           <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Connection</Text>
-            <Text style={styles.infoValue}>{isOnline ? 'Online' : 'Offline'}</Text>
+            <Text style={styles.infoLabel}>সংযোগ</Text>
+            <Text style={styles.infoValue}>{isOnline ? 'অনলাইন' : 'অফলাইন'}</Text>
           </View>
           <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Role</Text>
+            <Text style={styles.infoLabel}>ভূমিকা</Text>
             <Text style={styles.infoValue}>{String(user?.role || 'CASHIER')}</Text>
           </View>
           <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Branch</Text>
-            <Text style={styles.infoValue}>{String(user?.branchId || 'Default')}</Text>
+            <Text style={styles.infoLabel}>শাখা</Text>
+            <Text style={styles.infoValue}>{String(user?.branchId || 'ডিফল্ট')}</Text>
           </View>
           <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Auth status</Text>
+            <Text style={styles.infoLabel}>লগইন অবস্থা</Text>
             <Text style={styles.infoValue}>{String(authStatus?.state || 'unknown')}</Text>
           </View>
         </AppCard>
 
         <AppCard>
-          <Text style={styles.sectionTitle}>Security</Text>
+          <Text style={styles.sectionTitle}>নিরাপত্তা</Text>
           <View style={styles.buttonGroup}>
-            <AppButton title="Update PIN" variant="secondary" onPress={() => navigation.navigate('UpdatePassword')} />
-            <AppButton title="Setup / Change PIN" variant="secondary" onPress={() => navigation.navigate('SetupPin')} />
+            <AppButton title="PIN আপডেট" variant="secondary" onPress={() => navigation.navigate('UpdatePassword')} />
+            <AppButton title="PIN পরিবর্তন" variant="secondary" onPress={() => navigation.navigate('SetupPin')} />
           </View>
         </AppCard>
 
         <AppCard>
-          <Text style={styles.sectionTitle}>App Settings</Text>
+          <Text style={styles.sectionTitle}>অ্যাপ সেটিংস</Text>
           <TouchableOpacity activeOpacity={0.86} style={styles.settingRow}>
             <MaterialIcons name="language" size={18} color={UI_COLORS.primary} />
-            <Text style={styles.settingText}>Language: Bangla / English</Text>
+            <Text style={styles.settingText}>ভাষা: বাংলা</Text>
           </TouchableOpacity>
           <TouchableOpacity activeOpacity={0.86} style={styles.settingRow}>
             <MaterialIcons name="notifications-active" size={18} color={UI_COLORS.primary} />
-            <Text style={styles.settingText}>Low stock notifications</Text>
+            <Text style={styles.settingText}>কম স্টক বিজ্ঞপ্তি</Text>
           </TouchableOpacity>
         </AppCard>
 
-        <AppButton title="Logout" onPress={logout} />
+        <AppButton title="লগআউট" onPress={logout} />
       </View>
     </SafeAreaView>
   );

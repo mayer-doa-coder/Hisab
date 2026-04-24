@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { useMemo, useRef, useState } from 'react';
 import {
   Alert,
   FlatList,
@@ -6,6 +7,7 @@ import {
   Platform,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -13,80 +15,41 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { UI_COLORS } from '../constants/ui-theme';
 import { useAppData } from '../context/AppDataContext';
-import { DATE_RANGE_OPTIONS, DATE_RANGE_TYPES, getRangeBounds } from '../services/analytics/dateRangeUtils';
-import BakiEntryForm from './baki/BakiEntryForm';
+import CustomerChipSelector from '../components/customers/CustomerChipSelector';
+import CustomerQuickAddModal from '../components/customers/CustomerQuickAddModal';
 import BakiFilters from './baki/BakiFilters';
-import BakiKpiDashboard from './baki/BakiKpiDashboard';
 import BakiListItem from './baki/BakiListItem';
-import BakiSummaryCards from './baki/BakiSummaryCards';
-import PaymentEntryForm from './baki/PaymentEntryForm';
+
+const MODE_CREDIT = 'credit';
+const MODE_PAYMENT = 'payment';
+const QUICK_AMOUNTS = [50, 100, 500, 1000];
+const PAYMENT_METHODS = [
+  { label: 'নগদ', value: 'cash' },
+  { label: 'বিকাশ', value: 'bkash' },
+  { label: 'নগাদ', value: 'nagad' },
+  { label: 'ব্যাংক', value: 'bank' },
+];
+
 
 export default function BakiListScreen() {
-  const { customers, bakiRows, addBaki, addBakiPayment, getBakiKpiSummary, refreshAll, refreshing } = useAppData();
+  const { customers, bakiRows, addBaki, addBakiPayment, addCustomer, refreshAll, refreshing } = useAppData();
 
-  const [selectedCustomerId, setSelectedCustomerId] = useState('all');
-  const [dueFilter, setDueFilter] = useState('all');
-  const [search, setSearch] = useState('');
+  const listRef = useRef(null);
+  const amountRef = useRef(null);
 
-  const [creditCustomerId, setCreditCustomerId] = useState('');
-  const [creditAmount, setCreditAmount] = useState('');
-  const [creditNote, setCreditNote] = useState('');
-
-  const [paymentCustomerId, setPaymentCustomerId] = useState('');
-  const [paymentAmount, setPaymentAmount] = useState('');
-  const [paymentNote, setPaymentNote] = useState('');
+  const [activeMode, setActiveMode] = useState(MODE_CREDIT);
+  const [selectedCustomerId, setSelectedCustomerId] = useState('');
+  const [amount, setAmount] = useState('');
+  const [note, setNote] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('cash');
+  const [saving, setSaving] = useState(false);
+  const [showNote, setShowNote] = useState(false);
+  const [showQuickAdd, setShowQuickAdd] = useState(false);
 
-  const [savingCredit, setSavingCredit] = useState(false);
-  const [savingPayment, setSavingPayment] = useState(false);
-  const [kpiRange, setKpiRange] = useState(DATE_RANGE_TYPES.TODAY);
-  const [loadingKpis, setLoadingKpis] = useState(false);
-  const [kpis, setKpis] = useState({
-    totalCredit: 0,
-    totalPayments: 0,
-    netBalanceChange: 0,
-    numberOfTransactions: 0,
-    averageDailyCredit: 0,
-    averagePayment: 0,
-    topCustomerName: null,
-    topCustomerCredit: 0,
-    collectionRate: 0,
-    activeCustomers: 0,
-  });
-
-  const loadKpis = useCallback(async () => {
-    const bounds = getRangeBounds(kpiRange, new Date());
-
-    try {
-      setLoadingKpis(true);
-      const summary = await getBakiKpiSummary({
-        startDateIso: bounds.startDateIso,
-        endDateIso: bounds.endDateIso,
-        rangeDays: bounds.rangeDays,
-      });
-
-      setKpis({
-        totalCredit: Number(summary?.total_credit || 0),
-        totalPayments: Number(summary?.total_payments_received || 0),
-        netBalanceChange: Number(summary?.net_balance_change || 0),
-        numberOfTransactions: Number(summary?.number_of_transactions || 0),
-        averageDailyCredit: Number(summary?.average_daily_credit || 0),
-        averagePayment: Number(summary?.average_payment || 0),
-        topCustomerName: summary?.top_customer_name || null,
-        topCustomerCredit: Number(summary?.top_customer_credit || 0),
-        collectionRate: Number(summary?.collection_rate || 0),
-        activeCustomers: Number(summary?.active_customers || 0),
-      });
-    } catch (error) {
-      Alert.alert('KPI Load Failed', error?.message || 'Unable to load KPI summary.');
-    } finally {
-      setLoadingKpis(false);
-    }
-  }, [getBakiKpiSummary, kpiRange]);
-
-  useEffect(() => {
-    loadKpis();
-  }, [loadKpis, bakiRows]);
+  // list-level filter state (separate from form)
+  const [search, setSearch] = useState('');
+  const [listCustomerId, setListCustomerId] = useState('all');
+  const [dueFilter, setDueFilter] = useState('all');
 
   const dueByCustomerId = useMemo(() => {
     const map = new Map();
@@ -96,206 +59,396 @@ export default function BakiListScreen() {
     return map;
   }, [bakiRows]);
 
-  const currentPaymentDue = dueByCustomerId.get(Number(paymentCustomerId)) || 0;
+  const selectedCustomerDue = dueByCustomerId.get(Number(selectedCustomerId)) || 0;
 
   const filteredRows = useMemo(() => {
-    const query = search.trim().toLowerCase();
-
+    const q = search.trim().toLowerCase();
     return bakiRows.filter((row) => {
-      const matchCustomer = selectedCustomerId === 'all' || Number(row.customer_id) === Number(selectedCustomerId);
-      const dueAmount = Math.max(0, Number(row.due_amount || 0));
-      const matchDueFilter =
+      const matchCustomer =
+        listCustomerId === 'all' || Number(row.customer_id) === Number(listCustomerId);
+      const due = Math.max(0, Number(row.due_amount || 0));
+      const matchDue =
         dueFilter === 'all' ||
-        (dueFilter === 'with-due' && dueAmount > 0) ||
-        (dueFilter === 'no-due' && dueAmount <= 0);
+        (dueFilter === 'with-due' && due > 0) ||
+        (dueFilter === 'no-due' && due <= 0);
       const matchQuery =
-        !query ||
-        String(row.customer_name || '').toLowerCase().includes(query) ||
-        String(row.customer_phone || '').toLowerCase().includes(query);
-
-      return matchCustomer && matchDueFilter && matchQuery;
+        !q ||
+        String(row.customer_name || '').toLowerCase().includes(q) ||
+        String(row.customer_phone || '').toLowerCase().includes(q);
+      return matchCustomer && matchDue && matchQuery;
     });
-  }, [bakiRows, dueFilter, search, selectedCustomerId]);
+  }, [bakiRows, dueFilter, search, listCustomerId]);
 
-  const summary = useMemo(() => {
-    const totalDue = filteredRows.reduce((sum, row) => sum + Number(row.due_amount || 0), 0);
-    const creditCount = filteredRows.reduce((sum, row) => sum + Number(row.credit_count || 0), 0);
-    const paymentCount = filteredRows.reduce((sum, row) => sum + Number(row.payment_count || 0), 0);
+  const totalDue = useMemo(
+    () => filteredRows.reduce((sum, r) => sum + Math.max(0, Number(r.due_amount || 0)), 0),
+    [filteredRows],
+  );
 
-    return {
-      totalDue,
-      creditCount,
-      paymentCount,
-      totalRows: filteredRows.length,
-    };
-  }, [filteredRows]);
-
-  const handleAddCredit = async () => {
-    if (savingCredit) {
-      return;
-    }
-
-    try {
-      setSavingCredit(true);
-      await addBaki({
-        customerId: Number(creditCustomerId),
-        amount: Number(creditAmount),
-        note: creditNote,
-      });
-
-      setCreditAmount('');
-      setCreditNote('');
-      Alert.alert('Success', 'Credit added successfully.');
-    } catch (error) {
-      Alert.alert('Save Failed', error?.message || 'Unable to add credit entry.');
-    } finally {
-      setSavingCredit(false);
-    }
+  const switchMode = (mode) => {
+    setActiveMode(mode);
+    setAmount('');
+    setNote('');
+    setShowNote(false);
   };
 
-  const handleSavePayment = async () => {
-    if (savingPayment) {
+  const resetForm = (keepCustomer = false) => {
+    setAmount('');
+    setNote('');
+    setShowNote(false);
+    if (!keepCustomer) setSelectedCustomerId('');
+  };
+
+  const applyQuickAmount = (q) => {
+    setAmount(String(q));
+    amountRef.current?.blur();
+  };
+
+  const handleSave = async () => {
+    if (saving) return;
+
+    const numericAmount = Number(amount);
+
+    if (!selectedCustomerId) {
+      Alert.alert('কাস্টমার বেছে নিন', 'প্রথমে একজন কাস্টমার বেছে নিন।');
+      return;
+    }
+    if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
+      Alert.alert('পরিমাণ লিখুন', 'সঠিক পরিমাণ লিখুন।');
       return;
     }
 
-    const requestedAmount = Number(paymentAmount);
-
-    if (!Number.isFinite(requestedAmount) || requestedAmount <= 0) {
-      Alert.alert('Invalid Amount', 'Please enter a valid payment amount greater than 0.');
-      return;
+    if (activeMode === MODE_PAYMENT) {
+      if (selectedCustomerDue <= 0) {
+        Alert.alert('বাকি নেই', 'এই কাস্টমারের কোনো বাকি নেই।');
+        return;
+      }
+      if (numericAmount - selectedCustomerDue > 0.000001) {
+        Alert.alert(
+          'বেশি পরিমাণ',
+          `বাকির চেয়ে বেশি নেওয়া যাবে না (৳${selectedCustomerDue.toFixed(2)})।`,
+        );
+        return;
+      }
+      Alert.alert(
+        'জমা নিশ্চিত করুন',
+        `৳${numericAmount.toFixed(2)} জমা নেওয়া হবে?`,
+        [
+          { text: 'বাতিল', style: 'cancel' },
+          {
+            text: 'নিশ্চিত',
+            onPress: async () => {
+              try {
+                setSaving(true);
+                await addBakiPayment({
+                  customerId: Number(selectedCustomerId),
+                  amount: numericAmount,
+                  note,
+                  paymentMethod,
+                });
+                resetForm(true);
+                Alert.alert('সফল', 'জমা নেওয়া হয়েছে।');
+              } catch (error) {
+                Alert.alert('ব্যর্থ', error?.message || 'জমা নেওয়া যায়নি।');
+              } finally {
+                setSaving(false);
+              }
+            },
+          },
+        ],
+      );
+    } else {
+      try {
+        setSaving(true);
+        await addBaki({
+          customerId: Number(selectedCustomerId),
+          amount: numericAmount,
+          note,
+        });
+        resetForm(true);
+        Alert.alert('সফল', 'বাকি যোগ হয়েছে।');
+      } catch (error) {
+        Alert.alert('ব্যর্থ', error?.message || 'বাকি যোগ করা যায়নি।');
+      } finally {
+        setSaving(false);
+      }
     }
-
-    if (currentPaymentDue <= 0) {
-      Alert.alert('No Due', 'No existing credit found for this customer. Payment is not allowed.');
-      return;
-    }
-
-    if (requestedAmount - currentPaymentDue > 0.000001) {
-      Alert.alert('Overpayment Blocked', `Payment cannot exceed due (৳${currentPaymentDue.toFixed(2)}).`);
-      return;
-    }
-
-    Alert.alert('Confirm Payment', `Record payment of ৳${requestedAmount.toFixed(2)}?`, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Confirm',
-        onPress: async () => {
-          try {
-            setSavingPayment(true);
-            await addBakiPayment({
-              customerId: Number(paymentCustomerId),
-              amount: requestedAmount,
-              note: paymentNote,
-              paymentMethod,
-            });
-
-            setPaymentAmount('');
-            setPaymentNote('');
-            Alert.alert('Success', 'Payment recorded successfully.');
-          } catch (error) {
-            Alert.alert('Payment Failed', error?.message || 'Unable to record payment.');
-          } finally {
-            setSavingPayment(false);
-          }
-        },
-      },
-    ]);
   };
 
   const handleStartPayment = (row) => {
-    setPaymentCustomerId(String(row.customer_id));
-    setPaymentAmount('');
-    setPaymentNote('');
-    setPaymentMethod('cash');
+    setSelectedCustomerId(String(row.customer_id));
+    switchMode(MODE_PAYMENT);
+    listRef.current?.scrollToOffset({ offset: 0, animated: true });
   };
 
-  const handleQuickRefresh = async () => {
-    try {
-      await refreshAll();
-    } catch (error) {
-      Alert.alert('Refresh Failed', error?.message || 'Unable to refresh baki data.');
-    }
-  };
+  const isPayment = activeMode === MODE_PAYMENT;
+  const modeColor = isPayment ? UI_COLORS.success : UI_COLORS.primary;
+  const canSave = Boolean(selectedCustomerId) && Number(amount) > 0 && !saving;
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={styles.flex}
+      >
         <FlatList
+          ref={listRef}
           data={filteredRows}
-          keyExtractor={(item, index) => String(item.id ?? item.customer_id ?? `baki-${index}`)}
+          keyExtractor={(item, index) =>
+            String(item.id ?? item.customer_id ?? `baki-${index}`)
+          }
           contentContainerStyle={styles.container}
           keyboardShouldPersistTaps="handled"
           ListHeaderComponent={
             <View>
-              <Text style={styles.title}>Baki List</Text>
-              <Text style={styles.subtitle}>Ledger-based credit + repayment flow with live due tracking.</Text>
+              {/* ── Mode tabs ─────────────────────────────────── */}
+              <View style={styles.modeTabs}>
+                <TouchableOpacity
+                  style={[styles.modeTab, !isPayment && styles.modeTabActiveRed]}
+                  activeOpacity={0.82}
+                  onPress={() => switchMode(MODE_CREDIT)}
+                >
+                  <MaterialIcons
+                    name="add-circle-outline"
+                    size={22}
+                    color={!isPayment ? UI_COLORS.textOnPrimary : UI_COLORS.textSecondary}
+                  />
+                  <Text style={[styles.modeTabText, !isPayment && styles.modeTabTextActive]}>
+                    বাকি দিন
+                  </Text>
+                </TouchableOpacity>
 
-              <BakiKpiDashboard
-                rangeOptions={DATE_RANGE_OPTIONS}
-                selectedRange={kpiRange}
-                onSelectRange={setKpiRange}
-                loading={loadingKpis}
-                kpis={kpis}
-              />
+                <TouchableOpacity
+                  style={[styles.modeTab, isPayment && styles.modeTabActiveGreen]}
+                  activeOpacity={0.82}
+                  onPress={() => switchMode(MODE_PAYMENT)}
+                >
+                  <MaterialIcons
+                    name="payments"
+                    size={22}
+                    color={isPayment ? UI_COLORS.textOnPrimary : UI_COLORS.textSecondary}
+                  />
+                  <Text style={[styles.modeTabText, isPayment && styles.modeTabTextActive]}>
+                    জমা নিন
+                  </Text>
+                </TouchableOpacity>
+              </View>
 
-              <BakiSummaryCards
-                totalRows={summary.totalRows}
-                totalDue={summary.totalDue}
-                creditCount={summary.creditCount}
-                paymentCount={summary.paymentCount}
-              />
+              {/* ── Entry form card ───────────────────────────── */}
+              <View style={[styles.formCard, { borderColor: modeColor }]}>
 
-              <BakiEntryForm
-                customers={customers}
-                customerId={creditCustomerId}
-                setCustomerId={setCreditCustomerId}
-                amount={creditAmount}
-                setAmount={setCreditAmount}
-                note={creditNote}
-                setNote={setCreditNote}
-                onSave={handleAddCredit}
-                saving={savingCredit}
-                refreshing={refreshing}
-              />
+                {/* Customer */}
+                <Text style={styles.fieldLabel}>কাস্টমার</Text>
+                <CustomerChipSelector
+                  customers={customers}
+                  selectedId={selectedCustomerId}
+                  onSelect={setSelectedCustomerId}
+                  onAddNew={() => setShowQuickAdd(true)}
+                />
 
-              <PaymentEntryForm
-                customers={customers}
-                customerId={paymentCustomerId}
-                setCustomerId={setPaymentCustomerId}
-                paymentAmount={paymentAmount}
-                setPaymentAmount={setPaymentAmount}
-                paymentNote={paymentNote}
-                setPaymentNote={setPaymentNote}
-                paymentMethod={paymentMethod}
-                setPaymentMethod={setPaymentMethod}
-                currentDue={currentPaymentDue}
-                onSave={handleSavePayment}
-                saving={savingPayment}
-                refreshing={refreshing}
-              />
+                {/* Due badge — payment mode only */}
+                {isPayment && selectedCustomerId ? (
+                  <View style={[
+                    styles.dueBadge,
+                    selectedCustomerDue > 0 ? styles.dueBadgeActive : styles.dueBadgeZero,
+                  ]}>
+                    <Text style={styles.dueBadgeLabel}>বর্তমান বাকি</Text>
+                    <Text style={[
+                      styles.dueBadgeAmount,
+                      selectedCustomerDue > 0 ? styles.dueBadgeAmountRed : styles.dueBadgeAmountGray,
+                    ]}>
+                      ৳{selectedCustomerDue.toFixed(2)}
+                    </Text>
+                  </View>
+                ) : null}
 
+                {/* Quick amounts */}
+                <Text style={styles.fieldLabel}>পরিমাণ</Text>
+                <View style={styles.quickRow}>
+                  {QUICK_AMOUNTS.map((q) => {
+                    const isSelected = amount === String(q);
+                    return (
+                      <TouchableOpacity
+                        key={q}
+                        style={[
+                          styles.quickBtn,
+                          isSelected && { backgroundColor: modeColor, borderColor: modeColor },
+                        ]}
+                        activeOpacity={0.78}
+                        onPress={() => applyQuickAmount(q)}
+                      >
+                        <Text style={[styles.quickBtnText, isSelected && styles.quickBtnTextActive]}>
+                          ৳{q}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+
+                  {/* "পুরো বাকি" shortcut in payment mode */}
+                  {isPayment && selectedCustomerDue > 0 && (
+                    <TouchableOpacity
+                      style={[
+                        styles.quickBtn,
+                        styles.quickBtnFull,
+                        amount === selectedCustomerDue.toFixed(2) && {
+                          backgroundColor: UI_COLORS.success,
+                          borderColor: UI_COLORS.success,
+                        },
+                      ]}
+                      activeOpacity={0.78}
+                      onPress={() => applyQuickAmount(selectedCustomerDue.toFixed(2))}
+                    >
+                      <Text
+                        style={[
+                          styles.quickBtnText,
+                          amount === selectedCustomerDue.toFixed(2) && styles.quickBtnTextActive,
+                        ]}
+                      >
+                        পুরো ৳{selectedCustomerDue.toFixed(0)}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+
+                {/* Big amount input */}
+                <View style={[styles.amountWrap, { borderColor: modeColor }]}>
+                  <Text style={[styles.amountCurrency, { color: modeColor }]}>৳</Text>
+                  <TextInput
+                    ref={amountRef}
+                    value={amount}
+                    onChangeText={setAmount}
+                    placeholder="0"
+                    placeholderTextColor={UI_COLORS.textMuted}
+                    keyboardType="decimal-pad"
+                    style={styles.amountInput}
+                  />
+                  {amount ? (
+                    <TouchableOpacity
+                      onPress={() => setAmount('')}
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    >
+                      <MaterialIcons name="close" size={20} color={UI_COLORS.textMuted} />
+                    </TouchableOpacity>
+                  ) : null}
+                </View>
+
+                {/* Payment method — জমা নিন only */}
+                {isPayment && (
+                  <>
+                    <Text style={styles.fieldLabel}>পেমেন্ট পদ্ধতি</Text>
+                    <View style={styles.methodRow}>
+                      {PAYMENT_METHODS.map((m) => (
+                        <TouchableOpacity
+                          key={m.value}
+                          style={[
+                            styles.methodChip,
+                            paymentMethod === m.value && {
+                              backgroundColor: UI_COLORS.success,
+                              borderColor: UI_COLORS.success,
+                            },
+                          ]}
+                          activeOpacity={0.78}
+                          onPress={() => setPaymentMethod(m.value)}
+                        >
+                          <Text
+                            style={[
+                              styles.methodChipText,
+                              paymentMethod === m.value && styles.methodChipTextActive,
+                            ]}
+                          >
+                            {m.label}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </>
+                )}
+
+                {/* Note — collapsible */}
+                {showNote ? (
+                  <TextInput
+                    value={note}
+                    onChangeText={setNote}
+                    placeholder="নোট লিখুন..."
+                    placeholderTextColor={UI_COLORS.textMuted}
+                    style={styles.noteInput}
+                    multiline
+                    numberOfLines={2}
+                  />
+                ) : (
+                  <TouchableOpacity
+                    style={styles.noteToggle}
+                    onPress={() => setShowNote(true)}
+                  >
+                    <MaterialIcons name="add" size={14} color={UI_COLORS.textMuted} />
+                    <Text style={styles.noteToggleText}>নোট যোগ করুন</Text>
+                  </TouchableOpacity>
+                )}
+
+                {/* Primary CTA */}
+                <TouchableOpacity
+                  style={[
+                    styles.cta,
+                    { backgroundColor: modeColor },
+                    !canSave && styles.ctaDisabled,
+                  ]}
+                  onPress={handleSave}
+                  disabled={!canSave}
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.ctaText}>
+                    {saving ? 'সেভ হচ্ছে...' : isPayment ? 'জমা নিন' : 'বাকি দিন'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* ── Summary strip ─────────────────────────────── */}
+              <View style={styles.summaryStrip}>
+                <Text style={styles.summaryText}>
+                  মোট বাকি:{' '}
+                  <Text style={styles.summaryValue}>৳{totalDue.toFixed(2)}</Text>
+                </Text>
+                <Text style={styles.summaryText}>{filteredRows.length} জন কাস্টমার</Text>
+              </View>
+
+              {/* ── List filters ──────────────────────────────── */}
               <BakiFilters
                 search={search}
                 setSearch={setSearch}
-                selectedCustomerId={selectedCustomerId}
-                setSelectedCustomerId={setSelectedCustomerId}
+                selectedCustomerId={listCustomerId}
+                setSelectedCustomerId={setListCustomerId}
                 dueFilter={dueFilter}
                 setDueFilter={setDueFilter}
                 customers={customers}
               />
 
-              <View style={styles.headerRow}>
-                <Text style={styles.sectionTitle}>Customer Due Overview</Text>
-                <TouchableOpacity style={styles.refreshButton} onPress={handleQuickRefresh}>
-                  <Text style={styles.refreshText}>{refreshing ? 'Refreshing...' : 'Refresh'}</Text>
+              {/* ── List header ───────────────────────────────── */}
+              <View style={styles.listHeaderRow}>
+                <Text style={styles.listHeaderTitle}>কাস্টমারের বাকি</Text>
+                <TouchableOpacity
+                  style={styles.refreshBtn}
+                  onPress={async () => {
+                    try { await refreshAll(); }
+                    catch (e) { Alert.alert('রিফ্রেশ ব্যর্থ', e?.message || 'তথ্য লোড হয়নি।'); }
+                  }}
+                >
+                  <Text style={styles.refreshBtnText}>
+                    {refreshing ? 'রিফ্রেশ হচ্ছে...' : 'রিফ্রেশ'}
+                  </Text>
                 </TouchableOpacity>
               </View>
             </View>
           }
-          ListEmptyComponent={<Text style={styles.emptyText}>No baki overview found.</Text>}
-          renderItem={({ item }) => <BakiListItem item={item} onStartPayment={handleStartPayment} />}
+          ListEmptyComponent={<Text style={styles.emptyText}>কোনো বাকি নেই।</Text>}
+          renderItem={({ item }) => (
+            <BakiListItem item={item} onStartPayment={handleStartPayment} />
+          )}
         />
       </KeyboardAvoidingView>
+      <CustomerQuickAddModal
+        visible={showQuickAdd}
+        onDismiss={() => setShowQuickAdd(false)}
+        onAdded={(id) => { setSelectedCustomerId(id); setShowQuickAdd(false); }}
+      />
     </SafeAreaView>
   );
 }
@@ -303,18 +456,199 @@ export default function BakiListScreen() {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: UI_COLORS.background },
   flex: { flex: 1 },
-  container: { padding: 16, gap: 12 },
-  title: { fontSize: 26, fontWeight: '700', color: UI_COLORS.textPrimary },
-  subtitle: { marginTop: 4, fontSize: 13, color: UI_COLORS.textSecondary, marginBottom: 8 },
-  headerRow: {
-    marginTop: 16,
-    marginBottom: 8,
+  container: { padding: 16, gap: 12, paddingBottom: 40 },
+
+  /* mode tabs */
+  modeTabs: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 4,
+  },
+  modeTab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 16,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: UI_COLORS.border,
+    backgroundColor: UI_COLORS.surface,
+  },
+  modeTabActiveRed: {
+    backgroundColor: UI_COLORS.primary,
+    borderColor: UI_COLORS.primary,
+  },
+  modeTabActiveGreen: {
+    backgroundColor: UI_COLORS.success,
+    borderColor: UI_COLORS.success,
+  },
+  modeTabText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: UI_COLORS.textSecondary,
+  },
+  modeTabTextActive: {
+    color: UI_COLORS.textOnPrimary,
+  },
+
+  /* form card */
+  formCard: {
+    backgroundColor: UI_COLORS.surface,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    padding: 16,
+    gap: 12,
+  },
+  fieldLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: UI_COLORS.textSecondary,
+    marginBottom: -4,
+  },
+
+  /* due badge */
+  dueBadge: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderWidth: 1,
   },
-  sectionTitle: { fontSize: 19, fontWeight: '700', color: UI_COLORS.textPrimary },
-  refreshButton: {
+  dueBadgeActive: {
+    backgroundColor: UI_COLORS.surfaceDanger,
+    borderColor: UI_COLORS.borderDanger,
+  },
+  dueBadgeZero: {
+    backgroundColor: UI_COLORS.surfaceSuccess,
+    borderColor: UI_COLORS.borderSuccess,
+  },
+  dueBadgeLabel: { fontSize: 13, fontWeight: '600', color: UI_COLORS.textSecondary },
+  dueBadgeAmount: { fontSize: 20, fontWeight: '800' },
+  dueBadgeAmountRed: { color: UI_COLORS.textDanger },
+  dueBadgeAmountGray: { color: UI_COLORS.textSuccess },
+
+  /* quick amounts */
+  quickRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  quickBtn: {
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: UI_COLORS.border,
+    backgroundColor: UI_COLORS.surfaceSubtle,
+    paddingHorizontal: 16,
+    paddingVertical: 11,
+  },
+  quickBtnFull: {
+    flexGrow: 1,
+  },
+  quickBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: UI_COLORS.textSecondary,
+  },
+  quickBtnTextActive: {
+    color: UI_COLORS.textOnPrimary,
+  },
+
+  /* big amount input */
+  amountWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: UI_COLORS.surface,
+    gap: 8,
+  },
+  amountCurrency: {
+    fontSize: 28,
+    fontWeight: '800',
+  },
+  amountInput: {
+    flex: 1,
+    fontSize: 36,
+    fontWeight: '800',
+    color: UI_COLORS.textPrimary,
+    paddingVertical: 0,
+    letterSpacing: 1,
+  },
+
+  /* payment method */
+  methodRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  methodChip: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: UI_COLORS.border,
+    backgroundColor: UI_COLORS.surface,
+  },
+  methodChipText: { fontSize: 14, fontWeight: '700', color: UI_COLORS.textSecondary },
+  methodChipTextActive: { color: UI_COLORS.textOnPrimary },
+
+  /* note */
+  noteToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    alignSelf: 'flex-start',
+    paddingVertical: 4,
+  },
+  noteToggleText: { fontSize: 13, color: UI_COLORS.textMuted },
+  noteInput: {
+    borderWidth: 1,
+    borderColor: UI_COLORS.border,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: UI_COLORS.textPrimary,
+    backgroundColor: UI_COLORS.surface,
+    minHeight: 60,
+    textAlignVertical: 'top',
+  },
+
+  /* CTA */
+  cta: {
+    borderRadius: 14,
+    paddingVertical: 18,
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  ctaDisabled: { opacity: 0.4 },
+  ctaText: { fontSize: 18, fontWeight: '800', color: UI_COLORS.textOnPrimary, letterSpacing: 0.5 },
+
+  /* summary */
+  summaryStrip: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 4,
+  },
+  summaryText: { fontSize: 13, color: UI_COLORS.textSecondary },
+  summaryValue: { fontWeight: '700', color: UI_COLORS.textPrimary },
+
+  /* list section */
+  listHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 4,
+    marginBottom: 4,
+  },
+  listHeaderTitle: { fontSize: 18, fontWeight: '700', color: UI_COLORS.textPrimary },
+  refreshBtn: {
     backgroundColor: UI_COLORS.surfaceSubtle,
     borderWidth: 1,
     borderColor: UI_COLORS.borderSoft,
@@ -322,7 +656,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
   },
-  refreshText: { color: UI_COLORS.primary, fontSize: 12, fontWeight: '600' },
-  emptyText: { fontSize: 14, color: UI_COLORS.textMuted },
+  refreshBtnText: { color: UI_COLORS.primary, fontSize: 12, fontWeight: '600' },
+  emptyText: { fontSize: 14, color: UI_COLORS.textMuted, textAlign: 'center', paddingTop: 20 },
 });
-

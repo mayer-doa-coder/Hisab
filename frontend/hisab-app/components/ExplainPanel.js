@@ -36,7 +36,7 @@ export default function ExplainPanel({
   return (
     <View style={styles.root}>
       <Pressable style={styles.headerButton} onPress={onToggle}>
-        <Text style={styles.headerText}>Why this suggestion</Text>
+        <Text style={styles.headerText}>কেন এই পরামর্শ</Text>
         <MaterialIcons
           name={isOpen ? 'keyboard-arrow-up' : 'keyboard-arrow-down'}
           size={22}
@@ -47,42 +47,42 @@ export default function ExplainPanel({
       {isOpen ? (
         <View style={styles.panelBody}>
           <View style={styles.row}>
-            <Text style={styles.metricLabel}>EMA</Text>
+            <Text style={styles.metricLabel}>গড় চাহিদা</Text>
             <ConfidenceBar value={ema} />
           </View>
 
           <View style={styles.row}>
-            <Text style={styles.metricLabel}>Threshold</Text>
+            <Text style={styles.metricLabel}>সীমা</Text>
             <ConfidenceBar value={threshold} />
           </View>
 
           <View style={styles.row}>
-            <Text style={styles.metricLabel}>Markov</Text>
+            <Text style={styles.metricLabel}>মার্কভ</Text>
             <ConfidenceBar value={markov} />
           </View>
 
           <View style={styles.rationaleWrap}>
-            <Text style={styles.rationaleLabel}>Rationale</Text>
-            <Text style={styles.rationaleText}>{String(rationale || 'No rationale available.')}</Text>
+            <Text style={styles.rationaleLabel}>কারণ</Text>
+            <Text style={styles.rationaleText}>{String(rationale || 'কোনো কারণ নেই।')}</Text>
           </View>
 
           <View style={styles.rationaleWrap}>
-            <Text style={styles.rationaleLabel}>Confidence Band</Text>
+            <Text style={styles.rationaleLabel}>আস্থার মাত্রা</Text>
             <Text style={styles.rationaleText}>
-              {`${Math.round(expectedDemand)} expected (${Math.round(lowerDemand)}-${Math.round(upperDemand)}) units`}
+              {`${Math.round(expectedDemand)} প্রত্যাশিত (${Math.round(lowerDemand)}-${Math.round(upperDemand)}) ইউনিট`}
             </Text>
           </View>
 
           {explanationSummary ? (
             <View style={styles.rationaleWrap}>
-              <Text style={styles.rationaleLabel}>Summary</Text>
+              <Text style={styles.rationaleLabel}>সারসংক্ষেপ</Text>
               <Text style={styles.rationaleText}>{explanationSummary}</Text>
             </View>
           ) : null}
 
           {explanationDrivers.length > 0 ? (
             <View style={styles.rationaleWrap}>
-              <Text style={styles.rationaleLabel}>Key Drivers</Text>
+              <Text style={styles.rationaleLabel}>মূল কারণসমূহ</Text>
               {explanationDrivers.map((item, index) => (
                 <Text key={`driver-${index}`} style={styles.rationaleText}>{`- ${item}`}</Text>
               ))}
@@ -91,7 +91,7 @@ export default function ExplainPanel({
 
           {modelContext.length > 0 ? (
             <View style={styles.rationaleWrap}>
-              <Text style={styles.rationaleLabel}>Model Context</Text>
+              <Text style={styles.rationaleLabel}>মডেল তথ্য</Text>
               {modelContext.map((item, index) => (
                 <Text key={`model-context-${index}`} style={styles.rationaleText}>{`- ${item}`}</Text>
               ))}
@@ -100,7 +100,7 @@ export default function ExplainPanel({
 
           {trustNote ? (
             <View style={styles.rationaleWrap}>
-              <Text style={styles.rationaleLabel}>Trust Signal</Text>
+              <Text style={styles.rationaleLabel}>বিশ্বস্ততা সংকেত</Text>
               <Text style={styles.rationaleText}>{trustNote}</Text>
             </View>
           ) : null}

@@ -68,7 +68,7 @@ export default function CustomerCreditScreen() {
         setLedgerRows(Array.isArray(ledger) ? ledger : []);
         setPromises(Array.isArray(promiseRows) ? promiseRows : []);
       } catch (error) {
-        Alert.alert('Load Failed', error?.message || 'Unable to load customer credit data.');
+        Alert.alert('লোড ব্যর্থ', error?.message || 'কাস্টমার ক্রেডিট ডেটা লোড করা যায়নি।');
       }
     };
 
@@ -96,9 +96,9 @@ export default function CustomerCreditScreen() {
 
       setAmount('');
       setNote('');
-      Alert.alert('Success', 'Credit entry added.');
+      Alert.alert('সফল', 'ক্রেডিট এন্ট্রি যোগ হয়েছে।');
     } catch (error) {
-      Alert.alert('Credit Failed', error?.message || 'Unable to add credit.');
+      Alert.alert('ক্রেডিট ব্যর্থ', error?.message || 'ক্রেডিট যোগ করা যায়নি।');
     }
   };
 
@@ -118,9 +118,9 @@ export default function CustomerCreditScreen() {
 
       setPaymentAmount('');
       setPaymentNote('');
-      Alert.alert('Success', 'Payment recorded.');
+      Alert.alert('সফল', 'পেমেন্ট রেকর্ড হয়েছে।');
     } catch (error) {
-      Alert.alert('Payment Failed', error?.message || 'Unable to record payment.');
+      Alert.alert('পেমেন্ট ব্যর্থ', error?.message || 'পেমেন্ট রেকর্ড করা যায়নি।');
     }
   };
 
@@ -136,9 +136,9 @@ export default function CustomerCreditScreen() {
         message: `Friendly reminder: your current due is ৳${currentDue.toFixed(2)}.`,
       });
 
-      Alert.alert('Reminder Scheduled', 'Reminder added to collections queue.');
+      Alert.alert('রিমাইন্ডার নির্ধারিত', 'রিমাইন্ডার কালেকশন কিউতে যোগ হয়েছে।');
     } catch (error) {
-      Alert.alert('Reminder Failed', error?.message || 'Unable to schedule reminder.');
+      Alert.alert('রিমাইন্ডার ব্যর্থ', error?.message || 'রিমাইন্ডার নির্ধারণ করা যায়নি।');
     }
   };
 
@@ -158,22 +158,25 @@ export default function CustomerCreditScreen() {
         note: 'Quick promise from credit screen',
       });
 
-      Alert.alert('Promise Added', 'Payment promise created successfully.');
-    } catch (error) {
-      Alert.alert('Promise Failed', error?.message || 'Unable to create payment promise.');
-    }
+      Alert.alert('প্রতিশ্রুতি যোগ', 'পেমেন্ট প্রতিশ্রুতি তৈরি হয়েছে।');
+} catch (error) {
+  Alert.alert(
+    'প্রতিশ্রুতি ব্যর্থ',
+    error?.message || 'পেমেন্ট প্রতিশ্রুতি তৈরি করা যায়নি।'
+  );
+}
   };
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={styles.container}>
-          <Text style={styles.title}>Customer Credit</Text>
-          <Text style={styles.subtitle}>Credit limits, due terms, reminders, and promises in one place.</Text>
+          <Text style={styles.title}>কাস্টমার ক্রেডিট</Text>
+          <Text style={styles.subtitle}>ক্রেডিট সীমা, বাকির মেয়াদ, রিমাইন্ডার ও প্রতিশ্রুতি।</Text>
 
           {customers.length > 0 ? (
             <View style={styles.card}>
-              <Text style={styles.label}>Customer</Text>
+              <Text style={styles.label}>কাস্টমার</Text>
               <View style={styles.pickerWrap}>
                 <Picker selectedValue={customerId} onValueChange={(value) => setCustomerId(String(value))}>
                   {customers.map((row) => (
@@ -191,39 +194,39 @@ export default function CustomerCreditScreen() {
               <Text style={styles.meta}>Risk Level: {String(selectedCustomer?.risk_level || 'low')}</Text>
             </View>
           ) : (
-            <Text style={styles.empty}>No customers available.</Text>
+            <Text style={styles.empty}>কোনো কাস্টমার নেই।</Text>
           )}
 
           <View style={styles.card}>
-            <Text style={styles.sectionTitle}>Add Credit</Text>
-            <TextInput style={styles.input} value={amount} onChangeText={setAmount} keyboardType="decimal-pad" placeholder="Amount" />
-            <TextInput style={styles.input} value={dueDays} onChangeText={setDueDays} keyboardType="number-pad" placeholder="Due terms (days)" />
-            <TextInput style={styles.input} value={note} onChangeText={setNote} placeholder="Note" />
+            <Text style={styles.sectionTitle}>ক্রেডিট যোগ করুন</Text>
+            <TextInput style={styles.input} value={amount} onChangeText={setAmount} keyboardType="decimal-pad" placeholder="পরিমাণ" />
+            <TextInput style={styles.input} value={dueDays} onChangeText={setDueDays} keyboardType="number-pad" placeholder="বাকির মেয়াদ (দিন)" />
+            <TextInput style={styles.input} value={note} onChangeText={setNote} placeholder="নোট" />
             <TouchableOpacity style={styles.button} onPress={handleAddCredit}>
-              <Text style={styles.buttonText}>Save Credit</Text>
+              <Text style={styles.buttonText}>ক্রেডিট সেভ করুন</Text>
             </TouchableOpacity>
           </View>
 
           <View style={styles.card}>
-            <Text style={styles.sectionTitle}>Record Payment</Text>
-            <TextInput style={styles.input} value={paymentAmount} onChangeText={setPaymentAmount} keyboardType="decimal-pad" placeholder="Payment amount" />
-            <TextInput style={styles.input} value={paymentNote} onChangeText={setPaymentNote} placeholder="Payment note" />
+            <Text style={styles.sectionTitle}>পেমেন্ট রেকর্ড করুন</Text>
+            <TextInput style={styles.input} value={paymentAmount} onChangeText={setPaymentAmount} keyboardType="decimal-pad" placeholder="জমার পরিমাণ" />
+            <TextInput style={styles.input} value={paymentNote} onChangeText={setPaymentNote} placeholder="জমার নোট" />
             <TouchableOpacity style={styles.buttonSecondary} onPress={handleAddPayment}>
-              <Text style={styles.buttonTextSecondary}>Save Payment</Text>
+              <Text style={styles.buttonTextSecondary}>পেমেন্ট সেভ করুন</Text>
             </TouchableOpacity>
           </View>
 
           <View style={styles.cardRow}>
             <TouchableOpacity style={styles.pillButton} onPress={handleQuickReminder}>
-              <Text style={styles.pillText}>Send Reminder</Text>
+              <Text style={styles.pillText}>রিমাইন্ডার পাঠান</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.pillButton} onPress={handleQuickPromise}>
-              <Text style={styles.pillText}>Create Promise</Text>
+              <Text style={styles.pillText}>প্রতিশ্রুতি তৈরি করুন</Text>
             </TouchableOpacity>
           </View>
 
           <View style={styles.card}>
-            <Text style={styles.sectionTitle}>Open Promises</Text>
+            <Text style={styles.sectionTitle}>খোলা প্রতিশ্রুতি</Text>
             {promises.length === 0 ? (
               <Text style={styles.empty}>No pending promises.</Text>
             ) : (
@@ -237,7 +240,7 @@ export default function CustomerCreditScreen() {
           </View>
 
           <View style={styles.card}>
-            <Text style={styles.sectionTitle}>Recent Ledger</Text>
+            <Text style={styles.sectionTitle}>সাম্প্রতিক খাতা</Text>
             {ledgerRows.length === 0 ? (
               <Text style={styles.empty}>No ledger records found.</Text>
             ) : (

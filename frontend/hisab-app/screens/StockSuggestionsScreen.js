@@ -50,10 +50,10 @@ function ErrorState({ message, onRetry }) {
   return (
     <View style={styles.centerState}>
       <MaterialIcons name="wifi-off" size={36} color={UI_COLORS.danger} />
-      <Text style={styles.stateTitle}>Could not load suggestions</Text>
+      <Text style={styles.stateTitle}>পরামর্শ লোড হয়নি</Text>
       <Text style={styles.stateText}>{message || 'Please try again.'}</Text>
       <Pressable style={styles.retryButton} onPress={onRetry}>
-        <Text style={styles.retryButtonText}>Retry</Text>
+        <Text style={styles.retryButtonText}>আবার চেষ্টা করুন</Text>
       </Pressable>
     </View>
   );
@@ -63,8 +63,8 @@ function EmptyState() {
   return (
     <View style={styles.centerState}>
       <MaterialIcons name="inventory" size={36} color={UI_COLORS.textMuted} />
-      <Text style={styles.stateTitle}>No suggestions available</Text>
-      <Text style={styles.stateText}>Try changing filters or refresh later.</Text>
+      <Text style={styles.stateTitle}>কোনো পরামর্শ নেই</Text>
+      <Text style={styles.stateText}>ফিল্টার পরিবর্তন করুন বা পরে রিফ্রেশ করুন।</Text>
     </View>
   );
 }
@@ -155,8 +155,8 @@ export default function StockSuggestionsScreen() {
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
         <View style={styles.header}>
-          <Text style={styles.title}>Stock Suggestions</Text>
-          <Text style={styles.subtitle}>Model-driven actions with explainability</Text>
+          <Text style={styles.title}>স্টক পরামর্শ</Text>
+          <Text style={styles.subtitle}>ব্যাখ্যাযোগ্য মডেলভিত্তিক পদক্ষেপ</Text>
         </View>
 
         <FilterBar
@@ -168,7 +168,7 @@ export default function StockSuggestionsScreen() {
         {loading ? (
           <View style={styles.centerState}>
             <ActivityIndicator size="large" color={UI_COLORS.primary} />
-            <Text style={styles.stateText}>Loading suggestions...</Text>
+            <Text style={styles.stateText}>পরামর্শ লোড হচ্ছে...</Text>
           </View>
         ) : null}
 

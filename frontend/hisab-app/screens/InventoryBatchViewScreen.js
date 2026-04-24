@@ -78,11 +78,11 @@ export default function InventoryBatchViewScreen() {
         contentContainerStyle={styles.container}
         ListHeaderComponent={
           <View>
-            <Text style={styles.title}>Inventory Batches</Text>
+            <Text style={styles.title}>ইনভেন্টরি ব্যাচ</Text>
             <Text style={styles.subtitle}>FEFO-ready lot visibility with per-batch quantity tracking.</Text>
 
             <AppCard style={styles.card}>
-              <Text style={styles.sectionTitle}>Product</Text>
+              <Text style={styles.sectionTitle}>পণ্য</Text>
               <View style={styles.pickerWrap}>
                 <Picker selectedValue={selectedProductId} onValueChange={(value) => setSelectedProductId(String(value))}>
                   {products.map((row) => (
@@ -92,7 +92,7 @@ export default function InventoryBatchViewScreen() {
               </View>
 
               <View style={styles.buttonRow}>
-                <AppButton title={loading ? 'Loading...' : 'Load Batches'} onPress={load} style={styles.buttonFlex} />
+                <AppButton title={loading ? 'লোড হচ্ছে...' : 'Load Batches'} onPress={load} style={styles.buttonFlex} />
                 <AppButton
                   title={refreshing ? 'Refreshing...' : 'Refresh All'}
                   variant="secondary"
@@ -115,12 +115,12 @@ export default function InventoryBatchViewScreen() {
                   <Text style={styles.metaText}>Expiry: {nextBatch.expiry_date || 'No expiry'}</Text>
                 </>
               ) : (
-                <Text style={styles.metaText}>No available batch for sale.</Text>
+                <Text style={styles.metaText}>বিক্রির জন্য কোনো ব্যাচ নেই।</Text>
               )}
             </AppCard>
 
             <AppCard style={styles.card}>
-              <Text style={styles.sectionTitle}>Consistency</Text>
+              <Text style={styles.sectionTitle}>সামঞ্জস্য</Text>
               <Text style={styles.metaText}>
                 Status: {consistency?.is_consistent ? 'CONSISTENT' : 'MISMATCH'}
               </Text>
@@ -133,10 +133,10 @@ export default function InventoryBatchViewScreen() {
               ) : null}
             </AppCard>
 
-            <Text style={styles.sectionTitle}>Batch Rows</Text>
+            <Text style={styles.sectionTitle}>ব্যাচ তালিকা</Text>
           </View>
         }
-        ListEmptyComponent={<Text style={styles.emptyText}>{loading ? 'Loading...' : 'No batches found.'}</Text>}
+        ListEmptyComponent={<Text style={styles.emptyText}>{loading ? 'লোড হচ্ছে...' : 'No batches found.'}</Text>}
         renderItem={({ item }) => (
           <AppCard style={styles.rowCard}>
             <Text style={styles.rowTitle}>{item.batch_number || 'Unnumbered Batch'}</Text>

@@ -34,7 +34,7 @@ export default function BakiKpiDashboard({
   return (
     <View style={styles.wrap}>
       <View style={styles.headerRow}>
-        <Text style={styles.sectionTitle}>Performance Insights</Text>
+        <Text style={styles.sectionTitle}>কার্যক্ষমতার সারসংক্ষেপ</Text>
         {loading ? <ActivityIndicator size="small" color={UI_COLORS.primary} /> : null}
       </View>
 
@@ -53,45 +53,45 @@ export default function BakiKpiDashboard({
       </View>
 
       <View style={styles.grid}>
-        <KpiCard title="Total Credit" value={`৳${Number(kpis.totalCredit || 0).toFixed(2)}`} icon="add-card" tone="warning" />
+        <KpiCard title="মোট বাকি" value={`৳${Number(kpis.totalCredit || 0).toFixed(2)}`} icon="add-card" tone="warning" />
         <KpiCard
-          title="Total Payments"
+          title="মোট জমা"
           value={`৳${Number(kpis.totalPayments || 0).toFixed(2)}`}
           icon="payments"
           tone="success"
         />
         <KpiCard
-          title="Net Balance Change"
+          title="নিট পরিবর্তন"
           value={`৳${Number(kpis.netBalanceChange || 0).toFixed(2)}`}
           icon="account-balance-wallet"
           tone={Number(kpis.netBalanceChange || 0) >= 0 ? 'danger' : 'success'}
         />
         <KpiCard
-          title="Transactions"
+          title="লেনদেন"
           value={String(Math.max(0, Number(kpis.numberOfTransactions || 0)))}
           icon="receipt-long"
           tone="primary"
         />
         <KpiCard
-          title="Avg Daily Credit"
+          title="গড় দৈনিক বাকি"
           value={`৳${Number(kpis.averageDailyCredit || 0).toFixed(2)}`}
           icon="calendar-month"
           tone="warning"
         />
         <KpiCard
-          title="Avg Payment"
+          title="গড় জমা"
           value={`৳${Number(kpis.averagePayment || 0).toFixed(2)}`}
           icon="price-check"
           tone="success"
         />
         <KpiCard
-          title="Top Customer"
+          title="সেরা কাস্টমার"
           value={kpis.topCustomerName ? `${kpis.topCustomerName} (৳${Number(kpis.topCustomerCredit || 0).toFixed(2)})` : 'N/A'}
           icon="emoji-events"
           tone="primary"
         />
         <KpiCard
-          title="Collection Rate"
+          title="আদায়ের হার"
           value={`${Number(kpis.collectionRate || 0).toFixed(1)}%`}
           icon="query-stats"
           tone="primary"

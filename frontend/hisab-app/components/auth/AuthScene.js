@@ -13,7 +13,7 @@ import { AppCard } from '../ui';
 import { SPACING } from '../../theme/spacing';
 import { TYPOGRAPHY } from '../../theme/typography';
 
-export default function AuthScene({ eyebrow = 'Hisab Secure', title, subtitle, children }) {
+export default function AuthScene({ eyebrow = 'হিসাব সিকিউর', title, subtitle, children }) {
   return (
     <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex}>
