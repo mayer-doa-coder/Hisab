@@ -1,0 +1,31 @@
+{
+  "customers": [
+    { "id": "c1", "name": "Rahim", "aliases": ["Rohim", "Rahin", "রহিম", "রহিন", "রহীম", "রহম"] },
+    { "id": "c2", "name": "Karim", "aliases": ["Korim", "Karin", "করিম", "করীম", "করিন"] },
+    { "id": "c3", "name": "Jalal", "aliases": ["জালাল", "Jolal", "Jalel", "জলাল"] },
+    { "id": "c4", "name": "Salam", "aliases": ["সালাম", "Solam", "ছালাম"] },
+    { "id": "c5", "name": "Monir", "aliases": ["মনির", "Monir", "Munir", "Moner"] },
+    { "id": "c6", "name": "Babul", "aliases": ["Babul", "Babool", "বাবুল", "বাবল"] },
+    { "id": "c7", "name": "Rina", "aliases": ["Rina", "Reena", "রিনা", "রিনার"] },
+    { "id": "c8", "name": "Anis", "aliases": ["Anis", "Anish", "এনিস", "আনিস", "anees"] },
+    { "id": "c9", "name": "Sumi", "aliases": ["Sumi", "Shumi", "সুমি", "শুমি", "sumee"] },
+    { "id": "c10", "name": "Nayeem", "aliases": ["Nayeem", "Nayem", "নাঈম", "নায়েম", "naim"] }
+  ],
+  "products": [
+    { "id": "p1", "name": "Rice", "aliases": ["চাল", "raice", "rais", "chal"] },
+    { "id": "p2", "name": "Oil", "aliases": ["তেল", "oel", "oyel", "tel"] },
+    { "id": "p3", "name": "Biscuit", "aliases": ["বিস্কুট", "biskut", "biscut"] },
+    { "id": "p4", "name": "Soap", "aliases": ["সাবান", "shop", "sabun", "soap"] },
+    { "id": "p5", "name": "Salt", "aliases": ["লবণ", "lobon", "salt"] },
+    { "id": "p6", "name": "Sugar", "aliases": ["চিনি", "chini", "sugar"] },
+    { "id": "p7", "name": "Tea", "aliases": ["চা", "cha", "tea"] }
+  ],
+  "branches": [
+    { "id": "b1", "name": "Main Shop", "aliases": ["মেইন শপ", "main"] }
+  ],
+  "intents": [
+    { "id": "i1", "name": "ADD_DEBT", "aliases": ["baki", "bakki", "বাকি", "due", "ধার"] },
+    { "id": "i2", "name": "PAYMENT", "aliases": ["joma", "jama", "জমা", "pay", "payment"] },
+    { "id": "i3", "name": "SALE", "aliases": ["becha", "bikri", "বেচা", "বিক্রি", "sale", "sell"] }
+  ]
+}

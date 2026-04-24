@@ -1,0 +1,16 @@
+{
+  "generatedAt": "2026-04-21T18:43:19.172Z",
+  "amount": {
+    "passed": 8,
+    "total": 8,
+    "failures": []
+  },
+  "date": {
+    "passed": 8,
+    "total": 8,
+    "failures": []
+  },
+  "totalPassed": 16,
+  "totalCases": 16,
+  "passRate": 1
+}
