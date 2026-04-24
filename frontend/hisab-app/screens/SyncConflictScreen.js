@@ -159,7 +159,7 @@ export default function SyncConflictScreen() {
       await runOnlineSync();
       await refreshAll();
       await loadConflicts();
-      setStatusText('Conflict resolved and sync triggered successfully.');
+      setStatusText('দ্বন্দ্ব সমাধান হয়েছে এবং সিঙ্ক শুরু হয়েছে।');
     } catch (error) {
       setStatusText(error?.message || 'Failed to resolve conflict.');
     } finally {
@@ -176,7 +176,7 @@ export default function SyncConflictScreen() {
         ListHeaderComponent={(
           <View style={styles.headerWrap}>
             <Text style={styles.title}>সিঙ্ক দ্বন্দ্ব</Text>
-            <Text style={styles.subtitle}>Inspect, triage, and resolve sync conflicts before they grow into data divergence.</Text>
+            <Text style={styles.subtitle}>ডেটা বিচ্যুতি হওয়ার আগেই সিঙ্ক দ্বন্দ্ব পর্যবেক্ষণ ও সমাধান করুন।</Text>
 
             <AppCard style={styles.card}>
               <Text style={styles.sectionTitle}>সারসংক্ষেপ</Text>

@@ -124,7 +124,7 @@ export default function CustomerStatementScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>খাতার এন্ট্রি</Text>
           {entries.length === 0 ? (
-            <Text style={styles.empty}>No statement entries found.</Text>
+            <Text style={styles.empty}>কোনো স্টেটমেন্ট এন্ট্রি পাওয়া যায়নি।</Text>
           ) : (
             entries.map((entry) => (
               <View key={`statement-entry-${entry.id || entry.entry_id}`} style={styles.entryRow}>

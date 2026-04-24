@@ -79,7 +79,7 @@ export default function InventoryBatchViewScreen() {
         ListHeaderComponent={
           <View>
             <Text style={styles.title}>ইনভেন্টরি ব্যাচ</Text>
-            <Text style={styles.subtitle}>FEFO-ready lot visibility with per-batch quantity tracking.</Text>
+            <Text style={styles.subtitle}>মেয়াদ অনুযায়ী লট দেখুন এবং প্রতিটি ব্যাচের পরিমাণ ট্র্যাক করুন।</Text>
 
             <AppCard style={styles.card}>
               <Text style={styles.sectionTitle}>পণ্য</Text>
@@ -106,7 +106,7 @@ export default function InventoryBatchViewScreen() {
             </AppCard>
 
             <AppCard style={styles.card}>
-              <Text style={styles.sectionTitle}>FEFO Selection</Text>
+              <Text style={styles.sectionTitle}>মেয়াদ অনুযায়ী বাছাই</Text>
               <Text style={styles.metaText}>Product: {selectedProductName || 'N/A'}</Text>
               {nextBatch ? (
                 <>

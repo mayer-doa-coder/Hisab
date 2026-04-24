@@ -17,7 +17,7 @@ export default function HelpCenterScreen() {
 
   const loadArticles = useCallback(async () => {
     if (!accessToken || !isOnline) {
-      setStatusText('Help center is available when online.');
+      setStatusText('সাহায্য কেন্দ্র অনলাইনে পাওয়া যাবে।');
       return;
     }
 

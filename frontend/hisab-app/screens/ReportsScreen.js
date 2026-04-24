@@ -72,7 +72,7 @@ export default function ReportsScreen() {
 
   const loadReport = useCallback(async () => {
     if (!isOnline || !accessToken) {
-      setStatusText('Reports require online mode and a valid login session.');
+      setStatusText('রিপোর্টের জন্য অনলাইন মোড এবং বৈধ লগইন প্রয়োজন।');
       return;
     }
 
@@ -141,7 +141,7 @@ export default function ReportsScreen() {
 
   const handleExportCsv = useCallback(async () => {
     if (!accessToken) {
-      setStatusText('Login session missing. Please login again.');
+      setStatusText('লগইন সেশন নেই। আবার লগইন করুন।');
       return;
     }
 
@@ -158,7 +158,7 @@ export default function ReportsScreen() {
 
   const handleExportPdf = useCallback(async () => {
     if (!accessToken) {
-      setStatusText('Login session missing. Please login again.');
+      setStatusText('লগইন সেশন নেই। আবার লগইন করুন।');
       return;
     }
 
@@ -175,7 +175,7 @@ export default function ReportsScreen() {
 
   const handleCaptureSnapshot = useCallback(async () => {
     if (!accessToken) {
-      setStatusText('Login session missing. Please login again.');
+      setStatusText('লগইন সেশন নেই। আবার লগইন করুন।');
       return;
     }
 

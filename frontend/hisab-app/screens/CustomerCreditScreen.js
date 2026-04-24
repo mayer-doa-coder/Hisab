@@ -84,7 +84,7 @@ export default function CustomerCreditScreen() {
     try {
       const numericAmount = Number(amount);
       if (!customerId || !Number.isFinite(numericAmount) || numericAmount <= 0) {
-        throw new Error('Select a customer and enter a valid credit amount.');
+        throw new Error('কাস্টমার বেছে নিন এবং সঠিক ক্রেডিট পরিমাণ দিন।');
       }
 
       await addBaki({
@@ -106,7 +106,7 @@ export default function CustomerCreditScreen() {
     try {
       const numericAmount = Number(paymentAmount);
       if (!customerId || !Number.isFinite(numericAmount) || numericAmount <= 0) {
-        throw new Error('Select a customer and enter a valid payment amount.');
+        throw new Error('কাস্টমার বেছে নিন এবং সঠিক পেমেন্ট পরিমাণ দিন।');
       }
 
       await addBakiPayment({
@@ -127,13 +127,13 @@ export default function CustomerCreditScreen() {
   const handleQuickReminder = async () => {
     try {
       if (!customerId) {
-        throw new Error('Select a customer first.');
+        throw new Error('প্রথমে একটি কাস্টমার বেছে নিন।');
       }
 
       await scheduleCustomerReminder({
         customerId: Number(customerId),
         channel: 'whatsapp',
-        message: `Friendly reminder: your current due is ৳${currentDue.toFixed(2)}.`,
+        message: `বন্ধুত্বপূর্ণ স্মরণ: আপনার বর্তমান বাকি ৳${currentDue.toFixed(2)}.`,
       });
 
       Alert.alert('রিমাইন্ডার নির্ধারিত', 'রিমাইন্ডার কালেকশন কিউতে যোগ হয়েছে।');
@@ -145,7 +145,7 @@ export default function CustomerCreditScreen() {
   const handleQuickPromise = async () => {
     try {
       if (!customerId || currentDue <= 0) {
-        throw new Error('No due available for a payment promise.');
+        throw new Error('প্রতিশ্রুতির জন্য কোনো বাকি নেই।');
       }
 
       const promiseDate = new Date();
@@ -155,7 +155,7 @@ export default function CustomerCreditScreen() {
         customerId: Number(customerId),
         promisedAmount: Math.min(currentDue, 500),
         promiseDate: promiseDate.toISOString(),
-        note: 'Quick promise from credit screen',
+        note: 'ক্রেডিট স্ক্রিন থেকে দ্রুত প্রতিশ্রুতি',
       });
 
       Alert.alert('প্রতিশ্রুতি যোগ', 'পেমেন্ট প্রতিশ্রুতি তৈরি হয়েছে।');
@@ -183,15 +183,15 @@ export default function CustomerCreditScreen() {
                     <Picker.Item
                       key={`credit-customer-${row.id}`}
                       value={String(row.id)}
-                      label={`${row.name} (${row.phone || 'No phone'})`}
+                      label={`${row.name} (${row.phone || 'ফোন নেই'})`}
                     />
                   ))}
                 </Picker>
               </View>
 
-              <Text style={styles.meta}>Current Due: ৳{currentDue.toFixed(2)}</Text>
-              <Text style={styles.meta}>Credit Limit: ৳{Number(selectedCustomer?.credit_limit || 0).toFixed(2)}</Text>
-              <Text style={styles.meta}>Risk Level: {String(selectedCustomer?.risk_level || 'low')}</Text>
+              <Text style={styles.meta}>বর্তমান বাকি: ৳{currentDue.toFixed(2)}</Text>
+              <Text style={styles.meta}>ক্রেডিট সীমা: ৳{Number(selectedCustomer?.credit_limit || 0).toFixed(2)}</Text>
+              <Text style={styles.meta}>ঝুঁকির স্তর: {String(selectedCustomer?.risk_level || 'low')}</Text>
             </View>
           ) : (
             <Text style={styles.empty}>কোনো কাস্টমার নেই।</Text>
@@ -228,7 +228,7 @@ export default function CustomerCreditScreen() {
           <View style={styles.card}>
             <Text style={styles.sectionTitle}>খোলা প্রতিশ্রুতি</Text>
             {promises.length === 0 ? (
-              <Text style={styles.empty}>No pending promises.</Text>
+              <Text style={styles.empty}>কোনো মুলতুবি প্রতিশ্রুতি নেই।</Text>
             ) : (
               promises.map((row) => (
                 <View key={`promise-${row.id}`} style={styles.listRow}>
@@ -242,7 +242,7 @@ export default function CustomerCreditScreen() {
           <View style={styles.card}>
             <Text style={styles.sectionTitle}>সাম্প্রতিক খাতা</Text>
             {ledgerRows.length === 0 ? (
-              <Text style={styles.empty}>No ledger records found.</Text>
+              <Text style={styles.empty}>কোনো খাতার রেকর্ড পাওয়া যায়নি।</Text>
             ) : (
               ledgerRows.slice(-12).map((row) => (
                 <View key={`ledger-${row.entry_id || row.id}`} style={styles.listRow}>

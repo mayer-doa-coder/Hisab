@@ -97,7 +97,7 @@ export default function ProfitReportScreen() {
         ListFooterComponent={
           margins.length ? (
             <View style={styles.footerWrap}>
-              <Text style={styles.sectionTitle}>SKU Margin Contribution</Text>
+              <Text style={styles.sectionTitle}>পণ্যভিত্তিক মার্জিন অবদান</Text>
               {margins.map((row) => (
                 <AppCard key={`margin-row-${row.product_id}`} style={styles.rowCard}>
                   <Text style={styles.rowTitle}>{row.product_name}</Text>

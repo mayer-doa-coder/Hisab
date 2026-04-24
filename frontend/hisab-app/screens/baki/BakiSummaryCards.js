@@ -14,7 +14,7 @@ export default function BakiSummaryCards({ totalRows, totalDue, creditCount, pay
         <Text style={styles.summaryValue}>৳{Number(totalDue || 0).toFixed(2)}</Text>
       </View>
       <View style={styles.summaryCard}>
-        <Text style={styles.summaryLabel}>Credit / Payment Txn</Text>
+        <Text style={styles.summaryLabel}>ক্রেডিট / পেমেন্ট লেনদেন</Text>
         <Text style={styles.summaryValue}>{creditCount} / {paymentCount}</Text>
       </View>
     </View>

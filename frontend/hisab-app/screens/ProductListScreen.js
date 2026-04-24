@@ -222,7 +222,7 @@ export default function ProductListScreen() {
               </View>
             </View>
           }
-          ListEmptyComponent={<Text style={styles.emptyText}>No product found.</Text>}
+          ListEmptyComponent={<Text style={styles.emptyText}>কোনো পণ্য পাওয়া যায়নি।</Text>}
           renderItem={({ item }) => <ProductListItem item={item} onEdit={handleEdit} onDelete={handleDelete} />}
         />
       </KeyboardAvoidingView>

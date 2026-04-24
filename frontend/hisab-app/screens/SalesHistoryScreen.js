@@ -175,10 +175,10 @@ export default function SalesHistoryScreen() {
           loading ? (
             <View style={styles.emptyState}>
               <ActivityIndicator color={UI_COLORS.primary} />
-              <Text style={styles.emptyText}>Loading sales history...</Text>
+              <Text style={styles.emptyText}>বিক্রির ইতিহাস লোড হচ্ছে...</Text>
             </View>
           ) : (
-            <Text style={styles.emptyText}>No sales found for current filters.</Text>
+            <Text style={styles.emptyText}>বর্তমান ফিল্টারে কোনো বিক্রি পাওয়া যায়নি।</Text>
           )
         }
         renderItem={({ item }) => (

@@ -31,7 +31,7 @@ export default function ProductReorderSuggestions({ suggestions }) {
 
       <Text style={styles.sectionHeading}>পুনরায় অর্ডারের পরামর্শ</Text>
       {actionable.length === 0 ? (
-        <Text style={styles.emptyText}>No reorder action required right now.</Text>
+        <Text style={styles.emptyText}>এই মুহূর্তে পুনরায় অর্ডারের প্রয়োজন নেই।</Text>
       ) : (
         actionable.map((item) => (
           <View key={`reorder-${item.productId}`} style={styles.rowCard}>

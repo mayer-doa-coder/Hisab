@@ -106,7 +106,7 @@ export default function CollectionsDashboardScreen() {
         <View style={styles.cardBlock}>
           <Text style={styles.sectionTitle}>সর্বোচ্চ বাকি কাস্টমার</Text>
           {topCustomers.length === 0 ? (
-            <Text style={styles.empty}>No customer data yet.</Text>
+            <Text style={styles.empty}>এখনো কোনো কাস্টমার ডেটা নেই।</Text>
           ) : (
             topCustomers.map((row) => (
               <View key={`top-customer-${row.customer_id}`} style={styles.row}>

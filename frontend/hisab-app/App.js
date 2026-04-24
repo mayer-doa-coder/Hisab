@@ -1,5 +1,6 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { createDrawerNavigator } from '@react-navigation/drawer';
+import CustomDrawerContent from './components/navigation/CustomDrawerContent';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { registerRootComponent } from 'expo';
@@ -266,7 +267,8 @@ function MainSidebarNavigator() {
   return (
     <Drawer.Navigator
       initialRouteName="Dashboard"
-      screenOptions={({ route }) => ({
+      drawerContent={(drawerProps) => <CustomDrawerContent {...drawerProps} canAccess={canAccessRoute} />}
+      screenOptions={{
         headerStyle: {
           backgroundColor: COLORS.sidebarBackground,
         },
@@ -280,175 +282,9 @@ function MainSidebarNavigator() {
         },
         drawerStyle: {
           backgroundColor: COLORS.sidebarBackground,
-          width: 274,
+          width: 280,
         },
-        drawerActiveBackgroundColor: COLORS.sidebarActiveBackground,
-        drawerActiveTintColor: COLORS.sidebarActiveText,
-        drawerInactiveTintColor: COLORS.sidebarText,
-        drawerLabelStyle: {
-          fontSize: 12,
-          fontWeight: '700',
-          letterSpacing: 0.2,
-        },
-        drawerItemStyle: {
-          ...(canAccessRoute(route.name)
-            ? {
-              borderRadius: 10,
-              marginHorizontal: 10,
-              marginVertical: 4,
-            }
-            : {
-              display: 'none',
-              height: 0,
-              marginHorizontal: 0,
-              marginVertical: 0,
-              paddingVertical: 0,
-            }),
-        },
-        drawerIcon: ({ color, size }) => {
-          if (route.name === 'Products') {
-            return <MaterialIcons name="inventory-2" size={size} color={color} />;
-          }
-
-          if (route.name === 'Customers') {
-            return <MaterialIcons name="groups" size={size} color={color} />;
-          }
-
-          if (route.name === 'Ledger') {
-            return <MaterialIcons name="receipt-long" size={size} color={color} />;
-          }
-
-          if (route.name === 'CustomerCredit') {
-            return <MaterialIcons name="credit-score" size={size} color={color} />;
-          }
-
-          if (route.name === 'Collections') {
-            return <MaterialIcons name="analytics" size={size} color={color} />;
-          }
-
-          if (route.name === 'CustomerStatement') {
-            return <MaterialIcons name="description" size={size} color={color} />;
-          }
-
-          if (route.name === 'Onboarding') {
-            return <MaterialIcons name="school" size={size} color={color} />;
-          }
-
-          if (route.name === 'HelpCenter') {
-            return <MaterialIcons name="help-center" size={size} color={color} />;
-          }
-
-          if (route.name === 'Feedback') {
-            return <MaterialIcons name="forum" size={size} color={color} />;
-          }
-
-          if (route.name === 'VoiceAssistant') {
-            return <MaterialIcons name="keyboard-voice" size={size} color={color} />;
-          }
-
-          if (route.name === 'VoicePackDownload') {
-            return <MaterialIcons name="download-for-offline" size={size} color={color} />;
-          }
-
-          if (route.name === 'Movement') {
-            return <MaterialIcons name="swap-horiz" size={size} color={color} />;
-          }
-
-          if (route.name === 'Details') {
-            return <MaterialIcons name="info-outline" size={size} color={color} />;
-          }
-
-          if (route.name === 'Dashboard') {
-            return <MaterialIcons name="dashboard" size={size} color={color} />;
-          }
-
-          if (route.name === 'Reports') {
-            return <MaterialIcons name="bar-chart" size={size} color={color} />;
-          }
-
-          if (route.name === 'SyncConflicts') {
-            return <MaterialIcons name="merge-type" size={size} color={color} />;
-          }
-
-          if (route.name === 'OfflineQueue') {
-            return <MaterialIcons name="schedule-send" size={size} color={color} />;
-          }
-
-          if (route.name === 'BackupRestore') {
-            return <MaterialIcons name="backup" size={size} color={color} />;
-          }
-
-          if (route.name === 'StockSuggestions') {
-            return <MaterialIcons name="insights" size={size} color={color} />;
-          }
-
-          if (route.name === 'Audit') {
-            return <MaterialIcons name="history" size={size} color={color} />;
-          }
-
-          if (route.name === 'ApprovalRequests') {
-            return <MaterialIcons name="verified-user" size={size} color={color} />;
-          }
-
-          if (route.name === 'Sales') {
-            return <MaterialIcons name="point-of-sale" size={size} color={color} />;
-          }
-
-          if (route.name === 'SalesHistory') {
-            return <MaterialIcons name="history-edu" size={size} color={color} />;
-          }
-
-          if (route.name === 'Suppliers') {
-            return <MaterialIcons name="local-shipping" size={size} color={color} />;
-          }
-
-          if (route.name === 'PurchaseOrders') {
-            return <MaterialIcons name="assignment" size={size} color={color} />;
-          }
-
-          if (route.name === 'GoodsReceive') {
-            return <MaterialIcons name="inventory" size={size} color={color} />;
-          }
-
-          if (route.name === 'PurchaseHistory') {
-            return <MaterialIcons name="history-toggle-off" size={size} color={color} />;
-          }
-
-          if (route.name === 'Cashbook') {
-            return <MaterialIcons name="account-balance-wallet" size={size} color={color} />;
-          }
-
-          if (route.name === 'Expenses') {
-            return <MaterialIcons name="receipt" size={size} color={color} />;
-          }
-
-          if (route.name === 'ProfitReport') {
-            return <MaterialIcons name="trending-up" size={size} color={color} />;
-          }
-
-          if (route.name === 'DayClose') {
-            return <MaterialIcons name="event-available" size={size} color={color} />;
-          }
-
-          if (route.name === 'InventoryBatches') {
-            return <MaterialIcons name="layers" size={size} color={color} />;
-          }
-
-          if (route.name === 'Alerts') {
-            return <MaterialIcons name="notification-important" size={size} color={color} />;
-          }
-
-          if (route.name === 'CycleCount') {
-            return <MaterialIcons name="fact-check" size={size} color={color} />;
-          }
-
-          if (route.name === 'Profile') {
-            return <MaterialIcons name="person" size={size} color={color} />;
-          }
-
-          return <MaterialIcons name="account-balance-wallet" size={size} color={color} />;
-        },
-      })}>
+      }}>
       <Drawer.Screen
         name="Dashboard"
         component={DashboardScreen}

@@ -145,7 +145,7 @@ export default function OfflineQueueMonitor() {
 
   const publishSnapshot = useCallback(async () => {
     if (!isOnline || !accessToken) {
-      setStatusText('Online login is required to publish queue snapshot.');
+      setStatusText('কিউ স্ন্যাপশট প্রকাশ করতে অনলাইনে লগইন করুন।');
       return;
     }
 
@@ -160,7 +160,7 @@ export default function OfflineQueueMonitor() {
 
       const summary = await fetchOfflineQueueSummaryOnline({ accessToken });
       setServerSummary(summary || null);
-      setStatusText('Queue snapshot published to reliability backend.');
+      setStatusText('কিউ স্ন্যাপশট ব্যাকএন্ডে প্রকাশিত হয়েছে।');
     } catch (error) {
       setStatusText(error?.message || 'Failed to publish queue snapshot.');
     } finally {
@@ -177,7 +177,7 @@ export default function OfflineQueueMonitor() {
         ListHeaderComponent={(
           <View style={styles.headerWrap}>
             <Text style={styles.title}>অফলাইন সারি</Text>
-            <Text style={styles.subtitle}>Track pending sync pressure, retry timing, and failure concentration by entity.</Text>
+            <Text style={styles.subtitle}>মুলতুবি সিঙ্ক, পুনরায় চেষ্টার সময় এবং ব্যর্থতার ধরন পর্যবেক্ষণ করুন।</Text>
 
             <AppCard style={styles.card}>
               <Text style={styles.sectionTitle}>স্থানীয় সারির অবস্থা</Text>
@@ -204,10 +204,10 @@ export default function OfflineQueueMonitor() {
                   title="সিঙ্ক চালান"
                   style={styles.buttonFlex}
                   onPress={async () => {
-                    setStatusText('Running online sync...');
+                    setStatusText('অনলাইন সিঙ্ক চলছে...');
                     await runOnlineSync();
                     await loadQueue();
-                    setStatusText('Sync completed and queue refreshed.');
+                    setStatusText('সিঙ্ক সম্পন্ন এবং কিউ রিফ্রেশ হয়েছে।');
                   }}
                 />
               </View>
@@ -232,12 +232,12 @@ export default function OfflineQueueMonitor() {
                 onPress={async () => {
                   const firstFailed = rowsWithRetry.find((row) => Number(row?.attempts || 0) > 0);
                   if (!firstFailed) {
-                    setStatusText('No failed queue item found.');
+                    setStatusText('কোনো ব্যর্থ কিউ আইটেম পাওয়া যায়নি।');
                     return;
                   }
 
                   if (!isOnline || !accessToken) {
-                    setStatusText('Online login is required to run remote retry evaluator.');
+                    setStatusText('রিমোট রিট্রাই চালাতে অনলাইনে লগইন করুন।');
                     return;
                   }
 

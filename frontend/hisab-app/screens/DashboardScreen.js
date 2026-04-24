@@ -59,6 +59,7 @@ export default function DashboardScreen() {
   const [complianceDashboard, setComplianceDashboard] = useState(null);
   const [activityInsightExample, setActivityInsightExample] = useState(null);
   const [showAnalytics, setShowAnalytics] = useState(false);
+  const [, setLastRefreshAt] = useState(null);
   const [kpis, setKpis] = useState({
     totalCredit: 0,
     totalPayment: 0,
@@ -250,7 +251,8 @@ export default function DashboardScreen() {
         {/* ── Collapsible analytics ────────────────────────── */}
         {showAnalytics && (
           <>
-            <AppCard style={styles.card}>
+            {/* Period selector — ghost/outlined feel */}
+            <AppCard variant="outlined" style={styles.card}>
               <Text style={styles.cardTitle}>সময়কাল</Text>
               <View style={styles.periodRow}>
                 {REPORT_PERIODS.map((option) => (
@@ -258,6 +260,7 @@ export default function DashboardScreen() {
                     key={option.key}
                     title={option.label}
                     variant={period === option.key ? 'primary' : 'secondary'}
+                    size="sm"
                     style={styles.periodButton}
                     onPress={() => setPeriod(option.key)}
                   />
@@ -265,10 +268,19 @@ export default function DashboardScreen() {
               </View>
             </AppCard>
 
-            <AppCard style={styles.card}>
+            {/* Sales — flat background, inline metrics */}
+            <AppCard variant="flat" style={styles.card}>
               <Text style={styles.cardTitle}>বিক্রির হিসাব</Text>
-              <Text style={styles.cardLine}>মোট বিক্রি: {formatMoney(complianceDashboard?.sales?.totalSales)}</Text>
-              <Text style={styles.cardLine}>লেনদেন: {toNumber(complianceDashboard?.sales?.transactionCount, 0)}</Text>
+              <View style={styles.inlineMetrics}>
+                <View style={styles.inlineMetricItem}>
+                  <Text style={styles.inlineMetricValue}>{formatMoney(complianceDashboard?.sales?.totalSales)}</Text>
+                  <Text style={styles.inlineMetricLabel}>মোট বিক্রি</Text>
+                </View>
+                <View style={styles.inlineMetricItem}>
+                  <Text style={styles.inlineMetricValue}>{toNumber(complianceDashboard?.sales?.transactionCount, 0)}</Text>
+                  <Text style={styles.inlineMetricLabel}>লেনদেন</Text>
+                </View>
+              </View>
               <Text style={styles.cardSubtitle}>সেরা পণ্য</Text>
               {(complianceDashboard?.sales?.topSellingProducts || []).slice(0, 5).map((row) => (
                 <Text key={`top-${row.productId}`} style={styles.cardLine}>
@@ -277,28 +289,54 @@ export default function DashboardScreen() {
               ))}
             </AppCard>
 
+            {/* Inventory — default with stronger border */}
             <AppCard style={styles.card}>
               <Text style={styles.cardTitle}>মালের হিসাব</Text>
-              <Text style={styles.cardLine}>বর্তমান মাল: {(complianceDashboard?.inventory?.currentStockLevels || []).length}</Text>
-              <Text style={styles.cardLine}>কম মাল: {(complianceDashboard?.inventory?.lowStockItems || []).length}</Text>
-              <Text style={styles.cardLine}>বন্ধ মাল: {(complianceDashboard?.inventory?.deadStockItems || []).length}</Text>
+              <View style={styles.inlineMetrics}>
+                <View style={styles.inlineMetricItem}>
+                  <Text style={styles.inlineMetricValue}>{(complianceDashboard?.inventory?.currentStockLevels || []).length}</Text>
+                  <Text style={styles.inlineMetricLabel}>বর্তমান</Text>
+                </View>
+                <View style={[styles.inlineMetricItem, { borderLeftWidth: 1, borderLeftColor: UI_COLORS.borderSoft, paddingLeft: 12 }]}>
+                  <Text style={[styles.inlineMetricValue, { color: UI_COLORS.textWarning }]}>{(complianceDashboard?.inventory?.lowStockItems || []).length}</Text>
+                  <Text style={styles.inlineMetricLabel}>কম</Text>
+                </View>
+                <View style={[styles.inlineMetricItem, { borderLeftWidth: 1, borderLeftColor: UI_COLORS.borderSoft, paddingLeft: 12 }]}>
+                  <Text style={[styles.inlineMetricValue, { color: UI_COLORS.textDanger }]}>{(complianceDashboard?.inventory?.deadStockItems || []).length}</Text>
+                  <Text style={styles.inlineMetricLabel}>বন্ধ</Text>
+                </View>
+              </View>
             </AppCard>
 
-            <AppCard style={styles.card}>
+            {/* Finance — accent stripe */}
+            <AppCard variant="accent" style={styles.card}>
               <Text style={styles.cardTitle}>আর্থিক হিসাব</Text>
-              <Text style={styles.cardLine}>আয়: {formatMoney(complianceDashboard?.finance?.totalRevenue)}</Text>
-              <Text style={styles.cardLine}>খরচ: {formatMoney(complianceDashboard?.finance?.totalExpenses)}</Text>
-              <Text style={styles.cardLine}>লাভ: {formatMoney(complianceDashboard?.finance?.netProfit)}</Text>
+              <View style={styles.inlineMetrics}>
+                <View style={styles.inlineMetricItem}>
+                  <Text style={[styles.inlineMetricValue, { color: UI_COLORS.textSuccess }]}>{formatMoney(complianceDashboard?.finance?.totalRevenue)}</Text>
+                  <Text style={styles.inlineMetricLabel}>আয়</Text>
+                </View>
+                <View style={styles.inlineMetricItem}>
+                  <Text style={[styles.inlineMetricValue, { color: UI_COLORS.textDanger }]}>{formatMoney(complianceDashboard?.finance?.totalExpenses)}</Text>
+                  <Text style={styles.inlineMetricLabel}>খরচ</Text>
+                </View>
+                <View style={styles.inlineMetricItem}>
+                  <Text style={styles.inlineMetricValue}>{formatMoney(complianceDashboard?.finance?.netProfit)}</Text>
+                  <Text style={styles.inlineMetricLabel}>লাভ</Text>
+                </View>
+              </View>
             </AppCard>
 
-            <AppCard style={styles.card}>
+            {/* Collections — elevated */}
+            <AppCard variant="elevated" style={styles.card}>
               <Text style={styles.cardTitle}>আদায়ের হিসাব</Text>
               <Text style={styles.cardLine}>মোট বাকি: {formatMoney(complianceDashboard?.collections?.totalBaki)}</Text>
               <Text style={styles.cardLine}>বকেয়া: {formatMoney(complianceDashboard?.collections?.overdueAmount)}</Text>
               <Text style={styles.cardLine}>আদায়ের হার: {toNumber(complianceDashboard?.collections?.recoveryRate, 0).toFixed(2)}%</Text>
             </AppCard>
 
-            <AppCard style={styles.card}>
+            {/* Tip — accent */}
+            <AppCard variant="accent" style={styles.card}>
               <Text style={styles.cardTitle}>পরামর্শ</Text>
               <Text style={styles.cardLine}>{getDashboardTip({
                 period,
@@ -309,19 +347,22 @@ export default function DashboardScreen() {
                 <AppButton
                   title="পরিচিতি"
                   variant="secondary"
+                  size="sm"
                   style={styles.inlineButton}
                   onPress={() => navigation.navigate('Onboarding')}
                 />
                 <AppButton
                   title="সাহায্য"
                   variant="secondary"
+                  size="sm"
                   style={styles.inlineButton}
                   onPress={() => navigation.navigate('HelpCenter')}
                 />
               </View>
             </AppCard>
 
-            <AppCard style={styles.card}>
+            {/* Activity — flat */}
+            <AppCard variant="flat" style={styles.card}>
               <Text style={styles.cardTitle}>কার্যক্রমের বিশ্লেষণ</Text>
               <Text style={styles.cardLine}>কার্যক্রম: {activityInsightExample?.activity?.event_type || 'sale_created'}</Text>
               <Text style={styles.cardLine}>{activityInsightExample?.metrics?.dao || 'অপারেটরের কার্যক্রম DAO আপডেট করে।'}</Text>
@@ -506,14 +547,18 @@ const styles = StyleSheet.create({
   analyticsToggleText: { ...TYPOGRAPHY.body, color: UI_COLORS.primary, fontWeight: '600' },
 
   /* analytics cards */
-  card: { backgroundColor: UI_COLORS.surface },
+  card: {},
   cardTitle: { ...TYPOGRAPHY.subheading, color: UI_COLORS.textPrimary, marginBottom: SPACING.sm },
   cardSubtitle: { ...TYPOGRAPHY.small, color: UI_COLORS.textPrimary, marginTop: SPACING.sm, fontWeight: '700' },
   cardLine: { ...TYPOGRAPHY.small, color: UI_COLORS.textSecondary },
   periodRow: { flexDirection: 'row', gap: SPACING.sm, flexWrap: 'wrap' },
-  periodButton: { minHeight: 44, flexGrow: 1 },
+  periodButton: { flexGrow: 1 },
   inlineButtonRow: { flexDirection: 'row', gap: SPACING.sm, marginTop: SPACING.sm },
-  inlineButton: { flex: 1, minHeight: 42 },
+  inlineButton: { flex: 1 },
+  inlineMetrics: { flexDirection: 'row', gap: 12, marginBottom: SPACING.xs },
+  inlineMetricItem: { gap: 2 },
+  inlineMetricValue: { fontSize: 18, fontWeight: '800', color: UI_COLORS.textPrimary },
+  inlineMetricLabel: { fontSize: 11, fontWeight: '600', color: UI_COLORS.textMuted },
 
   /* footer */
   footer: {

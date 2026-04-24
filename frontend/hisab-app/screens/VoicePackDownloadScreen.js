@@ -43,7 +43,7 @@ export default function VoicePackDownloadScreen() {
     setActivePackId(packId);
     setProgress(0);
     setLastError('');
-    setMessage('Downloading voice pack...');
+    setMessage('ভয়েস প্যাক ডাউনলোড হচ্ছে...');
 
     try {
       await installVoicePack({
@@ -52,11 +52,11 @@ export default function VoicePackDownloadScreen() {
           setProgress(nextProgress);
         },
       });
-      setMessage('Voice pack installed and verified. Offline voice is ready.');
+      setMessage('ভয়েস প্যাক ইনস্টল ও যাচাই হয়েছে। অফলাইন ভয়েস প্রস্তুত।');
       await refreshStatus();
     } catch (error) {
       setLastError(error?.message || 'Download failed.');
-      setMessage('Download failed. Retry to continue.');
+      setMessage('ডাউনলোড ব্যর্থ হয়েছে। আবার চেষ্টা করুন।');
     } finally {
       setActivePackId('');
     }
@@ -64,10 +64,10 @@ export default function VoicePackDownloadScreen() {
 
   const removePack = useCallback(async (packId) => {
     setLastError('');
-    setMessage('Removing pack...');
+    setMessage('প্যাক সরানো হচ্ছে...');
     try {
       await removeVoicePack(packId);
-      setMessage('Voice pack removed.');
+      setMessage('ভয়েস প্যাক সরানো হয়েছে।');
       await refreshStatus();
     } catch (error) {
       setLastError(error?.message || 'Could not remove pack.');
@@ -76,7 +76,7 @@ export default function VoicePackDownloadScreen() {
 
   const checkUpdates = useCallback(async (packId) => {
     setLastError('');
-    setMessage('Checking updates...');
+    setMessage('আপডেট চেক হচ্ছে...');
     try {
       const result = await checkForPackUpdates({
         packId,

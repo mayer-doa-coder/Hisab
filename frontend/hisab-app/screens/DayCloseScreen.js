@@ -90,7 +90,7 @@ export default function DayCloseScreen() {
               <AppInput
                 value={businessDate}
                 onChangeText={setBusinessDate}
-                placeholder="ব্যবসার তারিখ (YYYY-MM-DD)"
+                placeholder="ব্যবসার তারিখ (বছর-মাস-দিন)"
               />
               <AppInput
                 value={cashOnHand}
