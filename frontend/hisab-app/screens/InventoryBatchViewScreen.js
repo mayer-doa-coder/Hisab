@@ -94,7 +94,7 @@ export default function InventoryBatchViewScreen() {
               <View style={styles.buttonRow}>
                 <AppButton title={loading ? 'লোড হচ্ছে...' : 'Load Batches'} onPress={load} style={styles.buttonFlex} />
                 <AppButton
-                  title={refreshing ? 'Refreshing...' : 'Refresh All'}
+                  title={refreshing ? 'রিফ্রেশ হচ্ছে...' : 'সব রিফ্রেশ'}
                   variant="secondary"
                   style={styles.buttonFlex}
                   onPress={async () => {
@@ -110,9 +110,9 @@ export default function InventoryBatchViewScreen() {
               <Text style={styles.metaText}>Product: {selectedProductName || 'N/A'}</Text>
               {nextBatch ? (
                 <>
-                  <Text style={styles.metaText}>Next Batch: {nextBatch.batch_number || 'Unnumbered'}</Text>
-                  <Text style={styles.metaText}>Qty: {nextBatch.quantity}</Text>
-                  <Text style={styles.metaText}>Expiry: {nextBatch.expiry_date || 'No expiry'}</Text>
+                  <Text style={styles.metaText}>পরের ব্যাচ: {nextBatch.batch_number || 'নম্বরহীন'}</Text>
+                  <Text style={styles.metaText}>পরিমাণ: {nextBatch.quantity}</Text>
+                  <Text style={styles.metaText}>মেয়াদ: {nextBatch.expiry_date || 'মেয়াদ নেই'}</Text>
                 </>
               ) : (
                 <Text style={styles.metaText}>বিক্রির জন্য কোনো ব্যাচ নেই।</Text>
@@ -136,15 +136,15 @@ export default function InventoryBatchViewScreen() {
             <Text style={styles.sectionTitle}>ব্যাচ তালিকা</Text>
           </View>
         }
-        ListEmptyComponent={<Text style={styles.emptyText}>{loading ? 'লোড হচ্ছে...' : 'No batches found.'}</Text>}
+        ListEmptyComponent={<Text style={styles.emptyText}>{loading ? 'লোড হচ্ছে...' : 'কোনো ব্যাচ পাওয়া যায়নি।'}</Text>}
         renderItem={({ item }) => (
           <AppCard style={styles.rowCard}>
             <Text style={styles.rowTitle}>{item.batch_number || 'Unnumbered Batch'}</Text>
             <Text style={styles.rowMeta}>{item.product_name}</Text>
-            <Text style={styles.rowMeta}>Qty: {item.quantity}</Text>
-            <Text style={styles.rowMeta}>Expiry: {item.expiry_date || 'No expiry'}</Text>
-            <Text style={styles.rowMeta}>Purchase Date: {item.purchase_date || 'N/A'}</Text>
-            <Text style={styles.rowMeta}>Cost: {formatMoney(item.cost_price)}</Text>
+            <Text style={styles.rowMeta}>পরিমাণ: {item.quantity}</Text>
+            <Text style={styles.rowMeta}>মেয়াদ: {item.expiry_date || 'মেয়াদ নেই'}</Text>
+            <Text style={styles.rowMeta}>ক্রয় তারিখ: {item.purchase_date || 'N/A'}</Text>
+            <Text style={styles.rowMeta}>খরচ: {formatMoney(item.cost_price)}</Text>
           </AppCard>
         )}
       />

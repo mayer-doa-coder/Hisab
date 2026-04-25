@@ -87,7 +87,7 @@ export default function CustomerStatementScreen() {
               {customers.map((row) => (
                 <Picker.Item
                   key={`statement-customer-${row.id}`}
-                  label={`${row.name} (${row.phone || 'No phone'})`}
+                  label={`${row.name} (${row.phone || 'ফোন নেই'})`}
                   value={String(row.id)}
                 />
               ))}

@@ -58,7 +58,7 @@ export default function CollectionsDashboardScreen() {
               await loadDashboard();
             }}
           >
-            <Text style={styles.refreshText}>{loading || refreshing ? 'লোড হচ্ছে...' : 'Refresh'}</Text>
+            <Text style={styles.refreshText}>{loading || refreshing ? 'লোড হচ্ছে...' : 'রিফ্রেশ'}</Text>
           </TouchableOpacity>
         </View>
 

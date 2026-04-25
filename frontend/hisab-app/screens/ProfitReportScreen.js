@@ -60,7 +60,7 @@ export default function ProfitReportScreen() {
               <View style={styles.buttonRow}>
                 <AppButton title={loading ? 'লোড হচ্ছে...' : 'Apply'} onPress={load} style={styles.buttonFlex} />
                 <AppButton
-                  title={refreshing ? 'Refreshing...' : 'রিফ্রেশ'}
+                  title={refreshing ? 'রিফ্রেশ হচ্ছে...' : 'রিফ্রেশ'}
                   variant="secondary"
                   style={styles.buttonFlex}
                   onPress={async () => {
@@ -86,7 +86,7 @@ export default function ProfitReportScreen() {
             <Text style={styles.sectionTitle}>দৈনিক ধারা</Text>
           </View>
         }
-        ListEmptyComponent={<Text style={styles.emptyText}>{loading ? 'লোড হচ্ছে...' : 'No report rows available.'}</Text>}
+        ListEmptyComponent={<Text style={styles.emptyText}>{loading ? 'লোড হচ্ছে...' : 'কোনো রিপোর্ট ডেটা নেই।'}</Text>}
         renderItem={({ item }) => (
           <AppCard style={styles.rowCard}>
             <Text style={styles.rowTitle}>{item.date}</Text>

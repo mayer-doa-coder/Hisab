@@ -233,7 +233,7 @@ export default function CustomerCreditScreen() {
               promises.map((row) => (
                 <View key={`promise-${row.id}`} style={styles.listRow}>
                   <Text style={styles.listTitle}>৳{Number(row.promised_amount || 0).toFixed(2)}</Text>
-                  <Text style={styles.listMeta}>{row.promise_date || 'No date'}</Text>
+                  <Text style={styles.listMeta}>{row.promise_date || 'তারিখ নেই'}</Text>
                 </View>
               ))
             )}

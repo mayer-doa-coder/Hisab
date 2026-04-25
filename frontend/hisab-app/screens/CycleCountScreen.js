@@ -129,9 +129,9 @@ export default function CycleCountScreen() {
               <AppInput value={note} onChangeText={setNote} placeholder="নোট (ঐচ্ছিক)" />
 
               <View style={styles.buttonRow}>
-                <AppButton title={saving ? 'Saving...' : 'Record Count'} onPress={handleSubmit} disabled={saving} style={styles.buttonFlex} />
+                <AppButton title={saving ? 'সংরক্ষণ হচ্ছে...' : 'গণনা রেকর্ড করুন'} onPress={handleSubmit} disabled={saving} style={styles.buttonFlex} />
                 <AppButton
-                  title={refreshing ? 'Refreshing...' : 'Refresh'}
+                  title={refreshing ? 'রিফ্রেশ হচ্ছে...' : 'রিফ্রেশ'}
                   variant="secondary"
                   style={styles.buttonFlex}
                   onPress={async () => {
@@ -157,14 +157,14 @@ export default function CycleCountScreen() {
             <Text style={styles.sectionTitle}>সাম্প্রতিক চক্র গণনা</Text>
           </View>
         }
-        ListEmptyComponent={<Text style={styles.emptyText}>{loading ? 'Loading...' : 'No cycle count records yet.'}</Text>}
+        ListEmptyComponent={<Text style={styles.emptyText}>{loading ? 'লোড হচ্ছে...' : 'এখনো কোনো গণনা নেই।'}</Text>}
         renderItem={({ item }) => (
           <AppCard style={styles.rowCard}>
             <Text style={styles.rowTitle}>{item.product_name}</Text>
             <Text style={styles.rowMeta}>System: {item.system_quantity} | Physical: {item.physical_quantity}</Text>
             <Text style={styles.rowMeta}>Variance: {item.variance}</Text>
             <Text style={styles.rowMeta}>At: {item.timestamp || 'N/A'}</Text>
-            <Text style={styles.rowMeta}>{item.note || 'No note'}</Text>
+            <Text style={styles.rowMeta}>{item.note || 'নোট নেই'}</Text>
           </AppCard>
         )}
       />

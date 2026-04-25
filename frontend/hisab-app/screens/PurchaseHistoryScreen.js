@@ -16,11 +16,11 @@ import { useAppData } from '../context/AppDataContext';
 const formatMoney = (value) => `৳${Number(value || 0).toFixed(2)}`;
 
 const PURCHASE_STATUS_OPTIONS = [
-  { label: 'All Status', value: '' },
-  { label: 'Pending', value: 'pending' },
-  { label: 'Partial', value: 'partial' },
-  { label: 'Received', value: 'received' },
-  { label: 'Cancelled', value: 'cancelled' },
+  { label: 'সব অবস্থা', value: '' },
+  { label: 'অপেক্ষাধীন', value: 'pending' },
+  { label: 'আংশিক', value: 'partial' },
+  { label: 'গৃহীত', value: 'received' },
+  { label: 'বাতিল', value: 'cancelled' },
 ];
 
 export default function PurchaseHistoryScreen() {
@@ -205,9 +205,9 @@ export default function PurchaseHistoryScreen() {
               </View>
 
               <View style={styles.buttonRow}>
-                <AppButton title={loading ? 'লোড হচ্ছে...' : 'Apply Filters'} onPress={loadRows} style={styles.buttonFlex} />
+                <AppButton title={loading ? 'লোড হচ্ছে...' : 'ফিল্টার প্রয়োগ করুন'} onPress={loadRows} style={styles.buttonFlex} />
                 <AppButton
-                  title={refreshing ? 'Refreshing...' : 'রিফ্রেশ'}
+                  title={refreshing ? 'রিফ্রেশ হচ্ছে...' : 'রিফ্রেশ'}
                   variant="secondary"
                   style={styles.buttonFlex}
                   onPress={async () => {
@@ -220,7 +220,7 @@ export default function PurchaseHistoryScreen() {
                 />
               </View>
 
-              <Text style={styles.summaryText}>Rows: {rows.length} | Due in view: {formatMoney(totalDueInView)}</Text>
+              <Text style={styles.summaryText}>রেকর্ড: {rows.length} | মোট বাকি: {formatMoney(totalDueInView)}</Text>
             </AppCard>
 
             <AppCard style={styles.card}>
@@ -278,7 +278,7 @@ export default function PurchaseHistoryScreen() {
               <AppInput value={paymentNote} onChangeText={setPaymentNote} placeholder="নোট (ঐচ্ছিক)" />
 
               <AppButton
-                title={savingPayment ? 'Posting...' : 'Post Payment'}
+                title={savingPayment ? 'জমা হচ্ছে...' : 'পেমেন্ট জমা দিন'}
                 onPress={handlePostPayment}
                 disabled={savingPayment}
               />
@@ -287,7 +287,7 @@ export default function PurchaseHistoryScreen() {
             {consistency ? (
               <AppCard style={styles.card}>
                 <Text style={styles.sectionTitle}>সততা যাচাই</Text>
-                <Text style={styles.summaryText}>Purchase Received Qty: {consistency.purchase_received_quantity}</Text>
+                <Text style={styles.summaryText}>গৃহীত পরিমাণ: {consistency.purchase_received_quantity}</Text>
                 <Text style={styles.summaryText}>Movement Purchase IN Qty: {consistency.movement_purchase_in_quantity}</Text>
                 <Text style={styles.summaryText}>
                   Status: {consistency.is_consistent ? 'CONSISTENT' : `MISMATCH (${consistency.difference})`}
@@ -298,7 +298,7 @@ export default function PurchaseHistoryScreen() {
             <Text style={styles.sectionTitle}>ক্রয় তালিকা</Text>
           </View>
         }
-        ListEmptyComponent={<Text style={styles.emptyText}>{loading ? 'লোড হচ্ছে...' : 'No purchase rows found.'}</Text>}
+        ListEmptyComponent={<Text style={styles.emptyText}>{loading ? 'লোড হচ্ছে...' : 'কোনো ক্রয় রেকর্ড পাওয়া যায়নি।'}</Text>}
         renderItem={({ item }) => (
           <AppCard style={styles.rowCard}>
             <View style={styles.rowHeader}>
@@ -306,7 +306,7 @@ export default function PurchaseHistoryScreen() {
               <Text style={styles.rowStatus}>{item.status.toUpperCase()}</Text>
             </View>
             <Text style={styles.rowMeta}>{item.supplier_name}</Text>
-            <Text style={styles.rowMeta}>Ordered: {item.ordered_qty_total} | Received: {item.received_qty_total}</Text>
+            <Text style={styles.rowMeta}>অর্ডার: {item.ordered_qty_total} | গৃহীত: {item.received_qty_total}</Text>
             <Text style={styles.rowMeta}>
               Total: {formatMoney(item.total_amount)} | Paid: {formatMoney(item.paid_amount)} | Due: {formatMoney(item.due_amount)}
             </Text>

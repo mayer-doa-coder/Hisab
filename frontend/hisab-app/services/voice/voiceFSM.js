@@ -18,7 +18,7 @@ const STATE_ORDER = Object.freeze([
   STATES.EXECUTE,
 ]);
 
-const INTENT_TOKENS = Object.freeze(['baki', 'joma', 'becha', 'kinbo']);
+const INTENT_TOKENS = Object.freeze(['baki', 'joma', 'becha', 'kinbo', 'balance']);
 const DATE_SHORTCUTS = Object.freeze(['aj', 'kal']);
 const CONFIRM_TOKENS = Object.freeze(['confirm', 'yes', 'na', 'cancel']);
 const GLOBAL_CONTROL_TOKENS = Object.freeze(['next', 'back', 'cancel', 'repeat']);
@@ -179,7 +179,7 @@ const findNameMatches = (token, knownNames = []) => {
 
 const getPromptForState = (state) => {
   if (state === STATES.WAIT_INTENT) {
-    return 'কি করবেন? বলুন: বাকি, জমা, বেচা।';
+    return 'কি করবেন? বলুন: বাকি, জমা, বেচা, বা হিসাব।';
   }
 
   if (state === STATES.WAIT_NAME) {
@@ -374,7 +374,7 @@ const validateToken = ({ state, token, knownNames = [], confidenceThreshold = 0.
 
   if (state === STATES.WAIT_INTENT) {
     if (!INTENT_TOKENS.includes(normalized)) {
-      return { ok: false, reason: 'INTENT_INVALID', message: 'Please say: baki, joma, becha, or kinbo.' };
+      return { ok: false, reason: 'INTENT_INVALID', message: 'Please say: baki, joma, becha, kinbo, or balance.' };
     }
 
     return { ok: true, value: normalized, confidence: 0.99 };
@@ -537,6 +537,8 @@ const transition = ({
   }
 
   if (activeState === STATES.WAIT_NAME) {
+    // CHECK_BALANCE has no amount or date — jump straight to REVIEW.
+    const nextState = activeContext.intent === 'balance' ? STATES.REVIEW : STATES.WAIT_AMOUNT;
     const nextContext = withNextStateContext(
       {
         ...activeContext,
@@ -544,11 +546,11 @@ const transition = ({
         nameId: validation.value.id,
         confidence: mergeConfidence(activeContext.confidence, validation.confidence),
       },
-      STATES.WAIT_AMOUNT
+      nextState
     );
 
     return {
-      state: STATES.WAIT_AMOUNT,
+      state: nextState,
       context: nextContext,
       message: nextContext.lastPrompt,
       output: buildOutputContract(nextContext),

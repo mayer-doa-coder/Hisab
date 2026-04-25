@@ -46,7 +46,7 @@ export default function DayCloseScreen() {
 
   const handleCloseDay = async () => {
     if (!businessDate.trim()) {
-      Alert.alert('প্রয়োজনীয়', 'Business date is required (YYYY-MM-DD).');
+      Alert.alert('প্রয়োজনীয়', 'ব্যবসার তারিখ দিন (বছর-মাস-দিন)।');
       return;
     }
 
@@ -66,7 +66,7 @@ export default function DayCloseScreen() {
       setNote('');
       await refreshAll();
       await load();
-      Alert.alert('সম্পন্ন', `Day ${businessDate} closed successfully.`);
+      Alert.alert('সম্পন্ন', `${businessDate} দিন সফলভাবে বন্ধ হয়েছে।`);
     } catch (error) {
       Alert.alert('দিন বন্ধ ব্যর্থ', error?.message || 'Unable to close the business day.');
     } finally {
@@ -102,13 +102,13 @@ export default function DayCloseScreen() {
 
               <View style={styles.buttonRow}>
                 <AppButton
-                  title={closing ? 'Closing...' : 'Close Day'}
+                  title={closing ? 'বন্ধ হচ্ছে...' : 'দিন বন্ধ করুন'}
                   onPress={handleCloseDay}
                   disabled={closing}
                   style={styles.buttonFlex}
                 />
                 <AppButton
-                  title={refreshing ? 'Refreshing...' : 'Refresh'}
+                  title={refreshing ? 'রিফ্রেশ হচ্ছে...' : 'রিফ্রেশ'}
                   variant="secondary"
                   style={styles.buttonFlex}
                   onPress={async () => {
@@ -121,14 +121,14 @@ export default function DayCloseScreen() {
 
             {snapshot ? (
               <AppCard style={styles.card}>
-                <Text style={styles.sectionTitle}>Snapshot ({snapshot.business_date})</Text>
-                <Text style={styles.meta}>Opening: {formatMoney(snapshot.opening_balance)}</Text>
-                <Text style={styles.meta}>Inflow: {formatMoney(snapshot.total_in)}</Text>
-                <Text style={styles.meta}>Outflow: {formatMoney(snapshot.total_out)}</Text>
-                <Text style={styles.meta}>Expected Closing: {formatMoney(snapshot.closing_balance)}</Text>
+                <Text style={styles.sectionTitle}>দিনের সারসংক্ষেপ ({snapshot.business_date})</Text>
+                <Text style={styles.meta}>খোলা: {formatMoney(snapshot.opening_balance)}</Text>
+                <Text style={styles.meta}>আয়: {formatMoney(snapshot.total_in)}</Text>
+                <Text style={styles.meta}>ব্যয়: {formatMoney(snapshot.total_out)}</Text>
+                <Text style={styles.meta}>প্রত্যাশিত বন্ধ: {formatMoney(snapshot.closing_balance)}</Text>
                 {snapshot.existing_close ? (
                   <Text style={styles.meta}>
-                    Closed: {formatMoney(snapshot.existing_close.cash_on_hand)} | Variance: {formatMoney(snapshot.existing_close.variance)}
+                    বন্ধ নগদ: {formatMoney(snapshot.existing_close.cash_on_hand)} | পার্থক্য: {formatMoney(snapshot.existing_close.variance)}
                   </Text>
                 ) : null}
               </AppCard>
@@ -137,14 +137,14 @@ export default function DayCloseScreen() {
             <Text style={styles.sectionTitle}>সাম্প্রতিক দিন বন্ধ</Text>
           </View>
         }
-        ListEmptyComponent={<Text style={styles.emptyText}>{loading ? 'Loading...' : 'No day close records yet.'}</Text>}
+        ListEmptyComponent={<Text style={styles.emptyText}>{loading ? 'লোড হচ্ছে...' : 'এখনো কোনো দিন বন্ধ রেকর্ড নেই।'}</Text>}
         renderItem={({ item }) => (
           <AppCard style={styles.rowCard}>
             <Text style={styles.rowTitle}>{item.business_date}</Text>
-            <Text style={styles.meta}>Opening: {formatMoney(item.opening_balance)} | Closing: {formatMoney(item.closing_balance)}</Text>
-            <Text style={styles.meta}>Cash: {formatMoney(item.cash_on_hand)} | Variance: {formatMoney(item.variance)}</Text>
-            <Text style={styles.meta}>Status: {item.status.toUpperCase()}</Text>
-            <Text style={styles.meta}>{item.note || 'No note'}</Text>
+            <Text style={styles.meta}>খোলা: {formatMoney(item.opening_balance)} | বন্ধ: {formatMoney(item.closing_balance)}</Text>
+            <Text style={styles.meta}>নগদ: {formatMoney(item.cash_on_hand)} | পার্থক্য: {formatMoney(item.variance)}</Text>
+            <Text style={styles.meta}>অবস্থা: {item.status.toUpperCase()}</Text>
+            <Text style={styles.meta}>{item.note || 'নোট নেই'}</Text>
           </AppCard>
         )}
       />

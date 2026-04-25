@@ -129,7 +129,7 @@ export default function BackupRestoreScreen() {
       'পুনরুদ্ধারে সক্রিয় ব্যবহারকারীর তথ্য প্রতিস্থাপিত হবে। চালিয়ে যাবেন?',
       [
         {
-          text: 'Cancel',
+          text: 'বাতিল',
           style: 'cancel',
         },
         {
@@ -187,7 +187,7 @@ export default function BackupRestoreScreen() {
                 />
               </View>
               <AppButton
-                title={loading ? 'Refreshing...' : 'Refresh Remote State'}
+                title={loading ? 'রিফ্রেশ হচ্ছে...' : 'রিমোট স্ট্যাটাস রিফ্রেশ'}
                 variant="secondary"
                 style={styles.singleButton}
                 onPress={async () => {
@@ -271,7 +271,7 @@ export default function BackupRestoreScreen() {
             <Text style={styles.sectionTitle}>রিমোট ব্যাকআপ</Text>
           </View>
         )}
-        ListEmptyComponent={<Text style={styles.metaText}>{isOnline ? 'No remote backups found.' : 'Remote backups require online mode.'}</Text>}
+        ListEmptyComponent={<Text style={styles.metaText}>{isOnline ? 'কোনো রিমোট ব্যাকআপ নেই।' : 'রিমোট ব্যাকআপের জন্য অনলাইন থাকুন।'}</Text>}
         renderItem={({ item }) => (
           <AppCard style={styles.card}>
             <Text style={styles.rowTitle}>{String(item?.label || item?.backupId || 'backup')}</Text>

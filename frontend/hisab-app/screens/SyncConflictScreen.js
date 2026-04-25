@@ -185,7 +185,7 @@ export default function SyncConflictScreen() {
               <Text style={styles.metaText}>Resolved: {summary.resolved}</Text>
               <View style={styles.buttonRow}>
                 <AppButton
-                  title={loading ? 'Refreshing...' : 'Refresh'}
+                  title={loading ? 'রিফ্রেশ হচ্ছে...' : 'রিফ্রেশ'}
                   style={styles.buttonFlex}
                   onPress={loadConflicts}
                   disabled={loading}
@@ -225,7 +225,7 @@ export default function SyncConflictScreen() {
         )}
         ListEmptyComponent={
           <Text style={styles.metaText}>
-            {loading ? 'Loading conflict records...' : 'No active conflicts found.'}
+            {loading ? 'লোড হচ্ছে...' : 'কোনো সক্রিয় সংঘর্ষ নেই।'}
           </Text>
         }
         renderItem={({ item }) => {

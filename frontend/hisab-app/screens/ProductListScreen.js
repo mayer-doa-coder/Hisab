@@ -135,7 +135,7 @@ export default function ProductListScreen() {
     Alert.alert('পণ্য মুছুন', `${product.name} মুছে ফেলবেন?`, [
       { text: 'বাতিল', style: 'cancel' },
       {
-        text: 'Delete',
+        text: 'মুছুন',
         style: 'destructive',
         onPress: async () => {
           try {

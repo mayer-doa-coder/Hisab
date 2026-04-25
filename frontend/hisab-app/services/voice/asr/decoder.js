@@ -2,22 +2,36 @@ import { STATES } from '../voiceFSM';
 import { VOICE_TUNING_CONFIG } from '../config/voiceTuningConfig';
 import { buildHotwordDictionary, findBestNameMatch, normalizeText } from '../normalization/nameMatcher';
 
-const INTENT_ALLOWED = Object.freeze(['baki', 'joma', 'becha', 'kinbo']);
+const INTENT_ALLOWED = Object.freeze(['baki', 'joma', 'becha', 'kinbo', 'balance']);
 const YES_NO_ALLOWED = Object.freeze(['confirm', 'yes', 'na', 'cancel']);
 
 const EXTRA_INTENT_ALIASES = Object.freeze({
   // Devanagari variants commonly returned by multilingual ASR.
-  'बाकी': 'baki',
-  'बाकि': 'baki',
-  'जमा': 'joma',
-  'बेचा': 'becha',
+  'बाकी':  'baki',
+  'बाकि':  'baki',
+  'जमा':   'joma',
+  'बेचा':  'becha',
   'बिक्री': 'becha',
   'किन्बो': 'kinbo',
-  'किना': 'kinbo',
+  'किना':  'kinbo',
   // Arabic-script variants seen in runtime logs.
-  'جاما': 'joma',
+  'جاما':  'joma',
   'جا ما': 'joma',
-  'بাকি': 'baki',
+  'بাকি':  'baki',
+  // CHECK_BALANCE — Bengali Unicode variants.
+  'ব্যালেন্স':  'balance',
+  'হিসাব':      'balance',
+  'বাকি কত':   'balance',
+  'কত বাকি':   'balance',
+  // CHECK_BALANCE — common misrecognitions from STT.
+  'balans':     'balance',
+  'hishab':     'balance',
+  'hiseb':      'balance',
+  'hicab':      'balance',
+  'balence':    'balance',
+  'ballance':   'balance',
+  'hisaab':     'balance',
+  'blns':       'balance',
 });
 
 const INTENT_ALIAS_TO_CANONICAL = Object.freeze(

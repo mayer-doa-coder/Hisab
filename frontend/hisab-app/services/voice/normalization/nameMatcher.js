@@ -206,9 +206,15 @@ const buildAliasSet = (entry = {}) => {
 
   for (const alias of Array.isArray(entry.aliases) ? entry.aliases : []) {
     const value = String(alias || '').trim();
-    if (value) {
-      aliases.add(value);
-    }
+    if (value) aliases.add(value);
+  }
+
+  // misrecognitions are known bad STT outputs that must still resolve to this
+  // entry; including them here means the existing fuzzy scorer handles them
+  // without special-casing in every caller.
+  for (const bad of Array.isArray(entry.misrecognitions) ? entry.misrecognitions : []) {
+    const value = String(bad || '').trim();
+    if (value) aliases.add(value);
   }
 
   return [...aliases];

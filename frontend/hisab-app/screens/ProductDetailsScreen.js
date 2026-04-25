@@ -147,7 +147,7 @@ export default function ProductDetailsScreen() {
                   <View style={styles.headerRow}>
                     <Text style={styles.sectionTitle}>সাম্প্রতিক চলাচল</Text>
                     <TouchableOpacity style={styles.refreshButton} onPress={handleRefresh}>
-                      <Text style={styles.refreshText}>{refreshing || loadingHistory ? 'Refreshing...' : 'Refresh'}</Text>
+                      <Text style={styles.refreshText}>{refreshing || loadingHistory ? 'রিফ্রেশ হচ্ছে...' : 'রিফ্রেশ'}</Text>
                     </TouchableOpacity>
                   </View>
                 </>
@@ -155,7 +155,7 @@ export default function ProductDetailsScreen() {
             </View>
           }
           ListEmptyComponent={
-            <Text style={styles.emptyText}>{loadingHistory ? 'Loading movement history...' : 'No movement found.'}</Text>
+            <Text style={styles.emptyText}>{loadingHistory ? 'মুভমেন্ট লোড হচ্ছে...' : 'কোনো মুভমেন্ট নেই।'}</Text>
           }
           renderItem={({ item }) => (
             <View style={styles.card}>

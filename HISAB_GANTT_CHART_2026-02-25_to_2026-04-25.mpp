@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Project xmlns="http://schemas.microsoft.com/project">
+  <Name>HISAB Timeline 2026-02-25 to 2026-04-25</Name>
+  <Tasks>
+    <Task><UID>1</UID><ID>1</ID><Name>Project kickoff and scope alignment</Name><Start>2026-02-25T08:00:00</Start><Finish>2026-02-27T17:00:00</Finish><Duration>P3D</Duration></Task>
+    <Task><UID>2</UID><ID>2</ID><Name>Requirements finalization and workflow mapping</Name><Start>2026-02-26T08:00:00</Start><Finish>2026-03-01T17:00:00</Finish><Duration>P4D</Duration></Task>
+    <Task><UID>3</UID><ID>3</ID><Name>Data model and API contract drafting</Name><Start>2026-03-02T08:00:00</Start><Finish>2026-03-05T17:00:00</Finish><Duration>P4D</Duration></Task>
+    <Task><UID>4</UID><ID>4</ID><Name>Frontend screen flow planning and UI baseline</Name><Start>2026-03-03T08:00:00</Start><Finish>2026-03-06T17:00:00</Finish><Duration>P4D</Duration></Task>
+    <Task><UID>5</UID><ID>5</ID><Name>Core product/baki/customer CRUD + list workflows</Name><Start>2026-03-25T08:00:00</Start><Finish>2026-03-26T17:00:00</Finish><Duration>P2D</Duration></Task>
+    <Task><UID>6</UID><ID>6</ID><Name>Stock expiry, low-stock alerts, movement, reorder suggestions</Name><Start>2026-03-25T08:00:00</Start><Finish>2026-03-26T17:00:00</Finish><Duration>P2D</Duration></Task>
+    <Task><UID>7</UID><ID>7</ID><Name>PR integration milestone #1 and #2</Name><Start>2026-03-25T08:00:00</Start><Finish>2026-03-26T17:00:00</Finish><Duration>P2D</Duration></Task>
+    <Task><UID>8</UID><ID>8</ID><Name>Dashboard utility and hybrid session verification integration</Name><Start>2026-03-26T08:00:00</Start><Finish>2026-03-27T17:00:00</Finish><Duration>P2D</Duration></Task>
+    <Task><UID>9</UID><ID>9</ID><Name>Baki/customer analytics, repayment flow, filters, trust indicators</Name><Start>2026-03-26T08:00:00</Start><Finish>2026-03-27T17:00:00</Finish><Duration>P2D</Duration></Task>
+    <Task><UID>10</UID><ID>10</ID><Name>Architecture lock and SQLite-Mongo synchronization</Name><Start>2026-04-10T08:00:00</Start><Finish>2026-04-10T17:00:00</Finish><Duration>P1D</Duration></Task>
+    <Task><UID>11</UID><ID>11</ID><Name>Authentication and authorization hardening</Name><Start>2026-04-10T08:00:00</Start><Finish>2026-04-11T17:00:00</Finish><Duration>P2D</Duration></Task>
+    <Task><UID>12</UID><ID>12</ID><Name>Architecture-lock milestone merge and QA checks</Name><Start>2026-04-10T08:00:00</Start><Finish>2026-04-10T17:00:00</Finish><Duration>P1D</Duration></Task>
+    <Task><UID>13</UID><ID>13</ID><Name>Trust scoring system implementation</Name><Start>2026-04-11T08:00:00</Start><Finish>2026-04-12T17:00:00</Finish><Duration>P2D</Duration></Task>
+    <Task><UID>14</UID><ID>14</ID><Name>Trust score monitoring (RBAC), model training and backtesting</Name><Start>2026-04-12T08:00:00</Start><Finish>2026-04-13T17:00:00</Finish><Duration>P2D</Duration></Task>
+    <Task><UID>15</UID><ID>15</ID><Name>Trust-score milestone merge and regression verification</Name><Start>2026-04-12T08:00:00</Start><Finish>2026-04-12T17:00:00</Finish><Duration>P1D</Duration></Task>
+    <Task><UID>16</UID><ID>16</ID><Name>Markov queue forecasting and expected outcomes</Name><Start>2026-04-21T08:00:00</Start><Finish>2026-04-22T17:00:00</Finish><Duration>P2D</Duration></Task>
+    <Task><UID>17</UID><ID>17</ID><Name>Forecasting milestone merge and validation</Name><Start>2026-04-21T08:00:00</Start><Finish>2026-04-22T17:00:00</Finish><Duration>P2D</Duration></Task>
+    <Task><UID>18</UID><ID>18</ID><Name>Voice recognition, assistant feedback, and customer-flow UX improvements</Name><Start>2026-04-24T08:00:00</Start><Finish>2026-04-25T17:00:00</Finish><Duration>P2D</Duration></Task>
+    <Task><UID>19</UID><ID>19</ID><Name>Final stabilization, integration checks, and reporting handoff</Name><Start>2026-04-24T08:00:00</Start><Finish>2026-04-25T17:00:00</Finish><Duration>P2D</Duration></Task>
+  </Tasks>
+</Project>

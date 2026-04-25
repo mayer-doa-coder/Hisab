@@ -150,7 +150,7 @@ export default function OnboardingScreen() {
                   disabled={stepIndex === 0}
                 />
                 <AppButton
-                  title={stepIndex === GUIDED_STEPS.length - 1 ? 'Restart' : 'Next'}
+                  title={stepIndex === GUIDED_STEPS.length - 1 ? 'পুনরায় শুরু' : 'পরবর্তী'}
                   style={styles.buttonFlex}
                   onPress={() => setStepIndex((prev) => (prev === GUIDED_STEPS.length - 1 ? 0 : prev + 1))}
                 />
@@ -184,7 +184,7 @@ export default function OnboardingScreen() {
               </View>
 
               <AppButton
-                title={creating ? 'Creating...' : 'Add Pilot Shop'}
+                title={creating ? 'তৈরি হচ্ছে...' : 'পাইলট শপ যোগ করুন'}
                 onPress={createPilotShop}
                 disabled={creating}
               />

@@ -80,7 +80,7 @@ export default function GoodsReceiveScreen() {
   const handleReceive = async () => {
     const orderId = Number(selectedOrderId);
     if (!Number.isInteger(orderId) || orderId <= 0) {
-      Alert.alert('প্রয়োজনীয়', 'Select a purchase order first.');
+      Alert.alert('প্রয়োজনীয়', 'প্রথমে একটি ক্রয় আদেশ বেছে নিন।');
       return;
     }
 
@@ -92,7 +92,7 @@ export default function GoodsReceiveScreen() {
       .filter((item) => Number.isInteger(item.quantity) && item.quantity > 0);
 
     if (!payload.length) {
-      Alert.alert('পরিমাণ নেই', 'Enter quantity for at least one pending item.');
+      Alert.alert('পরিমাণ নেই', 'অন্তত একটি মুলতুবি আইটেমের পরিমাণ লিখুন।');
       return;
     }
 
@@ -112,7 +112,7 @@ export default function GoodsReceiveScreen() {
       await loadOrderDetails();
       await loadConsistency();
 
-      Alert.alert('গৃহীত হয়েছে', 'Stock updated and movement entries were recorded automatically.');
+      Alert.alert('গৃহীত হয়েছে', 'স্টক আপডেট হয়েছে এবং মুভমেন্ট স্বয়ংক্রিয়ভাবে রেকর্ড হয়েছে।');
     } catch (error) {
       Alert.alert('গ্রহণ ব্যর্থ', error?.message || 'পণ্য গ্রহণ করা যায়নি।');
     } finally {
@@ -146,13 +146,13 @@ export default function GoodsReceiveScreen() {
               </View>
               <View style={styles.buttonRow}>
                 <AppButton
-                  title={submitting ? 'Posting...' : 'Receive Selected Qty'}
+                  title={submitting ? 'জমা হচ্ছে...' : 'নির্বাচিত পরিমাণ গ্রহণ করুন'}
                   onPress={handleReceive}
                   disabled={submitting || !pendingItems.length}
                   style={styles.buttonFlex}
                 />
                 <AppButton
-                  title={refreshing || loading ? 'Refreshing...' : 'Refresh'}
+                  title={refreshing || loading ? 'রিফ্রেশ হচ্ছে...' : 'রিফ্রেশ'}
                   variant="secondary"
                   style={styles.buttonFlex}
                   onPress={async () => {
@@ -191,13 +191,13 @@ export default function GoodsReceiveScreen() {
           </View>
         }
         ListEmptyComponent={
-          <Text style={styles.emptyText}>{loading ? 'Loading...' : 'No pending receive items for selected order.'}</Text>
+          <Text style={styles.emptyText}>{loading ? 'লোড হচ্ছে...' : 'নির্বাচিত অর্ডারে কোনো মুলতুবি আইটেম নেই।'}</Text>
         }
         renderItem={({ item }) => (
           <AppCard style={styles.rowCard}>
             <Text style={styles.rowTitle}>{item.product_name}</Text>
             <Text style={styles.rowMeta}>
-              Ordered: {item.ordered_qty} | Received: {item.received_qty} | Pending: {item.pending_qty}
+              অর্ডার: {item.ordered_qty} | গৃহীত: {item.received_qty} | মুলতুবি: {item.pending_qty}
             </Text>
             <AppInput
               value={String(receiveMap[String(item.id)] || '')}

@@ -188,7 +188,7 @@ export default function OfflineQueueMonitor() {
               <Text style={styles.metaText}>Newest: {formatDateTime(localSummary.newestQueuedAt)}</Text>
               <View style={styles.buttonRow}>
                 <AppButton
-                  title={loading ? 'Refreshing...' : 'Refresh'}
+                  title={loading ? 'রিফ্রেশ হচ্ছে...' : 'রিফ্রেশ'}
                   style={styles.buttonFlex}
                   onPress={loadQueue}
                   disabled={loading}
