@@ -37,6 +37,12 @@ const INTENT_TO_API = Object.freeze({
       referenceId: payload.reference_id || null,
     }),
   },
+  CHECK_BALANCE: {
+    path: '/api/v1/baki/balance',
+    method: 'GET',
+    toPath: (payload) => `/api/v1/baki/balance?customerId=${encodeURIComponent(payload.customer_id || '')}`,
+    toBody: () => null,
+  },
 });
 
 export const getApiMappingForIntent = (intent) => {
@@ -55,10 +61,13 @@ export const executeMappedIntentOnline = async ({
     throw new Error(`No backend mapping found for intent: ${intent}`);
   }
 
+  const resolvedPath = typeof mapping.toPath === 'function' ? mapping.toPath(payload) : mapping.path;
+  const body = typeof mapping.toBody === 'function' ? mapping.toBody(payload) : null;
+
   return requestBackendJson({
-    path: mapping.path,
+    path: resolvedPath,
     method: mapping.method,
-    body: mapping.toBody(payload),
+    body,
     accessToken,
     extraHeaders: {
       'Idempotency-Key': idempotencyKey,

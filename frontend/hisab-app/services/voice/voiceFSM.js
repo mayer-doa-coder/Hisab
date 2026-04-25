@@ -25,6 +25,21 @@ const GLOBAL_CONTROL_TOKENS = Object.freeze(['next', 'back', 'cancel', 'repeat']
 const DEFAULT_TIMEOUT_RETRY_LIMIT = 2;
 const DEFAULT_HIGH_RISK_AMOUNT = 50000;
 
+// After this many failed attempts on a single state the FSM signals the UI
+// to switch to touch input instead of asking the user to speak again.
+const MAX_RETRIES_BEFORE_TOUCH = 2;
+
+// Minimum confidence required to accept a token in each state.
+// Deliberately more lenient than the execution gate so the FSM can accept
+// slightly-noisy input that is still clearly correct.
+const CONFIDENCE_THRESHOLDS_BY_STATE = Object.freeze({
+  WAIT_INTENT: 0.80,
+  WAIT_NAME:   0.84,
+  WAIT_AMOUNT: 0.88,
+  WAIT_DATE:   0.80,
+  CONFIRM:     0.95,
+});
+
 const BANGLA_DIGITS = Object.freeze({
   '০': '0',
   '১': '1',
@@ -175,6 +190,62 @@ const findNameMatches = (token, knownNames = []) => {
   });
 
   return ranked;
+};
+
+// Produces a Bengali yes/no confirmation prompt so users can hear what the
+// system understood before being forced to re-speak.
+// e.g.  "আপনি কি রহিম বলেছিলেন?"
+const buildConfirmationPrompt = ({ state, value, candidates = [] } = {}) => {
+  const names = (Array.isArray(candidates) ? candidates : []).slice(0, 2).map(String);
+
+  if (state === STATES.WAIT_NAME) {
+    if (names.length >= 2) {
+      return `আপনি কি "${names[0]}" না "${names[1]}" বলেছিলেন?`;
+    }
+    if (value) return `আপনি কি "${value}" বলেছিলেন?`;
+    return 'নামটি আরও স্পষ্ট করে বলুন।';
+  }
+
+  if (state === STATES.WAIT_AMOUNT && value !== undefined && value !== null) {
+    return `আপনি কি ${value} টাকা বলেছিলেন?`;
+  }
+
+  if (state === STATES.WAIT_INTENT && value) {
+    const INTENT_LABELS_BN = { baki: 'বাকি', joma: 'জমা', becha: 'বেচা', kinbo: 'কিনবো', balance: 'হিসাব' };
+    return `আপনি কি "${INTENT_LABELS_BN[value] || value}" বলেছিলেন?`;
+  }
+
+  if (state === STATES.WAIT_DATE && value) {
+    return `আপনি কি "${value}" তারিখ বলেছিলেন?`;
+  }
+
+  return 'আমি ঠিকমতো শুনতে পাইনি। আবার বলুন।';
+};
+
+// Ensures all slots required for the current intent are filled before the
+// flow advances from REVIEW to CONFIRM.  Called by handleGlobalControls
+// when the user says "next" in REVIEW state.
+const validateSlotCompleteness = (context) => {
+  const intent = context?.intent;
+
+  if (!intent) {
+    return { ok: false, missingSlot: 'intent', message: 'কোন কাজ করবেন তা বলুন।' };
+  }
+
+  if (!context?.name) {
+    return { ok: false, missingSlot: 'name', message: 'নাম এখনও নেওয়া হয়নি।' };
+  }
+
+  // CHECK_BALANCE does not require amount or date
+  if (intent === 'balance') {
+    return { ok: true };
+  }
+
+  if (context?.amount === null || context?.amount === undefined || Number(context.amount) <= 0) {
+    return { ok: false, missingSlot: 'amount', message: 'টাকার পরিমাণ এখনও নেওয়া হয়নি।' };
+  }
+
+  return { ok: true };
 };
 
 const getPromptForState = (state) => {
@@ -338,6 +409,22 @@ const handleGlobalControls = ({ token, state, context }) => {
     }
 
     if (state === STATES.REVIEW) {
+      // Prevent advancing to CONFIRM if any required slot is still empty —
+      // guards against edge cases where the user navigated back and skipped a step.
+      const slotCheck = validateSlotCompleteness(context);
+      if (!slotCheck.ok) {
+        return {
+          handled: true,
+          state,
+          context: {
+            ...context,
+            lastError: slotCheck.message,
+            lastPrompt: slotCheck.message,
+          },
+          message: slotCheck.message,
+        };
+      }
+
       return {
         handled: true,
         state: STATES.CONFIRM,
@@ -465,6 +552,8 @@ const withNextStateContext = (context, nextState) => ({
   flowHistory: [...(context.flowHistory || []), nextState],
   retriesByState: {
     ...(context.retriesByState || {}),
+    // Reset the counter for the new state; the current state's counter is kept
+    // for analytics (it reflects how many retries the user needed).
     [nextState]: 0,
   },
 });
@@ -501,18 +590,52 @@ const transition = ({
   });
 
   if (!validation.ok) {
+    // Increment the per-state retry counter so callers and the touch-escalation
+    // gate below can see how many attempts have been made without success.
+    const prevRetries = Number((activeContext.retriesByState || {})[activeState] || 0);
+    const nextRetries = prevRetries + 1;
+
+    // Choose between a generic error message and a Bengali confirmation prompt.
+    // For low-confidence or ambiguous name results we prefer the confirmation
+    // form ("আপনি কি রহিম বলেছিলেন?") so the user can simply say "yes" or "no".
+    const ambigCandidates = (validation.ambiguity?.candidates || []).map((c) => String(c.name || c));
+    const isLowConfidenceOrAmbiguous = (
+      validation.reason === 'LOW_CONFIDENCE_NAME'
+      || validation.reason === 'AMBIGUOUS_NAME'
+    );
+    const userMessage = isLowConfidenceOrAmbiguous
+      ? buildConfirmationPrompt({ state: activeState, value: ambigCandidates[0], candidates: ambigCandidates })
+      : (validation.message || getPromptForState(activeState));
+
     const nextContext = {
       ...activeContext,
       lastError: validation.message || validation.reason,
-      lastPrompt: validation.message || getPromptForState(activeState),
+      lastPrompt: userMessage,
+      retriesByState: {
+        ...(activeContext.retriesByState || {}),
+        [activeState]: nextRetries,
+      },
     };
 
+    // Once the user has hit MAX_RETRIES_BEFORE_TOUCH on a single state include
+    // a touchEscalation payload so the UI can switch to touch input without
+    // waiting for another failed voice attempt.
+    const touchEscalation = nextRetries >= MAX_RETRIES_BEFORE_TOUCH
+      ? {
+        state:      activeState,
+        retryCount: nextRetries,
+        reason:     validation.reason,
+        candidates: ambigCandidates,
+      }
+      : null;
+
     return {
-      state: activeState,
-      context: nextContext,
-      message: validation.message || 'Invalid token.',
-      output: buildOutputContract(nextContext),
-      ambiguity: validation.ambiguity || null,
+      state:          activeState,
+      context:        nextContext,
+      message:        userMessage,
+      output:         buildOutputContract(nextContext),
+      ambiguity:      validation.ambiguity || null,
+      touchEscalation,
     };
   }
 
@@ -668,8 +791,12 @@ export {
   GLOBAL_CONTROL_TOKENS,
   DEFAULT_TIMEOUT_RETRY_LIMIT,
   DEFAULT_HIGH_RISK_AMOUNT,
+  MAX_RETRIES_BEFORE_TOUCH,
+  CONFIDENCE_THRESHOLDS_BY_STATE,
   buildInitialContext,
   buildOutputContract,
+  buildConfirmationPrompt,
+  validateSlotCompleteness,
   getPromptForState,
   normalizeToken,
   normalizeDigits,
