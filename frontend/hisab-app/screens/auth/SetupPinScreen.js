@@ -69,6 +69,7 @@ export default function SetupPinScreen({ navigation }) {
         value={pin}
         onChangeText={setPin}
         placeholder="নতুন PIN"
+        placeholderTextColor={UI_COLORS.textSecondary}
         keyboardType="number-pad"
         maxLength={6}
         secureTextEntry
@@ -79,6 +80,7 @@ export default function SetupPinScreen({ navigation }) {
         value={confirmPin}
         onChangeText={setConfirmPin}
         placeholder="PIN নিশ্চিত করুন"
+        placeholderTextColor={UI_COLORS.textSecondary}
         keyboardType="number-pad"
         maxLength={6}
         secureTextEntry
@@ -87,7 +89,7 @@ export default function SetupPinScreen({ navigation }) {
 
       <TouchableOpacity style={AUTH_FORM_STYLES.checkboxRow} onPress={() => setTrustDevice((prev) => !prev)}>
         <View style={[AUTH_FORM_STYLES.checkbox, trustDevice && AUTH_FORM_STYLES.checkboxActive]}>
-          {trustDevice ? <Text style={AUTH_FORM_STYLES.checkboxTick}>v</Text> : null}
+          {trustDevice ? <Text style={AUTH_FORM_STYLES.checkboxTick}>✓</Text> : null}
         </View>
         <Text style={AUTH_FORM_STYLES.checkboxText}>এই ডিভাইসে PIN লগইন বিশ্বাস করুন</Text>
       </TouchableOpacity>

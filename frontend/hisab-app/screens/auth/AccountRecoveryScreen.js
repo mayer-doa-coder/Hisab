@@ -55,6 +55,7 @@ export default function AccountRecoveryScreen({ navigation }) {
         value={email}
         onChangeText={setEmail}
         placeholder="ইমেইল"
+        placeholderTextColor={UI_COLORS.textSecondary}
         autoCapitalize="none"
         keyboardType="email-address"
         style={AUTH_FORM_STYLES.input}
@@ -71,7 +72,11 @@ export default function AccountRecoveryScreen({ navigation }) {
         onPress={handleRequestRecovery}
         disabled={requesting}
       >
-        {requesting ? <ActivityIndicator size="small" color={UI_COLORS.onAccent} /> : <Text style={AUTH_FORM_STYLES.primaryButtonText}>PIN রিকভারি টোকেন পাঠান</Text>}
+        {requesting ? (
+          <ActivityIndicator size="small" color={UI_COLORS.onAccent} />
+        ) : (
+          <Text style={AUTH_FORM_STYLES.primaryButtonText}>PIN রিকভারি টোকেন পাঠান</Text>
+        )}
       </TouchableOpacity>
 
       <TouchableOpacity style={AUTH_FORM_STYLES.linkButton} onPress={() => navigation.navigate('Login')}>

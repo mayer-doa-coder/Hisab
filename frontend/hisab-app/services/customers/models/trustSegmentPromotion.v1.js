@@ -1,6 +1,6 @@
 export const TRUST_SEGMENT_PROMOTION = {
   "gate_version": "1.0.0",
-  "generated_at": "2026-04-26T10:39:49.197165Z",
+  "generated_at": "2026-04-26T11:46:06.758237Z",
   "dataset_source": "synthetic_seed_1337",
   "promoted_segments": [],
   "segment_decisions": {

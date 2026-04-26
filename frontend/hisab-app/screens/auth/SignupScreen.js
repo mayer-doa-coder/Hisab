@@ -79,6 +79,7 @@ export default function SignupScreen({ navigation }) {
         value={email}
         onChangeText={setEmail}
         placeholder="ইমেইল"
+        placeholderTextColor={UI_COLORS.textSecondary}
         autoCapitalize="none"
         keyboardType="email-address"
         style={AUTH_FORM_STYLES.input}
@@ -94,6 +95,7 @@ export default function SignupScreen({ navigation }) {
         value={pin}
         onChangeText={setPin}
         placeholder="PIN সেট করুন"
+        placeholderTextColor={UI_COLORS.textSecondary}
         keyboardType="number-pad"
         maxLength={6}
         secureTextEntry
@@ -104,6 +106,7 @@ export default function SignupScreen({ navigation }) {
         value={confirmPin}
         onChangeText={setConfirmPin}
         placeholder="PIN নিশ্চিত করুন"
+        placeholderTextColor={UI_COLORS.textSecondary}
         keyboardType="number-pad"
         maxLength={6}
         secureTextEntry

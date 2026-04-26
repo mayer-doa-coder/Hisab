@@ -92,6 +92,7 @@ export default function VerifyEmailScreen({ navigation, route }) {
         value={email}
         onChangeText={setEmail}
         placeholder="ইমেইল"
+        placeholderTextColor={UI_COLORS.textSecondary}
         autoCapitalize="none"
         keyboardType="email-address"
         style={AUTH_FORM_STYLES.input}
@@ -101,13 +102,14 @@ export default function VerifyEmailScreen({ navigation, route }) {
         value={verificationCode}
         onChangeText={setVerificationCode}
         placeholder="যাচাই কোড"
+        placeholderTextColor={UI_COLORS.textSecondary}
         autoCapitalize="characters"
         style={AUTH_FORM_STYLES.input}
       />
 
       <TouchableOpacity style={AUTH_FORM_STYLES.checkboxRow} onPress={() => setRememberMe((prev) => !prev)}>
         <View style={[AUTH_FORM_STYLES.checkbox, rememberMe && AUTH_FORM_STYLES.checkboxActive]}>
-          {rememberMe ? <Text style={AUTH_FORM_STYLES.checkboxTick}>v</Text> : null}
+          {rememberMe ? <Text style={AUTH_FORM_STYLES.checkboxTick}>✓</Text> : null}
         </View>
         <Text style={AUTH_FORM_STYLES.checkboxText}>যাচাইয়ের পর মনে রাখুন</Text>
       </TouchableOpacity>

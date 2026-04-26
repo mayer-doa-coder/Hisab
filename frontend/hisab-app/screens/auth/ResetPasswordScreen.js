@@ -70,6 +70,7 @@ export default function ResetPasswordScreen({ navigation }) {
         value={resetToken}
         onChangeText={setResetToken}
         placeholder="রিকভারি টোকেন"
+        placeholderTextColor={UI_COLORS.textSecondary}
         autoCapitalize="none"
         style={AUTH_FORM_STYLES.input}
       />
@@ -84,6 +85,7 @@ export default function ResetPasswordScreen({ navigation }) {
         value={newPin}
         onChangeText={setNewPin}
         placeholder="নতুন PIN"
+        placeholderTextColor={UI_COLORS.textSecondary}
         keyboardType="number-pad"
         maxLength={6}
         secureTextEntry
@@ -94,6 +96,7 @@ export default function ResetPasswordScreen({ navigation }) {
         value={confirmPin}
         onChangeText={setConfirmPin}
         placeholder="PIN নিশ্চিত করুন"
+        placeholderTextColor={UI_COLORS.textSecondary}
         keyboardType="number-pad"
         maxLength={6}
         secureTextEntry

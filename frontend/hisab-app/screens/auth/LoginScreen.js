@@ -49,6 +49,7 @@ const resolveRetrySeconds = (error) => {
 export default function LoginScreen({ navigation }) {
   const { login, authDeviceProfile } = useAuth();
 
+  const [email, setEmail] = useState(String(authDeviceProfile?.preferredEmail || '').trim());
   const [pin, setPin] = useState('');
   const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -59,11 +60,11 @@ export default function LoginScreen({ navigation }) {
       return;
     }
 
-    const normalizedEmail = String(authDeviceProfile?.preferredEmail || '').trim();
+    const normalizedEmail = String(email || '').trim();
     const normalizedPin = String(pin || '').trim();
 
     if (!normalizedEmail) {
-      setMessage('ইমেইল নিবন্ধিত নয়।');
+      setMessage('ইমেইল দিন।');
       return;
     }
 
@@ -112,7 +113,7 @@ export default function LoginScreen({ navigation }) {
     <AuthScene
       eyebrow="হিসাব"
       title="প্রবেশ করুন"
-      subtitle="আপনার PIN দিয়ে প্রবেশ করুন"
+      subtitle="ইমেইল ও PIN দিয়ে প্রবেশ করুন"
     >
       {message ? (
         <View style={AUTH_FORM_STYLES.noticeStrip}>
@@ -121,9 +122,20 @@ export default function LoginScreen({ navigation }) {
       ) : null}
 
       <TextInput
+        value={email}
+        onChangeText={setEmail}
+        placeholder="ইমেইল"
+        placeholderTextColor={UI_COLORS.textSecondary}
+        autoCapitalize="none"
+        keyboardType="email-address"
+        style={AUTH_FORM_STYLES.input}
+      />
+
+      <TextInput
         value={pin}
         onChangeText={setPin}
         placeholder="আপনার PIN"
+        placeholderTextColor={UI_COLORS.textSecondary}
         keyboardType="number-pad"
         maxLength={6}
         secureTextEntry

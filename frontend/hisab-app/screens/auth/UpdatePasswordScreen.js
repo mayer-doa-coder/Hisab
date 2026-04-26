@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -13,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { UI_COLORS } from '../../constants/ui-theme';
 import { useAuth } from '../../context/AuthContext';
+import { SPACING } from '../../theme/spacing';
 
 export default function UpdatePasswordScreen() {
   const { updatePin } = useAuth();
@@ -65,50 +67,63 @@ export default function UpdatePasswordScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex}>
-        <View style={styles.container}>
-          <Text style={styles.title}>PIN আপডেট করুন</Text>
-          <Text style={styles.subtitle}>PIN পরিবর্তন</Text>
+        <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+          <View style={styles.card}>
+            <Text style={styles.title}>PIN আপডেট করুন</Text>
+            <Text style={styles.subtitle}>আপনার PIN পরিবর্তন করুন</Text>
 
-          <TextInput
-            value={currentPin}
-            onChangeText={setCurrentPin}
-            placeholder="বর্তমান PIN"
-            keyboardType="number-pad"
-            maxLength={6}
-            secureTextEntry
-            style={styles.input}
-          />
+            <TextInput
+              value={currentPin}
+              onChangeText={setCurrentPin}
+              placeholder="বর্তমান PIN"
+              placeholderTextColor={UI_COLORS.textSecondary}
+              keyboardType="number-pad"
+              maxLength={6}
+              secureTextEntry
+              style={styles.input}
+            />
 
-          {message ? (
-            <View style={styles.inlineNotice}>
-              <Text style={styles.inlineNoticeText}>{message}</Text>
-            </View>
-          ) : null}
+            {message ? (
+              <View style={styles.inlineNotice}>
+                <Text style={styles.inlineNoticeText}>{message}</Text>
+              </View>
+            ) : null}
 
-          <TextInput
-            value={newPin}
-            onChangeText={setNewPin}
-            placeholder="নতুন PIN"
-            keyboardType="number-pad"
-            maxLength={6}
-            secureTextEntry
-            style={styles.input}
-          />
+            <TextInput
+              value={newPin}
+              onChangeText={setNewPin}
+              placeholder="নতুন PIN"
+              placeholderTextColor={UI_COLORS.textSecondary}
+              keyboardType="number-pad"
+              maxLength={6}
+              secureTextEntry
+              style={styles.input}
+            />
 
-          <TextInput
-            value={confirmPin}
-            onChangeText={setConfirmPin}
-            placeholder="PIN নিশ্চিত করুন"
-            keyboardType="number-pad"
-            maxLength={6}
-            secureTextEntry
-            style={styles.input}
-          />
+            <TextInput
+              value={confirmPin}
+              onChangeText={setConfirmPin}
+              placeholder="PIN নিশ্চিত করুন"
+              placeholderTextColor={UI_COLORS.textSecondary}
+              keyboardType="number-pad"
+              maxLength={6}
+              secureTextEntry
+              style={styles.input}
+            />
 
-          <TouchableOpacity style={[styles.button, loading && styles.buttonDisabled]} onPress={handleUpdatePin} disabled={loading}>
-            {loading ? <ActivityIndicator size="small" color={UI_COLORS.onAccent} /> : <Text style={styles.buttonText}>PIN আপডেট করুন</Text>}
-          </TouchableOpacity>
-        </View>
+            <TouchableOpacity
+              style={[styles.button, loading && styles.buttonDisabled]}
+              onPress={handleUpdatePin}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator size="small" color={UI_COLORS.onAccent} />
+              ) : (
+                <Text style={styles.buttonText}>PIN আপডেট করুন</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -122,61 +137,98 @@ const styles = StyleSheet.create({
   flex: {
     flex: 1,
   },
-  container: {
-    flex: 1,
-    padding: 20,
+  scrollContent: {
+    paddingHorizontal: SPACING.lg,
+    paddingTop: SPACING.xl,
+    paddingBottom: SPACING.xl,
+    flexGrow: 1,
     justifyContent: 'center',
-    gap: 10,
+  },
+  card: {
+    borderRadius: 24,
+    backgroundColor: UI_COLORS.surface,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.xl,
+    gap: SPACING.sm,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 18,
+    elevation: 8,
   },
   title: {
+    fontFamily: 'AnekBangla_800ExtraBold',
     fontSize: 28,
-    fontWeight: '800',
+    lineHeight: 36,
+    includeFontPadding: false,
     color: UI_COLORS.textPrimary,
   },
   subtitle: {
-    marginBottom: 6,
+    fontFamily: 'AnekBangla_400Regular',
     fontSize: 13,
+    lineHeight: 20,
+    includeFontPadding: false,
     color: UI_COLORS.textSecondary,
+    marginBottom: SPACING.xs,
   },
   input: {
-    borderWidth: 1,
-    borderColor: UI_COLORS.border,
-    borderRadius: 10,
+    height: 52,
+    borderRadius: 16,
     backgroundColor: UI_COLORS.surface,
-    paddingHorizontal: 12,
-    paddingVertical: 11,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: 0,
     color: UI_COLORS.textPrimary,
-    fontSize: 15,
+    fontFamily: 'AnekBangla_500Medium',
+    fontSize: 14,
+    lineHeight: 22,
+    includeFontPadding: false,
+    textAlignVertical: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.07,
+    shadowRadius: 8,
+    elevation: 3,
   },
   inlineNotice: {
-    borderLeftWidth: 3,
-    borderColor: UI_COLORS.primary,
     backgroundColor: UI_COLORS.surfaceSoft,
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
+    borderRadius: 12,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.sm,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
   },
   inlineNoticeText: {
-    color: UI_COLORS.textPrimary,
+    fontFamily: 'AnekBangla_600SemiBold',
     fontSize: 12,
-    fontWeight: '700',
+    lineHeight: 18,
+    includeFontPadding: false,
+    color: UI_COLORS.textPrimary,
   },
   button: {
-    marginTop: 6,
-    borderRadius: 10,
-    backgroundColor: UI_COLORS.primary,
+    marginTop: SPACING.md,
+    borderRadius: 16,
+    backgroundColor: UI_COLORS.accent,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
-    minHeight: 46,
+    height: 52,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.14,
+    shadowRadius: 12,
+    elevation: 5,
   },
   buttonDisabled: {
-    opacity: 0.7,
+    opacity: 0.6,
   },
   buttonText: {
-    color: UI_COLORS.onAccent,
+    fontFamily: 'AnekBangla_700Bold',
     fontSize: 15,
-    fontWeight: '700',
+    lineHeight: 22,
+    includeFontPadding: false,
+    color: UI_COLORS.onAccent,
+    textAlign: 'center',
   },
 });
-

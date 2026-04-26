@@ -123,6 +123,7 @@ export default function PinLoginScreen({ navigation }) {
         value={email}
         onChangeText={setEmail}
         placeholder="ইমেইল"
+        placeholderTextColor={UI_COLORS.textSecondary}
         autoCapitalize="none"
         keyboardType="email-address"
         style={AUTH_FORM_STYLES.input}
@@ -138,6 +139,7 @@ export default function PinLoginScreen({ navigation }) {
         value={pin}
         onChangeText={setPin}
         placeholder="আপনার PIN"
+        placeholderTextColor={UI_COLORS.textSecondary}
         keyboardType="number-pad"
         maxLength={6}
         secureTextEntry
