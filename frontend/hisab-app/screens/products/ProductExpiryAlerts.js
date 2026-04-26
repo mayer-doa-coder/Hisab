@@ -36,9 +36,9 @@ export default function ProductExpiryAlerts({ expiringSoonProducts, expiredProdu
         <Text style={styles.badgeText}>{expiringSoonCount} items expiring soon</Text>
       </View>
 
-      <Text style={styles.sectionHeading}>Expiring Soon (next 7 days)</Text>
+      <Text style={styles.sectionHeading}>শীঘ্রই মেয়াদ শেষ (আগামী ৭ দিন)</Text>
       {expiringSoonCount === 0 ? (
-        <Text style={styles.emptyText}>No products expiring soon.</Text>
+        <Text style={styles.emptyText}>শীঘ্রই মেয়াদ শেষ হওয়ার কোনো পণ্য নেই।</Text>
       ) : (
         expiringSoonProducts.map((product) => (
           <ProductExpiryRow key={`soon-${product.id}`} item={product} tone="warning" />
@@ -47,7 +47,7 @@ export default function ProductExpiryAlerts({ expiringSoonProducts, expiredProdu
 
       <Text style={styles.sectionHeading}>মেয়াদোত্তীর্ণ পণ্য</Text>
       {expiredProducts.length === 0 ? (
-        <Text style={styles.emptyText}>No expired products.</Text>
+        <Text style={styles.emptyText}>কোনো মেয়াদোত্তীর্ণ পণ্য নেই।</Text>
       ) : (
         expiredProducts.map((product) => <ProductExpiryRow key={`expired-${product.id}`} item={product} tone="danger" />)
       )}

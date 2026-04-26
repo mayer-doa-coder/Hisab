@@ -1,13 +1,13 @@
 {
   "schema_version": "1.0.0",
   "source": "phase8_runtime_react_native",
-  "ingested_at": "2026-04-24T17:04:32.779Z",
-  "generated_at": "2026-04-24T17:04:33.612Z",
-  "snapshot_version": 3,
+  "ingested_at": "2026-04-26T10:44:17.069Z",
+  "generated_at": "2026-04-26T10:44:17.774Z",
+  "snapshot_version": 5,
   "request_count": 1,
   "fallback_rate": 1,
   "error_rate": 0,
-  "latency_ms_p95": 34,
+  "latency_ms_p95": 27,
   "rollout_observed_percentage": 100,
   "business_loss_increase_pct": null,
   "metrics": {

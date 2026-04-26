@@ -83,7 +83,7 @@ export default function PurchaseOrderScreen() {
     const product = products.find((item) => Number(item.id) === normalizedProductId);
 
     if (!product) {
-      Alert.alert('পণ্য বেছে নিন', 'Please select a product first.');
+      Alert.alert('পণ্য বেছে নিন', 'আগে একটি পণ্য বেছে নিন।');
       return;
     }
 
@@ -230,7 +230,7 @@ export default function PurchaseOrderScreen() {
                 </View>
               ))}
 
-              <Text style={styles.totalText}>Order Total: {formatMoney(orderTotal)}</Text>
+              <Text style={styles.totalText}>অর্ডার মোট: {formatMoney(orderTotal)}</Text>
 
               <View style={styles.rowInputs}>
                 <AppInput
@@ -250,13 +250,13 @@ export default function PurchaseOrderScreen() {
 
               <View style={styles.rowButtons}>
                 <AppButton
-                  title={saving ? 'Creating...' : 'Create Purchase Order'}
+                  title={saving ? 'তৈরি হচ্ছে...' : 'ক্রয় আদেশ তৈরি করুন'}
                   onPress={handleCreateOrder}
                   disabled={saving}
                   style={styles.buttonFlex}
                 />
                 <AppButton
-                  title={refreshing ? 'Refreshing...' : 'Refresh'}
+                  title={refreshing ? 'রিফ্রেশ হচ্ছে...' : 'রিফ্রেশ'}
                   variant="secondary"
                   style={styles.buttonFlex}
                   onPress={async () => {
@@ -272,7 +272,7 @@ export default function PurchaseOrderScreen() {
           </View>
         }
         ListEmptyComponent={
-          <Text style={styles.emptyText}>{loadingHistory ? 'লোড হচ্ছে...' : 'No purchase orders yet.'}</Text>
+          <Text style={styles.emptyText}>{loadingHistory ? 'লোড হচ্ছে...' : 'এখনো কোনো ক্রয় আদেশ নেই।'}</Text>
         }
         renderItem={({ item }) => (
           <AppCard style={styles.historyCard}>
@@ -281,9 +281,9 @@ export default function PurchaseOrderScreen() {
               <Text style={styles.historyStatus}>{item.status.toUpperCase()}</Text>
             </View>
             <Text style={styles.historyMeta}>{item.supplier_name}</Text>
-            <Text style={styles.historyMeta}>Ordered: {item.ordered_qty_total} | Received: {item.received_qty_total}</Text>
+            <Text style={styles.historyMeta}>অর্ডার: {item.ordered_qty_total} | গৃহীত: {item.received_qty_total}</Text>
             <Text style={styles.historyMeta}>
-              Total: {formatMoney(item.total_amount)} | Paid: {formatMoney(item.paid_amount)} | Due: {formatMoney(item.due_amount)}
+              মোট: {formatMoney(item.total_amount)} | পরিশোধ: {formatMoney(item.paid_amount)} | বাকি: {formatMoney(item.due_amount)}
             </Text>
           </AppCard>
         )}

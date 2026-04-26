@@ -74,7 +74,7 @@ export default function ProductSelector({
 
       <View style={styles.row}>
         <View style={styles.col}>
-          <Text style={styles.label}>Qty</Text>
+          <Text style={styles.label}>পরিমাণ</Text>
           <AppInput value={quantity} onChangeText={onChangeQuantity} keyboardType="number-pad" placeholder="1" />
         </View>
         <View style={styles.col}>

@@ -17,15 +17,15 @@ import { UI_COLORS } from '../constants/ui-theme';
 import { useAppData } from '../context/AppDataContext';
 
 const MOVEMENT_OPTIONS = [
-  { label: 'Stock In (+)', value: 'in' },
-  { label: 'Stock Out (-)', value: 'out' },
-  { label: 'Adjust (+/-)', value: 'adjust' },
+  { label: 'স্টক ইন (+)', value: 'in' },
+  { label: 'স্টক আউট (-)', value: 'out' },
+  { label: 'সমন্বয় (+/-)', value: 'adjust' },
 ];
 
 const STOCK_OUT_REASON_OPTIONS = [
-  { label: 'Damage', value: 'DAMAGE' },
-  { label: 'Expiry', value: 'EXPIRY' },
-  { label: 'Adjustment', value: 'ADJUSTMENT' },
+  { label: 'ক্ষতি', value: 'DAMAGE' },
+  { label: 'মেয়াদ শেষ', value: 'EXPIRY' },
+  { label: 'সমন্বয়', value: 'ADJUSTMENT' },
 ];
 
 const formatDateTime = (value) => {
@@ -149,7 +149,7 @@ export default function StockMovementScreen() {
                       {products.map((item) => (
                         <Picker.Item
                           key={`movement-product-${item.id}`}
-                          label={`${item.name} (Qty: ${item.quantity})`}
+                          label={`${item.name} (পরিমাণ: ${item.quantity})`}
                           value={String(item.id)}
                         />
                       ))}
@@ -199,7 +199,7 @@ export default function StockMovementScreen() {
 
                   {selectedProduct ? (
                     <View style={styles.stockHintCard}>
-                      <Text style={styles.stockHintText}>Current Quantity: {selectedProduct.quantity}</Text>
+                      <Text style={styles.stockHintText}>বর্তমান পরিমাণ: {selectedProduct.quantity}</Text>
                     </View>
                   ) : null}
 
@@ -208,7 +208,7 @@ export default function StockMovementScreen() {
                     onPress={handleSaveMovement}
                     disabled={saving || refreshing || !productId}
                   >
-                    <Text style={styles.buttonText}>{saving ? 'Saving...' : 'Save Movement'}</Text>
+                    <Text style={styles.buttonText}>{saving ? 'সেভ হচ্ছে...' : 'মুভমেন্ট সেভ করুন'}</Text>
                   </TouchableOpacity>
                 </>
               )}
@@ -216,13 +216,13 @@ export default function StockMovementScreen() {
               <View style={styles.headerRow}>
                 <Text style={styles.sectionTitle}>মুভমেন্ট ইতিহাস</Text>
                 <TouchableOpacity style={styles.refreshButton} onPress={() => loadHistory(productId)}>
-                  <Text style={styles.refreshText}>{loadingHistory ? 'Loading...' : 'Reload'}</Text>
+                  <Text style={styles.refreshText}>{loadingHistory ? 'লোড হচ্ছে...' : 'পুনরায় লোড'}</Text>
                 </TouchableOpacity>
               </View>
             </View>
           }
           ListEmptyComponent={
-            <Text style={styles.emptyText}>{loadingHistory ? 'Loading movement history...' : 'No movement found.'}</Text>
+            <Text style={styles.emptyText}>{loadingHistory ? 'মুভমেন্ট ইতিহাস লোড হচ্ছে...' : 'কোনো মুভমেন্ট পাওয়া যায়নি।'}</Text>
           }
           renderItem={({ item }) => (
             <View style={styles.card}>
@@ -233,8 +233,8 @@ export default function StockMovementScreen() {
               <Text style={styles.meta}>Delta: {deltaPrefix(Number(item.quantity_delta))}{item.quantity_delta}</Text>
               {item.stock_out_reason ? <Text style={styles.meta}>Reason: {item.stock_out_reason}</Text> : null}
               {item.receipt_id ? <Text style={styles.meta}>Receipt: {item.receipt_id}</Text> : null}
-              <Text style={styles.meta}>Before: {item.quantity_before} | After: {item.quantity_after}</Text>
-              <Text style={styles.meta}>Date: {formatDateTime(item.created_at)}</Text>
+              <Text style={styles.meta}>আগে: {item.quantity_before} | পরে: {item.quantity_after}</Text>
+              <Text style={styles.meta}>তারিখ: {formatDateTime(item.created_at)}</Text>
               {item.note ? <Text style={styles.meta}>Note: {item.note}</Text> : null}
             </View>
           )}

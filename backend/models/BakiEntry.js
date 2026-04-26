@@ -105,6 +105,21 @@ const bakiEntrySchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    paymentCode: {
+      type: String,
+      default: null,
+      trim: true,
+      index: true,
+      sparse: true,
+    },
+    paymentCodeExpiresAt: {
+      type: Date,
+      default: null,
+    },
+    paymentCodeUsed: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     timestamps: true,

@@ -1,0 +1,121 @@
+{
+  "generated_at": "2026-04-25T19:56:52.052Z",
+  "dataset_version": "v1.2.0",
+  "sample_count": 2665,
+  "confidence_floor": 0.68,
+  "overall": {
+    "intent_accuracy": 1,
+    "slot_accuracy": {
+      "name": 1,
+      "amount": 1
+    },
+    "false_execution_rate": 0,
+    "noise_reduction_rate": 0.7437,
+    "counts": {
+      "intent_total": 2663,
+      "name_total": 2665,
+      "amount_total": 2664,
+      "false_exec_denom": 2
+    }
+  },
+  "by_noise_tag": {
+    "shop_noise": {
+      "intent_accuracy": 1,
+      "slot_accuracy": {
+        "name": 1,
+        "amount": 1
+      },
+      "false_execution_rate": 0,
+      "noise_reduction_rate": 0.7441,
+      "counts": {
+        "intent_total": 532,
+        "name_total": 533,
+        "amount_total": 533,
+        "false_exec_denom": 1
+      }
+    },
+    "interrupted": {
+      "intent_accuracy": 1,
+      "slot_accuracy": {
+        "name": 1,
+        "amount": 1
+      },
+      "false_execution_rate": 0,
+      "noise_reduction_rate": 0.744,
+      "counts": {
+        "intent_total": 531,
+        "name_total": 532,
+        "amount_total": 531,
+        "false_exec_denom": 1
+      }
+    },
+    "mispronounced": {
+      "intent_accuracy": 1,
+      "slot_accuracy": {
+        "name": 1,
+        "amount": 1
+      },
+      "false_execution_rate": 0,
+      "noise_reduction_rate": 0.7436,
+      "counts": {
+        "intent_total": 533,
+        "name_total": 533,
+        "amount_total": 533,
+        "false_exec_denom": 0
+      }
+    },
+    "mixed": {
+      "intent_accuracy": 1,
+      "slot_accuracy": {
+        "name": 1,
+        "amount": 1
+      },
+      "false_execution_rate": 0,
+      "noise_reduction_rate": 0.743,
+      "counts": {
+        "intent_total": 534,
+        "name_total": 534,
+        "amount_total": 534,
+        "false_exec_denom": 0
+      }
+    },
+    "clean": {
+      "intent_accuracy": 1,
+      "slot_accuracy": {
+        "name": 1,
+        "amount": 1
+      },
+      "false_execution_rate": 0,
+      "noise_reduction_rate": 0.7439,
+      "counts": {
+        "intent_total": 533,
+        "name_total": 533,
+        "amount_total": 533,
+        "false_exec_denom": 0
+      }
+    }
+  },
+  "failure_analysis": {
+    "total_failures": 0,
+    "by_state": {
+      "WAIT_INTENT": 0,
+      "WAIT_NAME": 0,
+      "WAIT_AMOUNT": 0
+    },
+    "samples": {
+      "WAIT_INTENT": [],
+      "WAIT_NAME": [],
+      "WAIT_AMOUNT": []
+    }
+  },
+  "tuning_recommendations": [
+    {
+      "priority": "INFO",
+      "area": "all",
+      "metric": "overall",
+      "current": null,
+      "target": null,
+      "action": "All metrics are within release-gate thresholds. No immediate tuning required."
+    }
+  ]
+}

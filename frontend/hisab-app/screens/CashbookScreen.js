@@ -100,16 +100,16 @@ export default function CashbookScreen() {
             {summary ? (
               <AppCard style={styles.card}>
                 <Text style={styles.sectionTitle}>নগদ প্রবাহ সারসংক্ষেপ</Text>
-                <Text style={styles.meta}>Inflow: {formatMoney(summary.total_in)}</Text>
-                <Text style={styles.meta}>Outflow: {formatMoney(summary.total_out)}</Text>
-                <Text style={styles.meta}>Net: {formatMoney(summary.net_cashflow)}</Text>
+                <Text style={styles.meta}>আয়: {formatMoney(summary.total_in)}</Text>
+                <Text style={styles.meta}>ব্যয়: {formatMoney(summary.total_out)}</Text>
+                <Text style={styles.meta}>নেট: {formatMoney(summary.net_cashflow)}</Text>
               </AppCard>
             ) : null}
 
             <Text style={styles.sectionTitle}>জার্নাল এন্ট্রি</Text>
           </View>
         }
-        ListEmptyComponent={<Text style={styles.emptyText}>{loading ? 'লোড হচ্ছে...' : 'No cashbook entries found.'}</Text>}
+        ListEmptyComponent={<Text style={styles.emptyText}>{loading ? 'লোড হচ্ছে...' : 'কোনো ক্যাশবুক এন্ট্রি পাওয়া যায়নি।'}</Text>}
         renderItem={({ item }) => (
           <AppCard style={styles.rowCard}>
             <View style={styles.rowHeader}>
@@ -117,7 +117,7 @@ export default function CashbookScreen() {
               <Text style={item.entry_type === 'IN' ? styles.amountIn : styles.amountOut}>{formatMoney(item.amount)}</Text>
             </View>
             <Text style={styles.meta}>{item.category || 'GENERAL'}{item.payment_method ? ` | ${item.payment_method}` : ''}</Text>
-            <Text style={styles.meta}>{item.note || 'No note'}</Text>
+            <Text style={styles.meta}>{item.note || 'নোট নেই'}</Text>
             <Text style={styles.meta}>{item.occurred_at || 'N/A'}</Text>
           </AppCard>
         )}

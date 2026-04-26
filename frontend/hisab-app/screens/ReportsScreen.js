@@ -18,16 +18,16 @@ import {
 } from '../services/backend/reportingApi';
 
 const REPORT_TYPES = [
-  { key: 'sales', label: 'Sales' },
-  { key: 'inventory', label: 'Inventory' },
-  { key: 'finance', label: 'Finance' },
-  { key: 'collections', label: 'Collections' },
+  { key: 'sales', label: 'বিক্রি' },
+  { key: 'inventory', label: 'ইনভেন্টরি' },
+  { key: 'finance', label: 'আর্থিক' },
+  { key: 'collections', label: 'সংগ্রহ' },
 ];
 
 const PERIOD_OPTIONS = [
-  { key: 'daily', label: 'Daily' },
-  { key: 'weekly', label: 'Weekly' },
-  { key: 'monthly', label: 'Monthly' },
+  { key: 'daily', label: 'দৈনিক' },
+  { key: 'weekly', label: 'সাপ্তাহিক' },
+  { key: 'monthly', label: 'মাসিক' },
 ];
 
 const formatMetricValue = (value) => {
@@ -36,7 +36,7 @@ const formatMetricValue = (value) => {
   }
 
   if (typeof value === 'boolean') {
-    return value ? 'Yes' : 'No';
+    return value ? 'হ্যাঁ' : 'না';
   }
 
   if (value === null || value === undefined || value === '') {
@@ -72,7 +72,7 @@ export default function ReportsScreen() {
 
   const loadReport = useCallback(async () => {
     if (!isOnline || !accessToken) {
-      setStatusText('Reports require online mode and a valid login session.');
+      setStatusText('রিপোর্টের জন্য অনলাইন মোড এবং বৈধ লগইন প্রয়োজন।');
       return;
     }
 
@@ -141,7 +141,7 @@ export default function ReportsScreen() {
 
   const handleExportCsv = useCallback(async () => {
     if (!accessToken) {
-      setStatusText('Login session missing. Please login again.');
+      setStatusText('লগইন সেশন নেই। আবার লগইন করুন।');
       return;
     }
 
@@ -158,7 +158,7 @@ export default function ReportsScreen() {
 
   const handleExportPdf = useCallback(async () => {
     if (!accessToken) {
-      setStatusText('Login session missing. Please login again.');
+      setStatusText('লগইন সেশন নেই। আবার লগইন করুন।');
       return;
     }
 
@@ -175,7 +175,7 @@ export default function ReportsScreen() {
 
   const handleCaptureSnapshot = useCallback(async () => {
     if (!accessToken) {
-      setStatusText('Login session missing. Please login again.');
+      setStatusText('লগইন সেশন নেই। আবার লগইন করুন।');
       return;
     }
 
@@ -233,13 +233,13 @@ export default function ReportsScreen() {
 
               <View style={styles.buttonRow}>
                 <AppButton
-                  title={loading ? 'লোড হচ্ছে...' : 'Refresh'}
+                  title={loading ? 'লোড হচ্ছে...' : 'রিফ্রেশ'}
                   onPress={loadReport}
                   style={styles.buttonFlex}
                   disabled={loading}
                 />
                 <AppButton
-                  title={snapshotLoading ? 'Capturing...' : 'Capture Snapshot'}
+                  title={snapshotLoading ? 'ক্যাপচার হচ্ছে...' : 'স্ন্যাপশট নিন'}
                   variant="secondary"
                   style={styles.buttonFlex}
                   onPress={handleCaptureSnapshot}
@@ -265,16 +265,16 @@ export default function ReportsScreen() {
             {taxSummary ? (
               <AppCard style={styles.card}>
                 <Text style={styles.sectionTitle}>করবান্ধব সারসংক্ষেপ</Text>
-                <Text style={styles.metaText}>Total Sales: {formatMetricValue(taxSummary.totalSales)}</Text>
-                <Text style={styles.metaText}>Total Expenses: {formatMetricValue(taxSummary.totalExpenses)}</Text>
-                <Text style={styles.metaText}>Net Profit: {formatMetricValue(taxSummary.netProfit)}</Text>
+                <Text style={styles.metaText}>মোট বিক্রি: {formatMetricValue(taxSummary.totalSales)}</Text>
+                <Text style={styles.metaText}>মোট খরচ: {formatMetricValue(taxSummary.totalExpenses)}</Text>
+                <Text style={styles.metaText}>নেট লাভ: {formatMetricValue(taxSummary.netProfit)}</Text>
               </AppCard>
             ) : null}
 
             {reconciliation ? (
               <AppCard style={styles.card}>
                 <Text style={styles.sectionTitle}>সমন্বয়</Text>
-                <Text style={styles.metaText}>All Reconciled: {reconciliation.allReconciled ? 'Yes' : 'No'}</Text>
+                <Text style={styles.metaText}>সব সমন্বিত: {reconciliation.allReconciled ? 'হ্যাঁ' : 'না'}</Text>
               </AppCard>
             ) : null}
 
@@ -282,14 +282,14 @@ export default function ReportsScreen() {
               <Text style={styles.sectionTitle}>রপ্তানি</Text>
               <View style={styles.buttonRow}>
                 <AppButton
-                  title={exporting ? 'Exporting...' : 'Export CSV'}
+                  title={exporting ? 'রপ্তানি হচ্ছে...' : 'CSV রপ্তানি'}
                   variant="secondary"
                   style={styles.buttonFlex}
                   onPress={handleExportCsv}
                   disabled={exporting}
                 />
                 <AppButton
-                  title={exporting ? 'Exporting...' : 'Export PDF'}
+                  title={exporting ? 'রপ্তানি হচ্ছে...' : 'PDF রপ্তানি'}
                   style={styles.buttonFlex}
                   onPress={handleExportPdf}
                   disabled={exporting}
@@ -301,7 +301,7 @@ export default function ReportsScreen() {
             <Text style={styles.sectionTitle}>বিস্তারিত বিশ্লেষণ</Text>
           </View>
         }
-        ListEmptyComponent={<Text style={styles.metaText}>{loading ? 'Loading details...' : 'No detailed rows available.'}</Text>}
+        ListEmptyComponent={<Text style={styles.metaText}>{loading ? 'বিস্তারিত লোড হচ্ছে...' : 'কোনো বিস্তারিত রেকর্ড নেই।'}</Text>}
         renderItem={({ item }) => (
           <AppCard style={styles.card}>
             <Text style={styles.rowTitle}>{toTitleCase(item.section)}</Text>

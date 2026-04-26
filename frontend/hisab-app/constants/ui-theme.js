@@ -31,6 +31,9 @@ export const UI_COLORS = {
   danger: COLORS.danger,
   textOnPrimary: COLORS.textOnPrimary,
   onAccent: COLORS.onAccent,
+  borderDanger: COLORS.borderDanger,
+  borderStrong: COLORS.borderStrong,
+  surfaceSecondary: COLORS.textSecondary,
 };
 
 export const UI_BRAND = BRAND;

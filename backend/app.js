@@ -1,3 +1,4 @@
+const path = require('path');
 const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
@@ -6,6 +7,8 @@ const helmet = require('helmet');
 const authRoutes = require('./routes/authRoutes');
 const sttRoutes = require('./routes/sttRoutes');
 const v1Routes = require('./routes/v1');
+const ussdRoutes = require('./routes/ussdRoutes');
+const webhookRoutes = require('./routes/webhookRoutes');
 const authMiddleware = require('./middleware/authMiddleware');
 const requestContext = require('./middleware/requestContext');
 const securityHeaders = require('./middleware/securityHeaders');
@@ -100,8 +103,12 @@ app.get('/health', (req, res) => {
   });
 });
 
+app.use('/uploads/baki-images', express.static(path.join(__dirname, 'data', 'baki-images')));
+
 app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/stt', sttRoutes);
+app.use('/ussd', ussdRoutes);
+app.use('/payments/webhook', webhookRoutes);
 
 app.use('/api/v1', authMiddleware, (req, res, next) => {
   if (String(req.method || '').toUpperCase() === 'GET') {

@@ -90,12 +90,12 @@ export default function SupplierScreen() {
 
   const handleDelete = (row) => {
     Alert.alert(
-      'Delete Supplier',
+      'সরবরাহকারী মুছুন',
       `${row.name} মুছে ফেলবেন? বাকি বা খোলা ক্রয় থাকলে মুছা যাবে না।`,
       [
         { text: 'বাতিল', style: 'cancel' },
         {
-          text: 'Delete',
+          text: 'মুছুন',
           style: 'destructive',
           onPress: async () => {
             try {

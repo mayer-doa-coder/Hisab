@@ -1,31 +1,236 @@
 {
+  "_meta": {
+    "version": "2.0.0",
+    "schema": "hotwordDictionary.v2",
+    "updated": "2026-04-25",
+    "note": "aliases = correct spelling variants; misrecognitions = known bad STT outputs that must still resolve to this entry"
+  },
   "customers": [
-    { "id": "c1", "name": "Rahim", "aliases": ["Rohim", "Rahin", "রহিম", "রহিন", "রহীম", "রহম"] },
-    { "id": "c2", "name": "Karim", "aliases": ["Korim", "Karin", "করিম", "করীম", "করিন"] },
-    { "id": "c3", "name": "Jalal", "aliases": ["জালাল", "Jolal", "Jalel", "জলাল"] },
-    { "id": "c4", "name": "Salam", "aliases": ["সালাম", "Solam", "ছালাম"] },
-    { "id": "c5", "name": "Monir", "aliases": ["মনির", "Monir", "Munir", "Moner"] },
-    { "id": "c6", "name": "Babul", "aliases": ["Babul", "Babool", "বাবুল", "বাবল"] },
-    { "id": "c7", "name": "Rina", "aliases": ["Rina", "Reena", "রিনা", "রিনার"] },
-    { "id": "c8", "name": "Anis", "aliases": ["Anis", "Anish", "এনিস", "আনিস", "anees"] },
-    { "id": "c9", "name": "Sumi", "aliases": ["Sumi", "Shumi", "সুমি", "শুমি", "sumee"] },
-    { "id": "c10", "name": "Nayeem", "aliases": ["Nayeem", "Nayem", "নাঈম", "নায়েম", "naim"] }
+    {
+      "id": "c1",
+      "name": "Rahim",
+      "aliases": ["Rohim", "রহিম", "রহিন", "রহীম", "রহম"],
+      "misrecognitions": ["rahin", "rahem", "raham", "raheem", "rhim", "rahiim"]
+    },
+    {
+      "id": "c2",
+      "name": "Karim",
+      "aliases": ["Korim", "করিম", "করীম", "করিন"],
+      "misrecognitions": ["karin", "kareen", "karim", "carim", "qarim", "karem"]
+    },
+    {
+      "id": "c3",
+      "name": "Jalal",
+      "aliases": ["জালাল", "Jolal", "জলাল"],
+      "misrecognitions": ["jalel", "jall", "jallal", "jalaal", "dzalal"]
+    },
+    {
+      "id": "c4",
+      "name": "Salam",
+      "aliases": ["সালাম", "Solam", "ছালাম"],
+      "misrecognitions": ["shalam", "sallam", "salaam", "salan", "salom"]
+    },
+    {
+      "id": "c5",
+      "name": "Monir",
+      "aliases": ["মনির", "Munir", "Moner"],
+      "misrecognitions": ["moneer", "moner", "muneer", "monnir", "monirr"]
+    },
+    {
+      "id": "c6",
+      "name": "Babul",
+      "aliases": ["বাবুল", "বাবল", "Babool"],
+      "misrecognitions": ["babool", "babble", "babbul", "babull", "babul"]
+    },
+    {
+      "id": "c7",
+      "name": "Rina",
+      "aliases": ["রিনা", "Reena", "রিনার"],
+      "misrecognitions": ["rena", "rinaa", "reena", "rina", "rinna"]
+    },
+    {
+      "id": "c8",
+      "name": "Anis",
+      "aliases": ["আনিস", "Anish", "এনিস", "anees"],
+      "misrecognitions": ["anis", "anees", "aness", "aniss", "aneesh"]
+    },
+    {
+      "id": "c9",
+      "name": "Sumi",
+      "aliases": ["সুমি", "Shumi", "শুমি", "sumee"],
+      "misrecognitions": ["somi", "shumi", "sumi", "sumy", "soomi"]
+    },
+    {
+      "id": "c10",
+      "name": "Nayeem",
+      "aliases": ["নাঈম", "নায়েম", "Nayem", "naim"],
+      "misrecognitions": ["nayim", "naeem", "naim", "nayam", "naim"]
+    },
+    {
+      "id": "c11",
+      "name": "Raju",
+      "aliases": ["রাজু", "Rajoo", "রাজূ"],
+      "misrecognitions": ["rajoo", "raju", "raaju", "raju", "razoo"]
+    },
+    {
+      "id": "c12",
+      "name": "Sumon",
+      "aliases": ["সুমন", "Shumon", "শুমন"],
+      "misrecognitions": ["shumon", "sumon", "shomon", "sumon", "sumonn"]
+    },
+    {
+      "id": "c13",
+      "name": "Liton",
+      "aliases": ["লিটন", "Litton", "লিটন"],
+      "misrecognitions": ["litton", "liton", "litten", "litan", "lidon"]
+    },
+    {
+      "id": "c14",
+      "name": "Milon",
+      "aliases": ["মিলন", "Milan", "মিলান"],
+      "misrecognitions": ["milan", "milon", "melon", "millon", "miilan"]
+    },
+    {
+      "id": "c15",
+      "name": "Shahin",
+      "aliases": ["শাহিন", "Shahin", "শাহীন", "Shahen"],
+      "misrecognitions": ["shahen", "shahin", "shaahin", "shaeen", "shaheen"]
+    },
+    {
+      "id": "c16",
+      "name": "Hanif",
+      "aliases": ["হানিফ", "Hanif", "হানীফ"],
+      "misrecognitions": ["hanif", "haneef", "haniph", "haneif", "haniff"]
+    },
+    {
+      "id": "c17",
+      "name": "Rubel",
+      "aliases": ["রুবেল", "Rubel", "রুবল", "Rubel"],
+      "misrecognitions": ["rubel", "rubble", "robel", "rubbell", "rrubell"]
+    },
+    {
+      "id": "c18",
+      "name": "Hasan",
+      "aliases": ["হাসান", "Hassan", "হোসেন", "Hossen"],
+      "misrecognitions": ["hassan", "hasan", "hossan", "hasen", "hussain"]
+    },
+    {
+      "id": "c19",
+      "name": "Faruk",
+      "aliases": ["ফারুক", "Faruq", "ফারূক", "Farouk"],
+      "misrecognitions": ["farouk", "faruk", "pharuk", "faruq", "pharooq"]
+    },
+    {
+      "id": "c20",
+      "name": "Kohinoor",
+      "aliases": ["কহিনূর", "Kohinur", "কোহিনূর", "Kohinoor"],
+      "misrecognitions": ["kohinur", "kohinoor", "kohinor", "koheenoor", "kohinoor"]
+    }
   ],
   "products": [
-    { "id": "p1", "name": "Rice", "aliases": ["চাল", "raice", "rais", "chal"] },
-    { "id": "p2", "name": "Oil", "aliases": ["তেল", "oel", "oyel", "tel"] },
-    { "id": "p3", "name": "Biscuit", "aliases": ["বিস্কুট", "biskut", "biscut"] },
-    { "id": "p4", "name": "Soap", "aliases": ["সাবান", "shop", "sabun", "soap"] },
-    { "id": "p5", "name": "Salt", "aliases": ["লবণ", "lobon", "salt"] },
-    { "id": "p6", "name": "Sugar", "aliases": ["চিনি", "chini", "sugar"] },
-    { "id": "p7", "name": "Tea", "aliases": ["চা", "cha", "tea"] }
+    {
+      "id": "p1",
+      "name": "Rice",
+      "aliases": ["চাল", "chal"],
+      "misrecognitions": ["raice", "rais", "rice", "chaal", "riice"]
+    },
+    {
+      "id": "p2",
+      "name": "Oil",
+      "aliases": ["তেল", "tel"],
+      "misrecognitions": ["oel", "oyel", "oile", "teyl", "tel"]
+    },
+    {
+      "id": "p3",
+      "name": "Biscuit",
+      "aliases": ["বিস্কুট", "biskut"],
+      "misrecognitions": ["biscut", "biscutt", "biskoot", "biscoot", "biscit"]
+    },
+    {
+      "id": "p4",
+      "name": "Soap",
+      "aliases": ["সাবান", "sabun"],
+      "misrecognitions": ["shop", "shoap", "sabon", "sabaan", "soapp"]
+    },
+    {
+      "id": "p5",
+      "name": "Salt",
+      "aliases": ["লবণ", "lobon"],
+      "misrecognitions": ["salt", "laban", "lobun", "lovon", "lbon"]
+    },
+    {
+      "id": "p6",
+      "name": "Sugar",
+      "aliases": ["চিনি", "chini"],
+      "misrecognitions": ["sugar", "shini", "chinnee", "chiny", "cheeni"]
+    },
+    {
+      "id": "p7",
+      "name": "Tea",
+      "aliases": ["চা", "cha"],
+      "misrecognitions": ["tea", "cha", "chaa", "tee", "te"]
+    },
+    {
+      "id": "p8",
+      "name": "Flour",
+      "aliases": ["আটা", "ata", "ময়দা", "moida"],
+      "misrecognitions": ["flour", "aata", "attaa", "moyda", "mida"]
+    },
+    {
+      "id": "p9",
+      "name": "Lentils",
+      "aliases": ["ডাল", "dal"],
+      "misrecognitions": ["daal", "dhaal", "lentil", "daall", "dhal"]
+    },
+    {
+      "id": "p10",
+      "name": "Milk",
+      "aliases": ["দুধ", "dudh"],
+      "misrecognitions": ["milk", "doodh", "duth", "duud", "milkk"]
+    }
   ],
   "branches": [
-    { "id": "b1", "name": "Main Shop", "aliases": ["মেইন শপ", "main"] }
+    {
+      "id": "b1",
+      "name": "Main Shop",
+      "aliases": ["মেইন শপ", "main"],
+      "misrecognitions": ["men shop", "main shap", "maain", "mainshop", "mein shop"]
+    },
+    {
+      "id": "b2",
+      "name": "Bazar Branch",
+      "aliases": ["বাজার শাখা", "bazar", "bazaar"],
+      "misrecognitions": ["bazzar", "bazar", "bajar", "baazaar", "bazar branch"]
+    }
   ],
   "intents": [
-    { "id": "i1", "name": "ADD_DEBT", "aliases": ["baki", "bakki", "বাকি", "due", "ধার"] },
-    { "id": "i2", "name": "PAYMENT", "aliases": ["joma", "jama", "জমা", "pay", "payment"] },
-    { "id": "i3", "name": "SALE", "aliases": ["becha", "bikri", "বেচা", "বিক্রি", "sale", "sell"] }
+    {
+      "id": "i1",
+      "name": "ADD_BAKI",
+      "fsmToken": "baki",
+      "aliases": ["baki", "bakki", "baqi", "বাকি", "ধার", "দেনা", "due", "udhar"],
+      "misrecognitions": ["barki", "boke", "bagi", "bakhee", "barkey", "bhaki", "baci"]
+    },
+    {
+      "id": "i2",
+      "name": "PAYMENT",
+      "fsmToken": "joma",
+      "aliases": ["joma", "jama", "jumma", "জমা", "পেমেন্ট", "পরিশোধ", "pay", "payment"],
+      "misrecognitions": ["juma", "joman", "jomma", "yoma", "zoma", "djoma", "goma"]
+    },
+    {
+      "id": "i3",
+      "name": "SALE",
+      "fsmToken": "becha",
+      "aliases": ["becha", "bikri", "বেচা", "বিক্রি", "sale", "sell", "kinbo", "kina"],
+      "misrecognitions": ["bika", "bikhri", "beshka", "bechi", "bika", "beci"]
+    },
+    {
+      "id": "i4",
+      "name": "CHECK_BALANCE",
+      "fsmToken": "balance",
+      "aliases": ["balance", "hisab", "ব্যালেন্স", "হিসাব", "বাকি কত", "কত বাকি", "bal", "check"],
+      "misrecognitions": ["balans", "blns", "hishab", "hicab", "hiseb", "balence", "ballance"]
+    }
   ]
 }

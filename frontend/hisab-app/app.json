@@ -40,7 +40,20 @@
       ],
       "expo-sqlite",
       "@react-native-community/datetimepicker",
-      "expo-audio"
+      "expo-audio",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Hisab-এর জন্য ক্যামেরা অ্যাক্সেস প্রয়োজন — কাস্টমারের ছবি নিতে।",
+          "microphonePermission": false
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Hisab-এর জন্য গ্যালারি অ্যাক্সেস প্রয়োজন — কাস্টমারের ছবি আপলোড করতে।"
+        }
+      ]
     ],
     "experiments": {
       "reactCompiler": true

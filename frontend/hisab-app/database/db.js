@@ -95,6 +95,12 @@ const generateLocalDeviceId = () => {
 	return `dev_${hashString(seed)}_${hashString(`${seed}:device`)}`;
 };
 
+const generatePaymentCode = () => {
+	return String(Math.floor(100000 + Math.random() * 900000));
+};
+
+const PAYMENT_CODE_TTL_HOURS = 24;
+
 const getSessionExpiryIso = (rememberMe = false) => {
 	const now = Date.now();
 	const ttlMs = rememberMe
@@ -1982,6 +1988,9 @@ export const createTables = async () => {
 	await ensureColumn('baki_transactions', 'reference_id', `ALTER TABLE baki_transactions ADD COLUMN reference_id TEXT;`);
 	await ensureColumn('baki_transactions', 'reminder_sent_at', `ALTER TABLE baki_transactions ADD COLUMN reminder_sent_at DATETIME;`);
 	await ensureColumn('baki_transactions', 'resolved_at', `ALTER TABLE baki_transactions ADD COLUMN resolved_at DATETIME;`);
+	await ensureColumn('baki_transactions', 'payment_code', `ALTER TABLE baki_transactions ADD COLUMN payment_code TEXT;`);
+	await ensureColumn('baki_transactions', 'payment_code_expires_at', `ALTER TABLE baki_transactions ADD COLUMN payment_code_expires_at DATETIME;`);
+	await ensureColumn('baki_transactions', 'payment_code_used', `ALTER TABLE baki_transactions ADD COLUMN payment_code_used INTEGER NOT NULL DEFAULT 0;`);
 	await ensureColumn('stock_movements', 'user_id', `ALTER TABLE stock_movements ADD COLUMN user_id INTEGER;`);
 	await ensureColumn('stock_movements', 'server_id', `ALTER TABLE stock_movements ADD COLUMN server_id TEXT;`);
 	await ensureColumn('stock_movements', 'client_ref_id', `ALTER TABLE stock_movements ADD COLUMN client_ref_id TEXT;`);
@@ -3382,6 +3391,11 @@ const insertBakiTransaction = async ({
 			}
 		}
 
+		const localPaymentCode = normalizedType === 'credit' ? generatePaymentCode() : null;
+		const localPaymentCodeExpiresAt = normalizedType === 'credit'
+			? new Date(Date.now() + PAYMENT_CODE_TTL_HOURS * 60 * 60 * 1000).toISOString()
+			: null;
+
 		const result = await db.runAsync(
 			`INSERT INTO baki_transactions (
 				user_id,
@@ -3398,9 +3412,12 @@ const insertBakiTransaction = async ({
 				client_ref_id,
 				sync_version,
 				sync_updated_at,
-				deleted_at
+				deleted_at,
+				payment_code,
+				payment_code_expires_at,
+				payment_code_used
 			)
-			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL);`,
+			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, 0);`,
 			userId,
 			normalizedCustomerId,
 			normalizedType,
@@ -3416,7 +3433,9 @@ const insertBakiTransaction = async ({
 			normalizedType === 'payment' ? normalizedPaymentMethod || 'cash' : null,
 			null,
 			1,
-			syncUpdatedAt
+			syncUpdatedAt,
+			localPaymentCode,
+			localPaymentCodeExpiresAt
 		);
 
 		const localId = Number(result.lastInsertRowId);
@@ -3556,6 +3575,9 @@ const insertBakiTransaction = async ({
 			reference_id: normalizedReferenceId || null,
 			note: normalizedNote || null,
 			payment_method: normalizedType === 'payment' ? normalizedPaymentMethod || 'cash' : null,
+			payment_code: localPaymentCode,
+			payment_code_expires_at: localPaymentCodeExpiresAt,
+			payment_code_used: 0,
 		};
 	} catch (error) {
 		try {
@@ -3607,7 +3629,17 @@ export const getBakiHistory = ({ customerId = null } = {}) => {
 				MIN(CASE WHEN t.type = 'credit' AND t.status IN ('open', 'overdue') THEN t.due_date ELSE NULL END) AS next_due_date,
 				SUM(CASE WHEN t.type = 'credit' THEN 1 ELSE 0 END) AS credit_count,
 				SUM(CASE WHEN t.type = 'payment' THEN 1 ELSE 0 END) AS payment_count,
-				MAX(t.created_at) AS last_activity_at
+				MAX(t.created_at) AS last_activity_at,
+				(SELECT payment_code FROM baki_transactions pc
+				 WHERE pc.customer_id = c.id AND pc.user_id = c.user_id
+				   AND pc.type = 'credit' AND pc.status IN ('open', 'overdue')
+				   AND pc.payment_code IS NOT NULL AND pc.payment_code_used = 0
+				 ORDER BY pc.created_at DESC LIMIT 1) AS latest_payment_code,
+				(SELECT payment_code_expires_at FROM baki_transactions pc
+				 WHERE pc.customer_id = c.id AND pc.user_id = c.user_id
+				   AND pc.type = 'credit' AND pc.status IN ('open', 'overdue')
+				   AND pc.payment_code IS NOT NULL AND pc.payment_code_used = 0
+				 ORDER BY pc.created_at DESC LIMIT 1) AS latest_payment_code_expires_at
 			FROM customers c
 			LEFT JOIN baki_transactions t ON t.customer_id = c.id
 			WHERE c.user_id = ?
@@ -3646,13 +3678,26 @@ export const getBakiHistory = ({ customerId = null } = {}) => {
 				MIN(CASE WHEN t.type = 'credit' AND t.status IN ('open', 'overdue') THEN t.due_date ELSE NULL END) AS next_due_date,
 			SUM(CASE WHEN t.type = 'credit' THEN 1 ELSE 0 END) AS credit_count,
 			SUM(CASE WHEN t.type = 'payment' THEN 1 ELSE 0 END) AS payment_count,
-			MAX(t.created_at) AS last_activity_at
+			MAX(t.created_at) AS last_activity_at,
+			(SELECT payment_code FROM baki_transactions pc
+			 WHERE pc.customer_id = c.id AND pc.user_id = ?
+			   AND pc.type = 'credit' AND pc.status IN ('open', 'overdue')
+			   AND pc.payment_code IS NOT NULL AND pc.payment_code_used = 0
+			 ORDER BY pc.created_at DESC LIMIT 1) AS latest_payment_code,
+			(SELECT payment_code_expires_at FROM baki_transactions pc
+			 WHERE pc.customer_id = c.id AND pc.user_id = ?
+			   AND pc.type = 'credit' AND pc.status IN ('open', 'overdue')
+			   AND pc.payment_code IS NOT NULL AND pc.payment_code_used = 0
+			 ORDER BY pc.created_at DESC LIMIT 1) AS latest_payment_code_expires_at
 		FROM customers c
 		LEFT JOIN baki_transactions t ON t.customer_id = c.id
 		WHERE c.id = ?
 			AND c.user_id = ?
 		GROUP BY c.id
 		ORDER BY c.id DESC;`,
+		normalizedCustomerId,
+		userId,
+		userId,
 		normalizedCustomerId,
 		userId
 	);

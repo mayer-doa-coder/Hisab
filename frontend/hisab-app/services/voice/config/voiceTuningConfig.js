@@ -19,16 +19,17 @@ export const VOICE_TUNING_CONFIG = Object.freeze({
     releaseGateCancellationRateMax: 0.3,
   },
   grammar: {
-    WAIT_INTENT: ['baki', 'joma', 'becha', 'kinbo'],
+    WAIT_INTENT: ['baki', 'joma', 'becha', 'kinbo', 'balance'],
     WAIT_AMOUNT: ['number_only'],
     WAIT_DATE: ['aj', 'kal', 'yyyy-mm-dd'],
     CONFIRM: ['confirm', 'yes', 'na', 'cancel'],
   },
   intents: {
-    baki: ['baki', 'বাকি', 'ধার', 'due', 'bakki', 'baqi', 'baky'],
-    joma: ['joma', 'জমা', 'payment', 'pay', 'jama', 'jumma'],
-    becha: ['becha', 'bikri', 'বেচা', 'বিক্রি', 'sale', 'sell', 'beca', 'bikree'],
+    baki: ['baki', 'বাকি', 'ধার', 'দেনা', 'উধার', 'due', 'bakki', 'baqi', 'baky', 'baki dao', 'dhar', 'udhar'],
+    joma: ['joma', 'জমা', 'পেমেন্ট', 'পরিশোধ', 'payment', 'pay', 'jama', 'jumma', 'shod'],
+    becha: ['becha', 'bikri', 'বেচা', 'বিক্রি', 'বিক্রয়', 'sale', 'sell', 'beca', 'bikree', 'bikroy'],
     kinbo: ['kinbo', 'kina', 'কিনবো', 'কিনা', 'purchase', 'buy'],
+    balance: ['balance', 'ব্যালেন্স', 'হিসাব', 'বাকি কত', 'কত বাকি', 'hisab', 'baki koto', 'koto baki', 'bal', 'check', 'hisab dekho', 'balans', 'hishab', 'hiseb'],
   },
   prompts: {
     WAIT_INTENT: {
@@ -52,7 +53,7 @@ export const VOICE_TUNING_CONFIG = Object.freeze({
     rolloutStages: [5, 25, 50, 100],
     stableCyclesRequired: 2,
     commandCoverage: {
-      active: ['ADD_DEBT', 'PAYMENT', 'SALE'],
+      active: ['ADD_DEBT', 'PAYMENT', 'SALE', 'CHECK_BALANCE'],
       next: ['INVENTORY_ADJUSTMENT', 'SUPPLIER_DUE'],
     },
     improvementCadenceDays: {

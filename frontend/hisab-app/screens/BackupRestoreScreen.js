@@ -111,7 +111,7 @@ export default function BackupRestoreScreen() {
         }
       }
 
-      setStatusText('Backup snapshot created successfully.');
+      setStatusText('ব্যাকআপ স্ন্যাপশট সফলভাবে তৈরি হয়েছে।');
     } catch (error) {
       setStatusText(error?.message || 'Failed to create backup snapshot.');
     } finally {
@@ -129,7 +129,7 @@ export default function BackupRestoreScreen() {
       'পুনরুদ্ধারে সক্রিয় ব্যবহারকারীর তথ্য প্রতিস্থাপিত হবে। চালিয়ে যাবেন?',
       [
         {
-          text: 'Cancel',
+          text: 'বাতিল',
           style: 'cancel',
         },
         {
@@ -167,7 +167,7 @@ export default function BackupRestoreScreen() {
         ListHeaderComponent={(
           <View style={styles.headerWrap}>
             <Text style={styles.title}>ব্যাকআপ ও পুনরুদ্ধার</Text>
-            <Text style={styles.subtitle}>Create resilient snapshots, upload retention-managed backups, and recover safely.</Text>
+            <Text style={styles.subtitle}>স্ন্যাপশট তৈরি করুন, ক্লাউডে আপলোড করুন এবং নিরাপদে পুনরুদ্ধার করুন।</Text>
 
             <AppCard style={styles.card}>
               <Text style={styles.sectionTitle}>স্ন্যাপশট কার্যক্রম</Text>
@@ -187,7 +187,7 @@ export default function BackupRestoreScreen() {
                 />
               </View>
               <AppButton
-                title={loading ? 'Refreshing...' : 'Refresh Remote State'}
+                title={loading ? 'রিফ্রেশ হচ্ছে...' : 'রিমোট স্ট্যাটাস রিফ্রেশ'}
                 variant="secondary"
                 style={styles.singleButton}
                 onPress={async () => {
@@ -235,7 +235,7 @@ export default function BackupRestoreScreen() {
                 variant="secondary"
                 onPress={async () => {
                   if (!isOnline || !accessToken) {
-                    setStatusText('Online login is required to apply retention.');
+                    setStatusText('রিটেনশন প্রয়োগ করতে অনলাইনে লগইন করুন।');
                     return;
                   }
 
@@ -252,7 +252,7 @@ export default function BackupRestoreScreen() {
                     const next = response?.retentionPolicy || null;
                     setRetentionPolicy(next);
                     await loadRemoteState();
-                    setStatusText('Retention policy applied successfully.');
+                    setStatusText('রিটেনশন নীতি সফলভাবে প্রয়োগ হয়েছে।');
                   } catch (error) {
                     setStatusText(error?.message || 'Failed to apply retention policy.');
                   } finally {
@@ -271,7 +271,7 @@ export default function BackupRestoreScreen() {
             <Text style={styles.sectionTitle}>রিমোট ব্যাকআপ</Text>
           </View>
         )}
-        ListEmptyComponent={<Text style={styles.metaText}>{isOnline ? 'No remote backups found.' : 'Remote backups require online mode.'}</Text>}
+        ListEmptyComponent={<Text style={styles.metaText}>{isOnline ? 'কোনো রিমোট ব্যাকআপ নেই।' : 'রিমোট ব্যাকআপের জন্য অনলাইন থাকুন।'}</Text>}
         renderItem={({ item }) => (
           <AppCard style={styles.card}>
             <Text style={styles.rowTitle}>{String(item?.label || item?.backupId || 'backup')}</Text>
@@ -284,7 +284,7 @@ export default function BackupRestoreScreen() {
                 style={styles.buttonFlex}
                 onPress={async () => {
                   if (!isOnline || !accessToken) {
-                    setStatusText('Online login is required to download this backup.');
+                    setStatusText('ব্যাকআপ ডাউনলোড করতে অনলাইনে লগইন করুন।');
                     return;
                   }
 
@@ -314,7 +314,7 @@ export default function BackupRestoreScreen() {
                 style={styles.buttonFlex}
                 onPress={async () => {
                   if (!isOnline || !accessToken) {
-                    setStatusText('Online login is required to delete remote backups.');
+                    setStatusText('দূরবর্তী ব্যাকআপ মুছতে অনলাইনে লগইন করুন।');
                     return;
                   }
 
@@ -322,7 +322,7 @@ export default function BackupRestoreScreen() {
                     setBusy(true);
                     await deleteBackupOnline({ accessToken, backupId: item.backupId });
                     await loadRemoteState();
-                    setStatusText('Remote backup deleted.');
+                    setStatusText('দূরবর্তী ব্যাকআপ মুছে গেছে।');
                   } catch (error) {
                     setStatusText(error?.message || 'Failed to delete backup.');
                   } finally {

@@ -13,7 +13,7 @@ export default function ProductLowStockAlerts({ lowStockProducts }) {
 
       <Text style={styles.sectionHeading}>কম স্টক সতর্কতা</Text>
       {lowStockCount === 0 ? (
-        <Text style={styles.emptyText}>No low stock products right now.</Text>
+        <Text style={styles.emptyText}>এই মুহূর্তে কম স্টকের কোনো পণ্য নেই।</Text>
       ) : (
         lowStockProducts.map((product) => (
           <View key={`low-stock-${product.id}`} style={styles.rowCard}>

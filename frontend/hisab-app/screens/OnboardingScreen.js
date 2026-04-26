@@ -55,7 +55,7 @@ export default function OnboardingScreen() {
 
   const loadData = useCallback(async () => {
     if (!accessToken || !isOnline) {
-      setStatusText('Onboarding templates require online mode.');
+      setStatusText('অনবোর্ডিং টেমপ্লেটের জন্য অনলাইন মোড প্রয়োজন।');
       return;
     }
 
@@ -82,12 +82,12 @@ export default function OnboardingScreen() {
 
   const createPilotShop = useCallback(async () => {
     if (!accessToken || !isOnline) {
-      setStatusText('Internet connection is required to create pilot shops.');
+      setStatusText('পাইলট শপ তৈরি করতে ইন্টারনেট সংযোগ প্রয়োজন।');
       return;
     }
 
     if (!shopName.trim()) {
-      setStatusText('Shop name is required.');
+      setStatusText('শপের নাম দিন।');
       return;
     }
 
@@ -116,7 +116,7 @@ export default function OnboardingScreen() {
 
       setShopName('');
       setEstimatedDailySales('0');
-      setStatusText('Pilot shop added successfully.');
+      setStatusText('পাইলট শপ সফলভাবে যোগ হয়েছে।');
       await loadData();
     } catch (error) {
       setStatusText(error?.message || 'Unable to create pilot shop.');
@@ -150,7 +150,7 @@ export default function OnboardingScreen() {
                   disabled={stepIndex === 0}
                 />
                 <AppButton
-                  title={stepIndex === GUIDED_STEPS.length - 1 ? 'Restart' : 'Next'}
+                  title={stepIndex === GUIDED_STEPS.length - 1 ? 'পুনরায় শুরু' : 'পরবর্তী'}
                   style={styles.buttonFlex}
                   onPress={() => setStepIndex((prev) => (prev === GUIDED_STEPS.length - 1 ? 0 : prev + 1))}
                 />
@@ -184,7 +184,7 @@ export default function OnboardingScreen() {
               </View>
 
               <AppButton
-                title={creating ? 'Creating...' : 'Add Pilot Shop'}
+                title={creating ? 'তৈরি হচ্ছে...' : 'পাইলট শপ যোগ করুন'}
                 onPress={createPilotShop}
                 disabled={creating}
               />
@@ -209,7 +209,7 @@ export default function OnboardingScreen() {
             {loading ? <Text style={styles.metaText}>পাইলট দোকান লোড হচ্ছে...</Text> : null}
           </View>
         )}
-        ListEmptyComponent={<Text style={styles.metaText}>No pilot shops yet.</Text>}
+        ListEmptyComponent={<Text style={styles.metaText}>এখনো কোনো পাইলট শপ নেই।</Text>}
         renderItem={({ item }) => (
           <AppCard style={styles.card}>
             <Text style={styles.rowTitle}>{item?.shop_name || 'Unknown Shop'}</Text>

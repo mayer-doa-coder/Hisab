@@ -2,9 +2,10 @@ import { canonicalizeRole } from '../../security/rbac';
 import { VOICE_TUNING_CONFIG } from './config/voiceTuningConfig';
 
 const LOCAL_INTENT_TO_API = Object.freeze({
-  ADD_DEBT: { path: '/api/v1/baki/credits' },
-  PAYMENT: { path: '/api/v1/baki/payments' },
-  SALE: { path: '/api/v1/transactions' },
+  ADD_DEBT:      { path: '/api/v1/baki/credits',   method: 'POST' },
+  PAYMENT:       { path: '/api/v1/baki/payments',  method: 'POST' },
+  SALE:          { path: '/api/v1/transactions',   method: 'POST' },
+  CHECK_BALANCE: { path: '/api/v1/baki/balance',   method: 'GET'  },
 });
 
 const getApiMappingForIntent = (intent) => {
@@ -12,9 +13,9 @@ const getApiMappingForIntent = (intent) => {
 };
 
 const ROLE_ACCESS = Object.freeze({
-  OWNER: new Set(['ADD_DEBT', 'PAYMENT', 'SALE', 'DELETE', 'VOID']),
-  CASHIER: new Set(['ADD_DEBT', 'PAYMENT', 'SALE']),
-  STOCK_MANAGER: new Set(['ADD_DEBT', 'PAYMENT', 'SALE', 'VOID']),
+  OWNER:         new Set(['ADD_DEBT', 'PAYMENT', 'SALE', 'CHECK_BALANCE', 'DELETE', 'VOID']),
+  CASHIER:       new Set(['ADD_DEBT', 'PAYMENT', 'SALE', 'CHECK_BALANCE']),
+  STOCK_MANAGER: new Set(['ADD_DEBT', 'PAYMENT', 'SALE', 'CHECK_BALANCE', 'VOID']),
 });
 
 const RECENT_IDEMPOTENCY = new Map();
@@ -54,6 +55,9 @@ const toIntent = (token) => {
   }
   if (normalized === 'becha' || normalized === 'kinbo') {
     return 'SALE';
+  }
+  if (normalized === 'balance') {
+    return 'CHECK_BALANCE';
   }
   return '';
 };
@@ -107,14 +111,16 @@ export const evaluateExecutionSafety = ({ payload, context }) => {
 };
 
 export const validatePayload = (payload) => {
-  const required = ['intent', 'amount', 'confidence'];
+  const isBalanceCheck = String(payload.intent || '').toUpperCase() === 'CHECK_BALANCE';
+
+  const required = isBalanceCheck ? ['intent', 'confidence'] : ['intent', 'amount', 'confidence'];
   for (const field of required) {
     if (payload[field] === undefined || payload[field] === null || payload[field] === '') {
       return { ok: false, message: `${field} is required.` };
     }
   }
 
-  if (Number(payload.amount) <= 0) {
+  if (!isBalanceCheck && Number(payload.amount) <= 0) {
     return { ok: false, message: 'amount must be greater than 0.' };
   }
 
@@ -126,8 +132,8 @@ export const validatePayload = (payload) => {
     return { ok: false, message: 'customer_id is invalid.' };
   }
 
-  if ((payload.intent === 'ADD_DEBT' || payload.intent === 'PAYMENT') && !payload.customer_id) {
-    return { ok: false, message: 'customer_id is required for debt/payment commands.' };
+  if ((payload.intent === 'ADD_DEBT' || payload.intent === 'PAYMENT' || isBalanceCheck) && !payload.customer_id) {
+    return { ok: false, message: 'customer_id is required for debt/payment/balance commands.' };
   }
 
   return { ok: true };

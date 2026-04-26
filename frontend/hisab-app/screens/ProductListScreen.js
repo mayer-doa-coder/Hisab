@@ -135,7 +135,7 @@ export default function ProductListScreen() {
     Alert.alert('পণ্য মুছুন', `${product.name} মুছে ফেলবেন?`, [
       { text: 'বাতিল', style: 'cancel' },
       {
-        text: 'Delete',
+        text: 'মুছুন',
         style: 'destructive',
         onPress: async () => {
           try {
@@ -222,7 +222,7 @@ export default function ProductListScreen() {
               </View>
             </View>
           }
-          ListEmptyComponent={<Text style={styles.emptyText}>No product found.</Text>}
+          ListEmptyComponent={<Text style={styles.emptyText}>কোনো পণ্য পাওয়া যায়নি।</Text>}
           renderItem={({ item }) => <ProductListItem item={item} onEdit={handleEdit} onDelete={handleDelete} />}
         />
       </KeyboardAvoidingView>

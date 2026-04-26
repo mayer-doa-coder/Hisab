@@ -4,12 +4,11 @@ import { useNavigation } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppButton, AppCard, AppInput } from '../components/ui';
-import VoiceStepScreen from '../components/voice/VoiceStepScreen';
 import { UI_COLORS } from '../constants/ui-theme';
 import { useAuth } from '../context/AuthContext';
 import { useAppData } from '../context/AppDataContext';
 import { createOfflineAsrEngine } from '../services/voice/asr';
-import { executeCommand } from '../services/voice/commandExecutor';
+import { EXEC_RESULT, executeVoiceCommand } from '../services/voice/voiceExecutionService';
 import { normalize as normalizeUtterance } from '../services/voice/normalization';
 import {
   logCommandOutcome,
@@ -31,6 +30,7 @@ import {
   setUserHotwords,
 } from '../services/voice/personalization/userVoicePersonalization';
 import VoiceAmountScreen from './VoiceAmountScreen';
+import VoiceConfirmScreen from './VoiceConfirmScreen';
 import VoiceDateScreen from './VoiceDateScreen';
 import VoiceIntentScreen from './VoiceIntentScreen';
 import VoiceNameScreen from './VoiceNameScreen';
@@ -651,81 +651,68 @@ export default function VoiceAssistantScreen() {
 
     lastExecutionSignatureRef.current = signature;
     setIsExecuting(true);
-    let outcomeLogged = false;
 
-    try {
-      const resolvedName = toSimpleName(context.name);
-      const matchedCustomer = knownNameLookup.get(resolvedName);
-      const execution = await executeCommand({
-        role: user?.role,
-        userId: user?.id || user?.server_id || user?.email || 'anonymous',
-        accessToken: session?.access_token || null,
-        context: {
-          intent: context.intent,
-          customerId: matchedCustomer?.id || null,
-          amount: context.amount,
-          date: context.date,
-          confidence: context.confidence,
-          status: context.status,
-        },
+    const resolvedName    = toSimpleName(context.name);
+    const matchedCustomer = knownNameLookup.get(resolvedName);
+
+    const execution = await executeVoiceCommand({
+      fsmContext: {
+        intent:     context.intent,
+        customerId: matchedCustomer?.id || null,
+        amount:     context.amount,
+        date:       context.date,
+        confidence: context.confidence,
+        status:     context.status,
+      },
+      role:        user?.role,
+      userId:      stableUserId,
+      accessToken: session?.access_token || null,
+    });
+
+    const succeeded = execution.code === EXEC_RESULT.SUCCESS;
+
+    if (!succeeded) {
+      const isSafetyCritical = execution.code === EXEC_RESULT.SAFETY_BLOCKED;
+      const isIntegrityIssue = execution.code === EXEC_RESULT.DUPLICATE;
+      logExecutionBlocked({
+        state:   currentState,
+        context,
+        reason:  execution.message,
+        details: execution.data,
       });
-
-      if (execution.status !== 'SUCCESS') {
-        logExecutionBlocked({
-          state: currentState,
-          context,
-          reason: execution.message,
-          details: execution.data,
-        });
-        logCommandOutcome({
-          success: false,
-          reason: execution.message,
-          intent: context.intent,
-          amount: Number(context.amount || 0),
-          structured_payload: execution?.data?.payload || null,
-          execution_result: execution?.data?.result || null,
-          idempotency_key: execution.idempotency_key || null,
-          safetyCritical: /high-risk|unsafe/i.test(String(execution.message || '')),
-          integrityIssue: /idempotency|integrity/i.test(String(execution.message || '')),
-        });
-        outcomeLogged = true;
-        throw new Error(execution.message || 'Secure execution failed.');
-      }
-
       logCommandOutcome({
-        success: true,
-        intent: context.intent,
-        amount: Number(context.amount || 0),
-        structured_payload: execution?.data?.payload || null,
-        execution_result: execution?.data?.result || null,
-        idempotency_key: execution.idempotency_key || null,
-        safetyCritical: false,
-        integrityIssue: false,
+        success:            false,
+        reason:             execution.message,
+        intent:             context.intent,
+        amount:             Number(context.amount || 0),
+        structured_payload: execution.data?.payload || null,
+        execution_result:   execution.data?.result  || null,
+        idempotency_key:    execution.idempotencyKey || null,
+        safetyCritical:     isSafetyCritical,
+        integrityIssue:     isIntegrityIssue,
       });
-      outcomeLogged = true;
-
-      setExecutionMessage(getExecutionSummary({
-        intent: context.intent,
-        name: context.name,
-        amount: context.amount,
-        date: context.date,
-      }) + ` [${execution.idempotency_key || 'no-idempotency-key'}]`);
-    } catch (error) {
-      if (!outcomeLogged) {
-        logCommandOutcome({
-          success: false,
-          reason: error?.message || 'Execution failed.',
-          intent: context.intent,
-          amount: Number(context.amount || 0),
-          safetyCritical: false,
-          integrityIssue: false,
-        });
-      }
-      setExecutionMessage(error?.message || 'Execution failed. Please retry manually.');
-    } finally {
+      setExecutionMessage(execution.message || 'Execution failed. Please retry manually.');
       setIsExecuting(false);
+      return;
     }
-  }, [context, currentState, knownNameLookup, session?.access_token, user?.email, user?.id, user?.role, user?.server_id]);
+
+    logCommandOutcome({
+      success:            true,
+      intent:             context.intent,
+      amount:             Number(context.amount || 0),
+      structured_payload: execution.data?.payload || null,
+      execution_result:   execution.data?.result  || null,
+      idempotency_key:    execution.idempotencyKey || null,
+      safetyCritical:     false,
+      integrityIssue:     false,
+    });
+
+    setExecutionMessage(
+      getExecutionSummary({ intent: context.intent, name: context.name, amount: context.amount, date: context.date })
+      + ` [${execution.idempotencyKey || 'no-idempotency-key'}]`
+    );
+    setIsExecuting(false);
+  }, [context, currentState, knownNameLookup, session?.access_token, stableUserId, user?.role]);
 
   useEffect(() => {
     executeConfirmedCommand();
@@ -843,18 +830,13 @@ export default function VoiceAssistantScreen() {
 
     if (currentState === STATES.CONFIRM) {
       return (
-        <VoiceStepScreen
-          stepLabel="Step 6/6"
-          promptBn={`${outputContract.amount || '-'} টাকা ${outputContract.name || '-'} এর নামে ${outputContract.intent || '-'} যোগ করবো?`}
-          promptEn="Confirm this action?"
+        <VoiceConfirmScreen
+          summary={outputContract}
           feedback={wizardFeedback}
-        >
-          <View style={styles.row}>
-            <AppButton title="হ্যাঁ, নিশ্চিত" onPress={() => processToken('confirm', 1)} />
-            <AppButton variant="secondary" title="না" onPress={() => processToken('cancel', 1)} />
-            <AppButton variant="secondary" title="পিছে" onPress={() => processToken('back', 1)} />
-          </View>
-        </VoiceStepScreen>
+          onConfirm={() => processToken('confirm', 1)}
+          onCancel={() => processToken('cancel', 1)}
+          onBack={() => processToken('back', 1)}
+        />
       );
     }
 

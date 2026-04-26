@@ -102,7 +102,7 @@ export default function ReceiptScreen({ navigation, route }) {
         {loading ? (
           <View style={styles.loadingWrap}>
             <ActivityIndicator color={UI_COLORS.primary} />
-            <Text style={styles.loadingText}>Loading receipt...</Text>
+            <Text style={styles.loadingText}>রসিদ লোড হচ্ছে...</Text>
           </View>
         ) : null}
 
