@@ -1,7 +1,7 @@
 export const TRUST_CHAMPION_MODEL = {
   "model_name": "hisab_trust_champion",
   "version": "1.0.0",
-  "created_at": "2026-04-26T09:30:05.826Z",
+  "created_at": "2026-04-26T10:39:39.276Z",
   "method": "monotonic_logistic_regression",
   "dataset_source": "synthetic_seed_1337",
   "feature_order": [

@@ -1,7 +1,7 @@
-export const TRUST_CHALLENGER_MODEL = {
+{
   "model_name": "hisab_trust_challenger",
   "version": "1.0.0",
-  "created_at": "2026-04-26T10:39:43.662112Z",
+  "created_at": "2026-04-26T10:30:10.423768Z",
   "method": "lightgbm_shallow_challenger",
   "enabled_default": false,
   "dataset_source": "synthetic_seed_1337",
@@ -14492,4 +14492,4 @@ export const TRUST_CHALLENGER_MODEL = {
     },
     "pandas_categorical": null
   }
-};
+}
