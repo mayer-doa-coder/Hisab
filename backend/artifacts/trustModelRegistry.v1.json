@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0.0",
   "created_at": "2026-04-10T21:29:31.977Z",
-  "updated_at": "2026-04-26T11:46:06.921Z",
+  "updated_at": "2026-04-26T13:44:50.813Z",
   "active_bundle": {
     "bundle_version": "7.0.0",
     "model_version_label": "trust_model_v7.0",
@@ -6686,6 +6686,172 @@
           "triggered_guardrails": []
         }
       }
+    },
+    "88.1.0": {
+      "bundle_version": "88.1.0",
+      "model_version_label": "trust_model_v88.1",
+      "type": "monthly_recalibration",
+      "created_at": "2026-04-26T12:46:07.070Z",
+      "dataset_source": "synthetic_fallback",
+      "deployment_status": "candidate_bundle",
+      "lifecycle_state": "candidate_bundle",
+      "champion": {
+        "version": "88.1.0",
+        "path": "D:\\Hisab\\backend\\artifacts\\trustChampionModel.v88.1.0.json",
+        "sha256": "2be0da7aac2535dd8572da5d6322316fe30e114d6eafe39066c57629ed12ff13",
+        "source_path": "D:\\Hisab\\backend\\artifacts\\trustChampionModel.v1.json"
+      },
+      "challenger": {
+        "version": "88.1.0",
+        "path": "D:\\Hisab\\backend\\artifacts\\trustChallengerModel.v88.1.0.json",
+        "sha256": "825856680739082c683bfc8df02b24dba95c75daa5ee5e19b0b3d69e7c076daa",
+        "source_path": "D:\\Hisab\\backend\\artifacts\\trustChallengerModel.v1.json"
+      },
+      "reports": {
+        "monthly_json": "D:\\Hisab\\backend\\artifacts\\reports\\trustMonthlyRecalibration.88.1.0.json",
+        "monthly_md": "D:\\Hisab\\backend\\artifacts\\reports\\trustMonthlyRecalibration.88.1.0.md"
+      }
+    },
+    "89.0.0": {
+      "bundle_version": "89.0.0",
+      "model_version_label": "trust_model_v89.0",
+      "type": "quarterly_retraining",
+      "created_at": "2026-04-26T12:46:19.420Z",
+      "dataset_source": "synthetic_fallback",
+      "deployment_status": "candidate_bundle",
+      "lifecycle_state": "candidate_bundle",
+      "reports": {
+        "quarterly_json": "D:\\Hisab\\backend\\artifacts\\reports\\trustQuarterlyRetraining.89.0.0.json",
+        "quarterly_md": "D:\\Hisab\\backend\\artifacts\\reports\\trustQuarterlyRetraining.89.0.0.md"
+      },
+      "artifacts": {
+        "champion_model": {
+          "path": "D:\\Hisab\\backend\\artifacts\\trustChampionModel.v89.0.0.json",
+          "sha256": "486500bf8b0b2cc7f0e4a4d66b107e09ef58e42a3b3ba678ffcd41557fe17fd8"
+        },
+        "challenger_model": {
+          "path": "D:\\Hisab\\backend\\artifacts\\trustChallengerModel.v89.0.0.json",
+          "sha256": "ed5dc1d1fac3cbe37cd01ee65de31ee3ac061af7c794170b76e4d40962a853db"
+        },
+        "backtest_report": {
+          "path": "D:\\Hisab\\backend\\artifacts\\trustBacktestReport.v89.0.0.json",
+          "sha256": "d16d3465344a4f47aac9fc8692c3313bcdb67d5ed97b92ff38128ae1a6602229"
+        },
+        "segment_decisions": {
+          "path": "D:\\Hisab\\backend\\artifacts\\trustSegmentPromotion.v89.0.0.json",
+          "sha256": "a7f73de6b55aa11a6e677e9715df3dd644aa828ae1417cfadb9ad7d64af829eb"
+        }
+      },
+      "gate_results": {
+        "objective": {
+          "pass": true,
+          "checks": {
+            "champion_auc_pr_ok": true,
+            "champion_recall_p90_ok": true,
+            "champion_brier_ok": true,
+            "champion_ece_ok": true,
+            "challenger_auc_pr_ok": true,
+            "challenger_recall_p90_ok": true,
+            "challenger_brier_ok": true,
+            "challenger_ece_ok": true,
+            "business_loss_reduction_ok": true
+          },
+          "diagnostics": []
+        },
+        "phase7": {
+          "pass": true,
+          "reason": "phase7_backtest_completed",
+          "evaluated_segments": 4
+        },
+        "phase8": {
+          "pass": true,
+          "reason": "no_guardrail_breach",
+          "triggered_guardrails": []
+        }
+      }
+    },
+    "89.1.0": {
+      "bundle_version": "89.1.0",
+      "model_version_label": "trust_model_v89.1",
+      "type": "monthly_recalibration",
+      "created_at": "2026-04-26T13:44:29.625Z",
+      "dataset_source": "synthetic_fallback",
+      "deployment_status": "candidate_bundle",
+      "lifecycle_state": "candidate_bundle",
+      "champion": {
+        "version": "89.1.0",
+        "path": "D:\\Hisab\\backend\\artifacts\\trustChampionModel.v89.1.0.json",
+        "sha256": "774d9376d8768352fbaeb0ddbfdf35330864151048dbd9c35d09729b6cd3b8b2",
+        "source_path": "D:\\Hisab\\backend\\artifacts\\trustChampionModel.v1.json"
+      },
+      "challenger": {
+        "version": "89.1.0",
+        "path": "D:\\Hisab\\backend\\artifacts\\trustChallengerModel.v89.1.0.json",
+        "sha256": "b711be4136790ac8ba6b25c4d7b4dd997c23a72478854bc5114eea13b9ac4730",
+        "source_path": "D:\\Hisab\\backend\\artifacts\\trustChallengerModel.v1.json"
+      },
+      "reports": {
+        "monthly_json": "D:\\Hisab\\backend\\artifacts\\reports\\trustMonthlyRecalibration.89.1.0.json",
+        "monthly_md": "D:\\Hisab\\backend\\artifacts\\reports\\trustMonthlyRecalibration.89.1.0.md"
+      }
+    },
+    "90.0.0": {
+      "bundle_version": "90.0.0",
+      "model_version_label": "trust_model_v90.0",
+      "type": "quarterly_retraining",
+      "created_at": "2026-04-26T13:44:50.797Z",
+      "dataset_source": "synthetic_fallback",
+      "deployment_status": "candidate_bundle",
+      "lifecycle_state": "candidate_bundle",
+      "reports": {
+        "quarterly_json": "D:\\Hisab\\backend\\artifacts\\reports\\trustQuarterlyRetraining.90.0.0.json",
+        "quarterly_md": "D:\\Hisab\\backend\\artifacts\\reports\\trustQuarterlyRetraining.90.0.0.md"
+      },
+      "artifacts": {
+        "champion_model": {
+          "path": "D:\\Hisab\\backend\\artifacts\\trustChampionModel.v90.0.0.json",
+          "sha256": "7907d29e25426426ac8622abfa2fe09bd25dd21b82595f78a0a2bafb311d1614"
+        },
+        "challenger_model": {
+          "path": "D:\\Hisab\\backend\\artifacts\\trustChallengerModel.v90.0.0.json",
+          "sha256": "fe9ec356c7e39607bb3f9768f8008ee2ebcf3b4aa960141d82d57421a24828da"
+        },
+        "backtest_report": {
+          "path": "D:\\Hisab\\backend\\artifacts\\trustBacktestReport.v90.0.0.json",
+          "sha256": "15b92679e14e020ced83a78a2fc11ff5961e55d6f3a16013d0b0ed553babe628"
+        },
+        "segment_decisions": {
+          "path": "D:\\Hisab\\backend\\artifacts\\trustSegmentPromotion.v90.0.0.json",
+          "sha256": "b74df69d672eaf2b1959e022e0ee1e9887c467f3428bc55087f9509379d5997a"
+        }
+      },
+      "gate_results": {
+        "objective": {
+          "pass": true,
+          "checks": {
+            "champion_auc_pr_ok": true,
+            "champion_recall_p90_ok": true,
+            "champion_brier_ok": true,
+            "champion_ece_ok": true,
+            "challenger_auc_pr_ok": true,
+            "challenger_recall_p90_ok": true,
+            "challenger_brier_ok": true,
+            "challenger_ece_ok": true,
+            "business_loss_reduction_ok": true
+          },
+          "diagnostics": []
+        },
+        "phase7": {
+          "pass": true,
+          "reason": "phase7_backtest_completed",
+          "evaluated_segments": 4
+        },
+        "phase8": {
+          "pass": true,
+          "reason": "no_guardrail_breach",
+          "triggered_guardrails": []
+        }
+      }
     }
   },
   "events": [
@@ -9072,6 +9238,64 @@
       ],
       "report_json": "D:\\Hisab\\backend\\artifacts\\reports\\trustEmergencyUpdate.2026-04-26T11-45-51-033Z.json",
       "report_md": "D:\\Hisab\\backend\\artifacts\\reports\\trustEmergencyUpdate.2026-04-26T11-45-51-033Z.md",
+      "dry_run": false
+    },
+    {
+      "timestamp": "2026-04-26T12:46:07.071Z",
+      "type": "MONTHLY_RECALIBRATION_COMPLETED",
+      "bundle_version": "88.1.0",
+      "model_version_label": "trust_model_v88.1",
+      "report_json": "D:\\Hisab\\backend\\artifacts\\reports\\trustMonthlyRecalibration.88.1.0.json",
+      "report_md": "D:\\Hisab\\backend\\artifacts\\reports\\trustMonthlyRecalibration.88.1.0.md"
+    },
+    {
+      "timestamp": "2026-04-26T12:46:19.437Z",
+      "type": "QUARTERLY_RETRAINING_COMPLETED",
+      "bundle_version": "89.0.0",
+      "model_version_label": "trust_model_v89.0",
+      "deployment_status": "candidate_bundle",
+      "report_json": "D:\\Hisab\\backend\\artifacts\\reports\\trustQuarterlyRetraining.89.0.0.json",
+      "report_md": "D:\\Hisab\\backend\\artifacts\\reports\\trustQuarterlyRetraining.89.0.0.md"
+    },
+    {
+      "timestamp": "2026-04-26T12:46:19.485Z",
+      "type": "EMERGENCY_UPDATE_TRIGGERED",
+      "reasons": [
+        "feature_drift_exceeds_threshold",
+        "prediction_drift_exceeds_threshold",
+        "fallback_rate_exceeds_threshold"
+      ],
+      "report_json": "D:\\Hisab\\backend\\artifacts\\reports\\trustEmergencyUpdate.2026-04-26T12-46-06-994Z.json",
+      "report_md": "D:\\Hisab\\backend\\artifacts\\reports\\trustEmergencyUpdate.2026-04-26T12-46-06-994Z.md",
+      "dry_run": false
+    },
+    {
+      "timestamp": "2026-04-26T13:44:29.626Z",
+      "type": "MONTHLY_RECALIBRATION_COMPLETED",
+      "bundle_version": "89.1.0",
+      "model_version_label": "trust_model_v89.1",
+      "report_json": "D:\\Hisab\\backend\\artifacts\\reports\\trustMonthlyRecalibration.89.1.0.json",
+      "report_md": "D:\\Hisab\\backend\\artifacts\\reports\\trustMonthlyRecalibration.89.1.0.md"
+    },
+    {
+      "timestamp": "2026-04-26T13:44:50.801Z",
+      "type": "QUARTERLY_RETRAINING_COMPLETED",
+      "bundle_version": "90.0.0",
+      "model_version_label": "trust_model_v90.0",
+      "deployment_status": "candidate_bundle",
+      "report_json": "D:\\Hisab\\backend\\artifacts\\reports\\trustQuarterlyRetraining.90.0.0.json",
+      "report_md": "D:\\Hisab\\backend\\artifacts\\reports\\trustQuarterlyRetraining.90.0.0.md"
+    },
+    {
+      "timestamp": "2026-04-26T13:44:50.813Z",
+      "type": "EMERGENCY_UPDATE_TRIGGERED",
+      "reasons": [
+        "feature_drift_exceeds_threshold",
+        "prediction_drift_exceeds_threshold",
+        "fallback_rate_exceeds_threshold"
+      ],
+      "report_json": "D:\\Hisab\\backend\\artifacts\\reports\\trustEmergencyUpdate.2026-04-26T13-44-29-550Z.json",
+      "report_md": "D:\\Hisab\\backend\\artifacts\\reports\\trustEmergencyUpdate.2026-04-26T13-44-29-550Z.md",
       "dry_run": false
     }
   ]

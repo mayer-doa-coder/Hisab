@@ -118,6 +118,8 @@ const sanitizeAuthUser = (row) => {
 	return {
 		id: Number(row.id),
 		email: String(row.email || ''),
+		name: String(row.name || '').trim() || null,
+		profile_image_uri: String(row.profile_image_uri || '').trim() || null,
 		created_at: row.created_at || null,
 		updated_at: row.updated_at || null,
 		last_login_at: row.last_login_at || null,
@@ -1257,13 +1259,15 @@ const migrateLegacyUsersTable = async () => {
 		await db.execAsync(`CREATE TABLE users_migrated (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			email TEXT NOT NULL UNIQUE,
+			name TEXT,
+			profile_image_uri TEXT,
 			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			last_login_at DATETIME
 		);`);
 
-		await db.execAsync(`INSERT INTO users_migrated (id, email, created_at, updated_at, last_login_at)
-			SELECT id, email, COALESCE(created_at, CURRENT_TIMESTAMP), COALESCE(updated_at, CURRENT_TIMESTAMP), last_login_at
+		await db.execAsync(`INSERT INTO users_migrated (id, email, name, profile_image_uri, created_at, updated_at, last_login_at)
+			SELECT id, email, NULL, NULL, COALESCE(created_at, CURRENT_TIMESTAMP), COALESCE(updated_at, CURRENT_TIMESTAMP), last_login_at
 			FROM users;`);
 
 		await db.execAsync(`DROP TABLE users;`);
@@ -1319,6 +1323,8 @@ export const createTables = async () => {
 	await db.execAsync(`CREATE TABLE IF NOT EXISTS users (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		email TEXT NOT NULL UNIQUE,
+		name TEXT,
+		profile_image_uri TEXT,
 		created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 		updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 		last_login_at DATETIME
@@ -1348,6 +1354,7 @@ export const createTables = async () => {
 		device_id TEXT NOT NULL,
 		preferred_email TEXT,
 		pin_enabled INTEGER NOT NULL DEFAULT 0 CHECK (pin_enabled IN (0, 1)),
+		low_stock_notifications_enabled INTEGER NOT NULL DEFAULT 1 CHECK (low_stock_notifications_enabled IN (0, 1)),
 		created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 		updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 	);`);
@@ -1953,6 +1960,8 @@ export const createTables = async () => {
 	await ensureColumn('customers', 'last_payment_date', `ALTER TABLE customers ADD COLUMN last_payment_date DATETIME;`);
 
 	await ensureColumn('users', 'last_login_at', `ALTER TABLE users ADD COLUMN last_login_at DATETIME;`);
+	await ensureColumn('users', 'name', `ALTER TABLE users ADD COLUMN name TEXT;`);
+	await ensureColumn('users', 'profile_image_uri', `ALTER TABLE users ADD COLUMN profile_image_uri TEXT;`);
 	await migrateLegacyUsersTable();
 	await ensureColumn('auth_sessions', 'access_token', `ALTER TABLE auth_sessions ADD COLUMN access_token TEXT;`);
 	await ensureColumn('auth_sessions', 'refresh_token', `ALTER TABLE auth_sessions ADD COLUMN refresh_token TEXT;`);
@@ -1969,6 +1978,11 @@ export const createTables = async () => {
 		'auth_sessions',
 		'server_sync_pending',
 		`ALTER TABLE auth_sessions ADD COLUMN server_sync_pending INTEGER NOT NULL DEFAULT 0;`
+	);
+	await ensureColumn(
+		'auth_device_profile',
+		'low_stock_notifications_enabled',
+		`ALTER TABLE auth_device_profile ADD COLUMN low_stock_notifications_enabled INTEGER NOT NULL DEFAULT 1;`
 	);
 
 	await ensureColumn('baki_entries', 'paid_amount', `ALTER TABLE baki_entries ADD COLUMN paid_amount REAL NOT NULL DEFAULT 0;`);
@@ -5305,7 +5319,7 @@ export const getOrCreateDeviceId = async () => {
 export const getAuthDeviceProfile = async () => {
 	const deviceId = await getOrCreateDeviceId();
 	const row = await db.getFirstAsync(
-		`SELECT preferred_email, pin_enabled
+		`SELECT preferred_email, pin_enabled, low_stock_notifications_enabled
 		 FROM auth_device_profile
 		 WHERE id = 1
 		 LIMIT 1;`
@@ -5315,15 +5329,17 @@ export const getAuthDeviceProfile = async () => {
 		deviceId,
 		preferredEmail: String(row?.preferred_email || '').trim() || null,
 		pinEnabled: Boolean(Number(row?.pin_enabled || 0)),
+		lowStockNotificationsEnabled: Number(row?.low_stock_notifications_enabled ?? 1) !== 0,
 	};
 };
 
-export const setAuthDeviceProfile = async ({ preferredEmail, pinEnabled } = {}) => {
+export const setAuthDeviceProfile = async ({ preferredEmail, pinEnabled, lowStockNotificationsEnabled } = {}) => {
 	await getOrCreateDeviceId();
 
 	const shouldUpdateEmail = preferredEmail !== undefined;
 	const normalizedEmail = shouldUpdateEmail ? normalizeAuthEmail(preferredEmail) : null;
 	const shouldUpdatePinEnabled = pinEnabled !== undefined;
+	const shouldUpdateLowStock = lowStockNotificationsEnabled !== undefined;
 
 	await db.runAsync(
 		`UPDATE auth_device_profile
@@ -5335,12 +5351,18 @@ export const setAuthDeviceProfile = async ({ preferredEmail, pinEnabled } = {}) 
 				WHEN ? = 1 THEN ?
 				ELSE pin_enabled
 			END,
+			low_stock_notifications_enabled = CASE
+				WHEN ? = 1 THEN ?
+				ELSE low_stock_notifications_enabled
+			END,
 			updated_at = datetime('now')
 		 WHERE id = 1;`,
 		shouldUpdateEmail ? 1 : 0,
 		normalizedEmail || null,
 		shouldUpdatePinEnabled ? 1 : 0,
-		shouldUpdatePinEnabled && pinEnabled ? 1 : 0
+		shouldUpdatePinEnabled && pinEnabled ? 1 : 0,
+		shouldUpdateLowStock ? 1 : 0,
+		shouldUpdateLowStock && lowStockNotificationsEnabled ? 1 : 0
 	);
 
 	return getAuthDeviceProfile();
@@ -5762,6 +5784,13 @@ const normalizeServerUserPayload = (userPayload) => {
 
 	return {
 		email,
+		name: String(userPayload?.name || '').trim() || null,
+		profileImageUri: String(
+			userPayload?.profile_image_uri
+			|| userPayload?.profileImageUri
+			|| userPayload?.profileImageUrl
+			|| ''
+		).trim() || null,
 		createdAt: userPayload?.createdAt ? String(userPayload.createdAt) : null,
 	};
 };
@@ -5784,9 +5813,11 @@ export const saveAuthenticatedUserSession = async ({
 	let userId = Number(existing?.id || 0);
 	if (!Number.isInteger(userId) || userId <= 0) {
 		const inserted = await db.runAsync(
-			`INSERT INTO users (email, created_at, updated_at, last_login_at)
-			 VALUES (?, COALESCE(?, CURRENT_TIMESTAMP), datetime('now'), datetime('now'));`,
+			`INSERT INTO users (email, name, profile_image_uri, created_at, updated_at, last_login_at)
+			 VALUES (?, ?, ?, COALESCE(?, CURRENT_TIMESTAMP), datetime('now'), datetime('now'));`,
 			normalizedUser.email,
+			normalizedUser.name,
+			normalizedUser.profileImageUri,
 			normalizedUser.createdAt
 		);
 		userId = Number(inserted?.lastInsertRowId || 0);
@@ -5799,10 +5830,14 @@ export const saveAuthenticatedUserSession = async ({
 	await db.runAsync(
 		`UPDATE users
 		 SET email = ?,
+			 name = ?,
+			 profile_image_uri = ?,
 			 updated_at = datetime('now'),
 			 last_login_at = datetime('now')
 		 WHERE id = ?;`,
 		normalizedUser.email,
+		normalizedUser.name,
+		normalizedUser.profileImageUri,
 		userId
 	);
 
@@ -5828,7 +5863,7 @@ export const saveAuthenticatedUserSession = async ({
 	});
 
 	const userRow = await db.getFirstAsync(
-		`SELECT id, email, created_at, updated_at, last_login_at
+		`SELECT id, email, name, profile_image_uri, created_at, updated_at, last_login_at
 		 FROM users
 		 WHERE id = ?
 		 LIMIT 1;`,
@@ -5848,6 +5883,8 @@ export const getCurrentUser = async () => {
 		`SELECT
 			u.id,
 			u.email,
+			u.name,
+			u.profile_image_uri,
 			u.created_at,
 			u.updated_at,
 			u.last_login_at,
@@ -5878,6 +5915,37 @@ export const getCurrentUser = async () => {
 		user: sanitizeAuthUser(row),
 		session: sanitizeAuthSession(row),
 	};
+};
+
+export const updateAuthenticatedUserProfileLocal = async ({ userId, name, profileImageUri } = {}) => {
+	const normalizedUserId = Number(userId);
+	if (!Number.isInteger(normalizedUserId) || normalizedUserId <= 0) {
+		throw new Error('Valid userId is required to update profile.');
+	}
+
+	const normalizedName = String(name || '').trim() || null;
+	const normalizedProfileImageUri = String(profileImageUri || '').trim() || null;
+
+	await db.runAsync(
+		`UPDATE users
+		 SET name = ?,
+			 profile_image_uri = ?,
+			 updated_at = datetime('now')
+		 WHERE id = ?;`,
+		normalizedName,
+		normalizedProfileImageUri,
+		normalizedUserId
+	);
+
+	const row = await db.getFirstAsync(
+		`SELECT id, email, name, profile_image_uri, created_at, updated_at, last_login_at
+		 FROM users
+		 WHERE id = ?
+		 LIMIT 1;`,
+		normalizedUserId
+	);
+
+	return sanitizeAuthUser(row);
 };
 
 export const logoutCurrentUser = async ({ sessionToken } = {}) => {

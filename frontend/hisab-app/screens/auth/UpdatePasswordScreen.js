@@ -14,10 +14,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { UI_COLORS } from '../../constants/ui-theme';
 import { useAuth } from '../../context/AuthContext';
+import { useLanguage } from '../../context/LanguageContext';
 import { SPACING } from '../../theme/spacing';
 
 export default function UpdatePasswordScreen() {
   const { updatePin } = useAuth();
+  const { t } = useLanguage();
 
   const [currentPin, setCurrentPin] = useState('');
   const [newPin, setNewPin] = useState('');
@@ -26,39 +28,23 @@ export default function UpdatePasswordScreen() {
   const [message, setMessage] = useState('');
 
   const handleUpdatePin = async () => {
-    if (loading) {
-      return;
-    }
+    if (loading) return;
 
     const normalizedCurrent = String(currentPin || '').trim();
     const normalizedNew = String(newPin || '').trim();
     const normalizedConfirm = String(confirmPin || '').trim();
 
-    if (!normalizedCurrent || !normalizedNew || !normalizedConfirm) {
-      setMessage('সব PIN ঘর পূরণ করুন।');
-      return;
-    }
-
-    if (!/^\d{4,6}$/.test(normalizedCurrent) || !/^\d{4,6}$/.test(normalizedNew)) {
-      setMessage('PIN ৪ থেকে ৬ সংখ্যার হতে হবে।');
-      return;
-    }
-
-    if (normalizedNew !== normalizedConfirm) {
-      setMessage('PIN মিলছে না।');
-      return;
-    }
+    if (!normalizedCurrent || !normalizedNew || !normalizedConfirm) { setMessage(t('updatePin.error.fillAll')); return; }
+    if (!/^\d{4,6}$/.test(normalizedCurrent) || !/^\d{4,6}$/.test(normalizedNew)) { setMessage(t('auth.error.pinFormat')); return; }
+    if (normalizedNew !== normalizedConfirm) { setMessage(t('auth.error.pinMismatch')); return; }
 
     try {
       setMessage('');
       setLoading(true);
-      await updatePin({
-        currentPin: normalizedCurrent,
-        newPin: normalizedNew,
-      });
-      setMessage('PIN আপডেট হয়েছে। আবার লগইন করুন।');
+      await updatePin({ currentPin: normalizedCurrent, newPin: normalizedNew });
+      setMessage(t('updatePin.success'));
     } catch (error) {
-      setMessage(error?.message || 'আপডেট ব্যর্থ হয়েছে।');
+      setMessage(error?.message || t('updatePin.error.failed'));
     } finally {
       setLoading(false);
     }
@@ -69,13 +55,13 @@ export default function UpdatePasswordScreen() {
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex}>
         <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           <View style={styles.card}>
-            <Text style={styles.title}>PIN আপডেট করুন</Text>
-            <Text style={styles.subtitle}>আপনার PIN পরিবর্তন করুন</Text>
+            <Text style={styles.title}>{t('updatePin.title')}</Text>
+            <Text style={styles.subtitle}>{t('updatePin.subtitle')}</Text>
 
             <TextInput
               value={currentPin}
               onChangeText={setCurrentPin}
-              placeholder="বর্তমান PIN"
+              placeholder={t('auth.pin.current')}
               placeholderTextColor={UI_COLORS.textSecondary}
               keyboardType="number-pad"
               maxLength={6}
@@ -92,7 +78,7 @@ export default function UpdatePasswordScreen() {
             <TextInput
               value={newPin}
               onChangeText={setNewPin}
-              placeholder="নতুন PIN"
+              placeholder={t('auth.pin.new')}
               placeholderTextColor={UI_COLORS.textSecondary}
               keyboardType="number-pad"
               maxLength={6}
@@ -103,7 +89,7 @@ export default function UpdatePasswordScreen() {
             <TextInput
               value={confirmPin}
               onChangeText={setConfirmPin}
-              placeholder="PIN নিশ্চিত করুন"
+              placeholder={t('auth.pin.confirm')}
               placeholderTextColor={UI_COLORS.textSecondary}
               keyboardType="number-pad"
               maxLength={6}
@@ -119,7 +105,7 @@ export default function UpdatePasswordScreen() {
               {loading ? (
                 <ActivityIndicator size="small" color={UI_COLORS.onAccent} />
               ) : (
-                <Text style={styles.buttonText}>PIN আপডেট করুন</Text>
+                <Text style={styles.buttonText}>{t('updatePin.submit')}</Text>
               )}
             </TouchableOpacity>
           </View>

@@ -14,7 +14,7 @@ const requestContext = require('./middleware/requestContext');
 const securityHeaders = require('./middleware/securityHeaders');
 const { createRateLimiter } = require('./middleware/rateLimitMiddleware');
 const { createPerformanceMiddleware } = require('./monitoring/performanceTracker');
-const { getProfile } = require('./controllers/authController');
+const { getProfile, updateProfile } = require('./controllers/authController');
 const { error: sendError } = require('./utils/apiResponse');
 const { errorHandler } = require('./controllers/v1/controllerUtils');
 
@@ -121,6 +121,7 @@ app.use('/api/v1', authMiddleware, (req, res, next) => {
 app.use('/api/v1', authMiddleware, v1Routes);
 
 app.get('/api/user/profile', authMiddleware, getProfile);
+app.post('/api/user/profile', authMiddleware, updateProfile);
 
 app.get('/api/user/scoped-example', authMiddleware, (req, res) => {
   return res.status(200).json({

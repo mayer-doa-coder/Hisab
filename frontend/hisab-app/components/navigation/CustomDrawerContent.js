@@ -3,6 +3,7 @@ import { DrawerContentScrollView } from '@react-navigation/drawer';
 import { useMemo } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
+import { useLanguage } from '../../context/LanguageContext';
 import { COLORS } from '../../theme/colors';
 
 // ── Navigation map ──────────────────────────────────────────────────────────
@@ -89,6 +90,7 @@ const GROUPS = [
 
 export default function CustomDrawerContent(props) {
   const { state, navigation, canAccess } = props;
+  const { mapText } = useLanguage();
   const activeRouteName = state.routes[state.index]?.name;
 
   const visibleRoutes = useMemo(() => {
@@ -116,7 +118,7 @@ export default function CustomDrawerContent(props) {
         </View>
         <View>
           <Text style={styles.appName}>হিসাব</Text>
-          <Text style={styles.appTagline}>ব্যবসার হিসাব</Text>
+          <Text style={styles.appTagline}>{mapText('ব্যবসার হিসাব')}</Text>
         </View>
       </View>
 
@@ -131,9 +133,9 @@ export default function CustomDrawerContent(props) {
           <View key={group.key} style={styles.group}>
             {group.label ? (
               <View style={[styles.groupHeaderRow, { borderLeftColor: group.accent }]}>
-                <Text style={styles.groupLabel}>{group.label}</Text>
-              </View>
-            ) : null}
+                 <Text style={styles.groupLabel}>{mapText(group.label)}</Text>
+               </View>
+             ) : null}
 
             {groupRoutes.map((routeName) => {
               const meta = ROUTE_META[routeName];
@@ -178,7 +180,7 @@ export default function CustomDrawerContent(props) {
                       isActive && [styles.itemLabelActive, { color: group.accent }],
                     ]}
                   >
-                    {meta.label}
+                    {mapText(meta.label)}
                   </Text>
 
                   {isActive ? (
@@ -220,14 +222,14 @@ const styles = StyleSheet.create({
   },
   appName: {
     fontSize: 22,
-    fontWeight: '800',
+    fontFamily: 'AnekBangla_800ExtraBold',
     color: '#FFFFFF',
     letterSpacing: 0.5,
   },
   appTagline: {
     fontSize: 11,
     color: COLORS.sidebarText,
-    fontWeight: '500',
+    fontFamily: 'AnekBangla_500Medium',
     opacity: 0.8,
   },
 
@@ -252,7 +254,7 @@ const styles = StyleSheet.create({
   },
   groupLabel: {
     fontSize: 10,
-    fontWeight: '800',
+    fontFamily: 'AnekBangla_800ExtraBold',
     color: COLORS.sidebarText,
     textTransform: 'uppercase',
     letterSpacing: 1.2,
@@ -292,16 +294,16 @@ const styles = StyleSheet.create({
   itemLabel: {
     flex: 1,
     fontSize: 14,
-    fontWeight: '600',
+    fontFamily: 'AnekBangla_600SemiBold',
     color: COLORS.sidebarText,
   },
   primaryItemLabel: {
     fontSize: 15,
-    fontWeight: '700',
+    fontFamily: 'AnekBangla_700Bold',
     color: '#FFFFFF',
   },
   itemLabelActive: {
-    fontWeight: '800',
+    fontFamily: 'AnekBangla_800ExtraBold',
   },
   activePip: {
     width: 6,

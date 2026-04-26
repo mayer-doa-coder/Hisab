@@ -4,8 +4,8 @@ import CustomDrawerContent from './components/navigation/CustomDrawerContent';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { registerRootComponent } from 'expo';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { cloneElement, isValidElement, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, Alert, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import {
   useFonts,
@@ -18,6 +18,7 @@ import {
 
 import { AppDataContext } from './context/AppDataContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { LanguageProvider, useLanguage } from './context/LanguageContext';
 import {
   addBaki as dbAddBaki,
   addPayment as dbAddPayment,
@@ -164,11 +165,72 @@ import {
 import { runDataSync } from './services/sync/dataSync';
 import { UI_COLORS } from './constants/ui-theme';
 import { COLORS } from './theme/colors';
+import { getRuntimeLanguage, toLocalizedUiText } from './utils/bilingualText';
 import {
   ACTIONS as RBAC_ACTIONS,
   checkPermission as checkRolePermission,
   canonicalizeRole,
 } from './security/rbac';
+
+// Anek Bangla global default — covers Text/TextInput components with no explicit style prop
+Text.defaultProps = Object.assign(Text.defaultProps || {}, {
+  style: { fontFamily: 'AnekBangla_400Regular', includeFontPadding: false },
+});
+TextInput.defaultProps = Object.assign(TextInput.defaultProps || {}, {
+  style: { fontFamily: 'AnekBangla_500Medium', includeFontPadding: false, textAlignVertical: 'center' },
+});
+
+const translateTextChildren = (children) => {
+  const language = getRuntimeLanguage();
+  if (typeof children === 'string') {
+    return toLocalizedUiText(children, language);
+  }
+
+  if (Array.isArray(children)) {
+    return children.map((child) => translateTextChildren(child));
+  }
+
+  if (isValidElement(children) && children.props?.children !== undefined) {
+    return cloneElement(children, {
+      children: translateTextChildren(children.props.children),
+    });
+  }
+
+  return children;
+};
+
+if (!Text.__hisabPatchedRender) {
+  Text.__hisabPatchedRender = true;
+  const nativeTextRender = Text.render;
+  Text.render = function patchedTextRender(...args) {
+    const origin = nativeTextRender.call(this, ...args);
+    if (!origin?.props) {
+      return origin;
+    }
+
+    const nextChildren = translateTextChildren(origin.props.children);
+    const nextStyle = [{ fontFamily: 'AnekBangla_400Regular', includeFontPadding: false }, origin.props.style];
+    return cloneElement(origin, {
+      style: nextStyle,
+      children: nextChildren,
+    });
+  };
+}
+
+if (!TextInput.__hisabPatchedRender && typeof TextInput.render === 'function') {
+  TextInput.__hisabPatchedRender = true;
+  const nativeTextInputRender = TextInput.render;
+  TextInput.render = function patchedTextInputRender(...args) {
+    const origin = nativeTextInputRender.call(this, ...args);
+    if (!origin?.props) {
+      return origin;
+    }
+
+    return cloneElement(origin, {
+      style: [{ fontFamily: 'AnekBangla_500Medium', includeFontPadding: false }, origin.props.style],
+    });
+  };
+}
 
 const Drawer = createDrawerNavigator();
 const RootStack = createNativeStackNavigator();
@@ -262,6 +324,7 @@ function BootLoading({
 
 function MainSidebarNavigator() {
   const { user } = useAuth();
+  const { mapText } = useLanguage();
   const activeRole = canonicalizeRole(user?.role);
   const canAccessRoute = useCallback((routeName) => {
     const requiredAction = ROUTE_REQUIRED_ACTIONS[routeName] || null;
@@ -282,7 +345,7 @@ function MainSidebarNavigator() {
         },
         headerTintColor: COLORS.sidebarActiveText,
         headerTitleStyle: {
-          fontWeight: '700',
+          fontFamily: 'AnekBangla_700Bold',
           letterSpacing: 0.2,
         },
         sceneStyle: {
@@ -297,8 +360,8 @@ function MainSidebarNavigator() {
         name="Dashboard"
         component={DashboardScreen}
         options={({ navigation }) => ({
-          title: 'ড্যাশবোর্ড',
-          headerTitle: 'ব্যবসার ড্যাশবোর্ড',
+          title: mapText('ড্যাশবোর্ড'),
+          headerTitle: mapText('ব্যবসার ড্যাশবোর্ড'),
           headerRight: () => (
             <MaterialIcons
               name="account-circle"
@@ -314,280 +377,280 @@ function MainSidebarNavigator() {
         name="Reports"
         component={ReportsScreen}
         options={{
-          title: 'রিপোর্ট',
-          headerTitle: 'রিপোর্ট ও সম্মতি',
+          title: mapText('রিপোর্ট'),
+          headerTitle: mapText('রিপোর্ট ও সম্মতি'),
         }}
       />
       <Drawer.Screen
         name="SyncConflicts"
         component={SyncConflictScreen}
         options={{
-          title: 'সিঙ্ক দ্বন্দ্ব',
-          headerTitle: 'সিঙ্ক দ্বন্দ্ব',
+          title: mapText('সিঙ্ক দ্বন্দ্ব'),
+          headerTitle: mapText('সিঙ্ক দ্বন্দ্ব'),
         }}
       />
       <Drawer.Screen
         name="OfflineQueue"
         component={OfflineQueueMonitor}
         options={{
-          title: 'অফলাইন সারি',
-          headerTitle: 'অফলাইন সারি',
+          title: mapText('অফলাইন সারি'),
+          headerTitle: mapText('অফলাইন সারি'),
         }}
       />
       <Drawer.Screen
         name="BackupRestore"
         component={BackupRestoreScreen}
         options={{
-          title: 'ব্যাকআপ',
-          headerTitle: 'ব্যাকআপ ও পুনরুদ্ধার',
+          title: mapText('ব্যাকআপ'),
+          headerTitle: mapText('ব্যাকআপ ও পুনরুদ্ধার'),
         }}
       />
       <Drawer.Screen
         name="StockSuggestions"
         component={StockSuggestionsScreen}
         options={{
-          title: 'পরামর্শ',
-          headerTitle: 'স্টক পরামর্শ',
+          title: mapText('পরামর্শ'),
+          headerTitle: mapText('স্টক পরামর্শ'),
         }}
       />
       <Drawer.Screen
         name="Profile"
         component={ProfileScreen}
         options={{
-          title: 'প্রোফাইল',
-          headerTitle: 'প্রোফাইল ও সেটিংস',
+          title: mapText('প্রোফাইল'),
+          headerTitle: mapText('প্রোফাইল ও সেটিংস'),
         }}
       />
       <Drawer.Screen
         name="Audit"
         component={AuditHistoryScreen}
         options={{
-          title: 'অডিট',
-          headerTitle: 'অডিট ইতিহাস',
+          title: mapText('অডিট'),
+          headerTitle: mapText('অডিট ইতিহাস'),
         }}
       />
       <Drawer.Screen
         name="ApprovalRequests"
         component={ApprovalRequestsScreen}
         options={{
-          title: 'অনুমোদন',
-          headerTitle: 'অনুমোদনের অনুরোধ',
+          title: mapText('অনুমোদন'),
+          headerTitle: mapText('অনুমোদনের অনুরোধ'),
         }}
       />
       <Drawer.Screen
         name="Sales"
         component={SalesScreen}
         options={{
-          title: 'বিক্রি',
-          headerTitle: 'বিক্রি ও রসিদ',
+          title: mapText('বিক্রি'),
+          headerTitle: mapText('বিক্রি ও রসিদ'),
         }}
       />
       <Drawer.Screen
         name="SalesHistory"
         component={SalesHistoryScreen}
         options={{
-          title: 'বিক্রির ইতিহাস',
-          headerTitle: 'বিক্রির ইতিহাস',
+          title: mapText('বিক্রির ইতিহাস'),
+          headerTitle: mapText('বিক্রির ইতিহাস'),
         }}
       />
       <Drawer.Screen
         name="Suppliers"
         component={SupplierScreen}
         options={{
-          title: 'সরবরাহকারী',
-          headerTitle: 'সরবরাহকারী',
+          title: mapText('সরবরাহকারী'),
+          headerTitle: mapText('সরবরাহকারী'),
         }}
       />
       <Drawer.Screen
         name="PurchaseOrders"
         component={PurchaseOrderScreen}
         options={{
-          title: 'ক্রয় আদেশ',
-          headerTitle: 'ক্রয় আদেশ',
+          title: mapText('ক্রয় আদেশ'),
+          headerTitle: mapText('ক্রয় আদেশ'),
         }}
       />
       <Drawer.Screen
         name="GoodsReceive"
         component={GoodsReceiveScreen}
         options={{
-          title: 'পণ্য গ্রহণ',
-          headerTitle: 'পণ্য গ্রহণ',
+          title: mapText('পণ্য গ্রহণ'),
+          headerTitle: mapText('পণ্য গ্রহণ'),
         }}
       />
       <Drawer.Screen
         name="PurchaseHistory"
         component={PurchaseHistoryScreen}
         options={{
-          title: 'ক্রয়ের ইতিহাস',
-          headerTitle: 'ক্রয়ের ইতিহাস ও পরিশোধযোগ্য',
+          title: mapText('ক্রয়ের ইতিহাস'),
+          headerTitle: mapText('ক্রয়ের ইতিহাস ও পরিশোধযোগ্য'),
         }}
       />
       <Drawer.Screen
         name="Cashbook"
         component={CashbookScreen}
         options={{
-          title: 'ক্যাশবুক',
-          headerTitle: 'ক্যাশবুক ও জার্নাল',
+          title: mapText('ক্যাশবুক'),
+          headerTitle: mapText('ক্যাশবুক ও জার্নাল'),
         }}
       />
       <Drawer.Screen
         name="Expenses"
         component={ExpenseScreen}
         options={{
-          title: 'খরচ',
-          headerTitle: 'খরচ ব্যবস্থাপনা',
+          title: mapText('খরচ'),
+          headerTitle: mapText('খরচ ব্যবস্থাপনা'),
         }}
       />
       <Drawer.Screen
         name="ProfitReport"
         component={ProfitReportScreen}
         options={{
-          title: 'লাভ রিপোর্ট',
-          headerTitle: 'লাভ ও মার্জিন রিপোর্ট',
+          title: mapText('লাভ রিপোর্ট'),
+          headerTitle: mapText('লাভ ও মার্জিন রিপোর্ট'),
         }}
       />
       <Drawer.Screen
         name="DayClose"
         component={DayCloseScreen}
         options={{
-          title: 'দিন বন্ধ',
-          headerTitle: 'দিন বন্ধের সারসংক্ষেপ',
+          title: mapText('দিন বন্ধ'),
+          headerTitle: mapText('দিন বন্ধের সারসংক্ষেপ'),
         }}
       />
       <Drawer.Screen
         name="InventoryBatches"
         component={InventoryBatchViewScreen}
         options={{
-          title: 'ইনভেন্টরি ব্যাচ',
-          headerTitle: 'ব্যাচ ও মেয়াদ ক্রম',
+          title: mapText('ইনভেন্টরি ব্যাচ'),
+          headerTitle: mapText('ব্যাচ ও মেয়াদ ক্রম'),
         }}
       />
       <Drawer.Screen
         name="Alerts"
         component={AlertsScreen}
         options={{
-          title: 'সতর্কতা',
-          headerTitle: 'স্টক সতর্কতা',
+          title: mapText('সতর্কতা'),
+          headerTitle: mapText('স্টক সতর্কতা'),
         }}
       />
       <Drawer.Screen
         name="CycleCount"
         component={CycleCountScreen}
         options={{
-          title: 'চক্র গণনা',
-          headerTitle: 'চক্র গণনা ও সামঞ্জস্য',
+          title: mapText('চক্র গণনা'),
+          headerTitle: mapText('চক্র গণনা ও সামঞ্জস্য'),
         }}
       />
       <Drawer.Screen
         name="Products"
         component={ProductListScreen}
         options={{
-          title: 'পণ্য',
-          headerTitle: 'পণ্য তালিকা',
+          title: mapText('পণ্য'),
+          headerTitle: mapText('পণ্য তালিকা'),
         }}
       />
       <Drawer.Screen
         name="Customers"
         component={CustomerListScreen}
         options={{
-          title: 'কাস্টমার',
-          headerTitle: 'কাস্টমার',
+          title: mapText('কাস্টমার'),
+          headerTitle: mapText('কাস্টমার'),
         }}
       />
       <Drawer.Screen
         name="Ledger"
         component={CustomerLedgerScreen}
         options={{
-          title: 'খাতা',
-          headerTitle: 'কাস্টমার খাতা',
+          title: mapText('খাতা'),
+          headerTitle: mapText('কাস্টমার খাতা'),
         }}
       />
       <Drawer.Screen
         name="Baki"
         component={BakiListScreen}
         options={{
-          title: 'বাকি',
-          headerTitle: 'বাকির তালিকা',
+          title: mapText('বাকি'),
+          headerTitle: mapText('বাকির তালিকা'),
         }}
       />
       <Drawer.Screen
         name="CustomerCredit"
         component={CustomerCreditScreen}
         options={{
-          title: 'ক্রেডিট',
-          headerTitle: 'কাস্টমার ক্রেডিট',
+          title: mapText('ক্রেডিট'),
+          headerTitle: mapText('কাস্টমার ক্রেডিট'),
         }}
       />
       <Drawer.Screen
         name="Collections"
         component={CollectionsDashboardScreen}
         options={{
-          title: 'সংগ্রহ',
-          headerTitle: 'সংগ্রহ ড্যাশবোর্ড',
+          title: mapText('সংগ্রহ'),
+          headerTitle: mapText('সংগ্রহ ড্যাশবোর্ড'),
         }}
       />
       <Drawer.Screen
         name="CustomerStatement"
         component={CustomerStatementScreen}
         options={{
-          title: 'বিবৃতি',
-          headerTitle: 'কাস্টমার বিবৃতি',
+          title: mapText('বিবৃতি'),
+          headerTitle: mapText('কাস্টমার বিবৃতি'),
         }}
       />
       <Drawer.Screen
         name="Onboarding"
         component={OnboardingScreen}
         options={{
-          title: 'অনবোর্ডিং',
-          headerTitle: 'পাইলট অনবোর্ডিং',
+          title: mapText('অনবোর্ডিং'),
+          headerTitle: mapText('পাইলট অনবোর্ডিং'),
         }}
       />
       <Drawer.Screen
         name="HelpCenter"
         component={HelpCenterScreen}
         options={{
-          title: 'সাহায্য',
-          headerTitle: 'সাহায্য কেন্দ্র',
+          title: mapText('সাহায্য'),
+          headerTitle: mapText('সাহায্য কেন্দ্র'),
         }}
       />
       <Drawer.Screen
         name="Feedback"
         component={FeedbackScreen}
         options={{
-          title: 'ফিডব্যাক',
-          headerTitle: 'ফিডব্যাক',
+          title: mapText('ফিডব্যাক'),
+          headerTitle: mapText('ফিডব্যাক'),
         }}
       />
       <Drawer.Screen
         name="VoiceAssistant"
         component={VoiceAssistantScreen}
         options={{
-          title: 'ভয়েস সহকারী',
-          headerTitle: 'ভয়েস কমান্ড',
+          title: mapText('ভয়েস সহকারী'),
+          headerTitle: mapText('ভয়েস কমান্ড'),
         }}
       />
       <Drawer.Screen
         name="VoicePackDownload"
         component={VoicePackDownloadScreen}
         options={{
-          title: 'ভয়েস প্যাক',
-          headerTitle: 'ভয়েস প্যাক ডাউনলোড',
+          title: mapText('ভয়েস প্যাক'),
+          headerTitle: mapText('ভয়েস প্যাক ডাউনলোড'),
         }}
       />
       <Drawer.Screen
         name="Movement"
         component={StockMovementScreen}
         options={{
-          title: 'চলাচল',
-          headerTitle: 'স্টক চলাচল',
+          title: mapText('চলাচল'),
+          headerTitle: mapText('স্টক চলাচল'),
         }}
       />
       <Drawer.Screen
         name="Details"
         component={ProductDetailsScreen}
         options={{
-          title: 'বিবরণ',
-          headerTitle: 'পণ্যের বিবরণ',
+          title: mapText('বিবরণ'),
+          headerTitle: mapText('পণ্যের বিবরণ'),
         }}
       />
     </Drawer.Navigator>
@@ -595,6 +658,7 @@ function MainSidebarNavigator() {
 }
 
 function MainStackNavigator() {
+  const { mapText } = useLanguage();
   return (
     <MainStack.Navigator>
       <MainStack.Screen name="MainSidebar" component={MainSidebarNavigator} options={{ headerShown: false }} />
@@ -602,9 +666,10 @@ function MainStackNavigator() {
         name="Receipt"
         component={ReceiptScreen}
         options={{
-          title: 'রসিদ',
+          title: mapText('রসিদ'),
           headerStyle: { backgroundColor: UI_COLORS.textPrimary },
           headerTintColor: UI_COLORS.surface,
+          headerTitleStyle: { fontFamily: 'AnekBangla_700Bold' },
           contentStyle: { backgroundColor: UI_COLORS.background },
         }}
       />
@@ -612,9 +677,10 @@ function MainStackNavigator() {
         name="UpdatePassword"
         component={UpdatePasswordScreen}
         options={{
-          title: 'PIN আপডেট',
+          title: mapText('PIN আপডেট'),
           headerStyle: { backgroundColor: UI_COLORS.textPrimary },
           headerTintColor: UI_COLORS.surface,
+          headerTitleStyle: { fontFamily: 'AnekBangla_700Bold' },
           contentStyle: { backgroundColor: UI_COLORS.background },
         }}
       />
@@ -622,9 +688,10 @@ function MainStackNavigator() {
         name="SetupPin"
         component={SetupPinScreen}
         options={{
-          title: 'PIN সেটআপ',
+          title: mapText('PIN সেটআপ'),
           headerStyle: { backgroundColor: UI_COLORS.textPrimary },
           headerTintColor: UI_COLORS.surface,
+          headerTitleStyle: { fontFamily: 'AnekBangla_700Bold' },
           contentStyle: { backgroundColor: UI_COLORS.background },
         }}
       />
@@ -633,27 +700,29 @@ function MainStackNavigator() {
 }
 
 function AuthStackNavigator() {
+  const { mapText } = useLanguage();
   return (
     <AuthStack.Navigator
       initialRouteName="Login"
       screenOptions={{
         headerStyle: { backgroundColor: UI_COLORS.textPrimary },
         headerTintColor: UI_COLORS.surface,
-        headerTitleStyle: { fontWeight: '700' },
+        headerTitleStyle: { fontFamily: 'AnekBangla_700Bold' },
         contentStyle: { backgroundColor: UI_COLORS.background },
       }}>
-      <AuthStack.Screen name="Login" component={LoginScreen} options={{ title: 'লগইন' }} />
-      <AuthStack.Screen name="PinLogin" component={PinLoginScreen} options={{ title: 'PIN লগইন' }} />
-      <AuthStack.Screen name="Signup" component={SignupScreen} options={{ title: 'নিবন্ধন' }} />
-      <AuthStack.Screen name="VerifyEmail" component={VerifyEmailScreen} options={{ title: 'ইমেইল যাচাই' }} />
-      <AuthStack.Screen name="AccountRecovery" component={AccountRecoveryScreen} options={{ title: 'অ্যাকাউন্ট পুনরুদ্ধার' }} />
-      <AuthStack.Screen name="ResetPassword" component={ResetPasswordScreen} options={{ title: 'PIN রিসেট' }} />
+      <AuthStack.Screen name="Login" component={LoginScreen} options={{ title: mapText('লগইন') }} />
+      <AuthStack.Screen name="PinLogin" component={PinLoginScreen} options={{ title: mapText('PIN লগইন') }} />
+      <AuthStack.Screen name="Signup" component={SignupScreen} options={{ title: mapText('নিবন্ধন') }} />
+      <AuthStack.Screen name="VerifyEmail" component={VerifyEmailScreen} options={{ title: mapText('ইমেইল যাচাই') }} />
+      <AuthStack.Screen name="AccountRecovery" component={AccountRecoveryScreen} options={{ title: mapText('অ্যাকাউন্ট পুনরুদ্ধার') }} />
+      <AuthStack.Screen name="ResetPassword" component={ResetPasswordScreen} options={{ title: mapText('PIN রিসেট') }} />
     </AuthStack.Navigator>
   );
 }
 
 function MainDataShell() {
-  const { user, session, isOnline, ensureValidAccessToken } = useAuth();
+  const { user, session, isOnline, authDeviceProfile, ensureValidAccessToken } = useAuth();
+  const { t } = useLanguage();
   const activeRole = canonicalizeRole(user?.role);
   const trustRolloutController = useMemo(() => createTrustRolloutController({
     config: {
@@ -742,6 +811,7 @@ function MainDataShell() {
   const [customers, setCustomers] = useState([]);
   const [bakiRows, setBakiRows] = useState([]);
   const [reorderSuggestions, setReorderSuggestions] = useState([]);
+  const lowStockAlertRef = useRef('');
 
   const loadAllData = useCallback(async () => {
     const [coreProductsResult, coreCustomersResult, coreBakiResult] = await Promise.allSettled([
@@ -916,6 +986,34 @@ function MainDataShell() {
       disposed = true;
     };
   }, [loadAllData]);
+
+  useEffect(() => {
+    const notificationsEnabled = Boolean(authDeviceProfile?.lowStockNotificationsEnabled);
+    if (!notificationsEnabled || !Array.isArray(lowStockProducts)) {
+      lowStockAlertRef.current = '';
+      return;
+    }
+
+    if (lowStockProducts.length === 0) {
+      lowStockAlertRef.current = '';
+      return;
+    }
+
+    const signature = lowStockProducts
+      .map((row) => `${String(row.id)}:${Number(row.quantity || 0)}:${Number(row.low_stock_threshold || 0)}`)
+      .sort()
+      .join('|');
+
+    if (!signature || signature === lowStockAlertRef.current) {
+      return;
+    }
+
+    lowStockAlertRef.current = signature;
+    Alert.alert(
+      t('notification.lowStock.title'),
+      t('notification.lowStock.body', { count: lowStockProducts.length })
+    );
+  }, [authDeviceProfile?.lowStockNotificationsEnabled, lowStockProducts, t]);
 
   const refreshAll = useCallback(async () => {
     try {
@@ -1699,7 +1797,7 @@ function MainDataShell() {
   );
 
   if (booting) {
-    return <BootLoading title="হিসাব লোড হচ্ছে..." subtitle="পণ্য, কাস্টমার এবং বাকি ডেটা লোড হচ্ছে..." />;
+    return <BootLoading title={t('app.boot.title')} subtitle={t('app.boot.subtitle')} />;
   }
 
   return (
@@ -1750,9 +1848,11 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <AuthProvider>
-        <RootNavigator />
-      </AuthProvider>
+      <LanguageProvider>
+        <AuthProvider>
+          <RootNavigator />
+        </AuthProvider>
+      </LanguageProvider>
     </SafeAreaProvider>
   );
 }

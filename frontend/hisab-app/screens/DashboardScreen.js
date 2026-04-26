@@ -14,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { UI_COLORS } from '../constants/ui-theme';
 import { useAppData } from '../context/AppDataContext';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import { DATE_RANGE_TYPES, buildKpiDateFilter } from '../services/analytics/dateRangeUtils';
 import { fetchComplianceDashboardOnline } from '../services/backend/reportingApi';
 import { fetchActivityInsightExampleOnline } from '../services/backend/pilotApi';
@@ -23,15 +24,15 @@ import { SPACING } from '../theme/spacing';
 import { TYPOGRAPHY } from '../theme/typography';
 
 const REPORT_PERIODS = [
-  { key: 'daily', label: 'দৈনিক', rangeType: DATE_RANGE_TYPES.TODAY },
-  { key: 'weekly', label: 'সাপ্তাহিক', rangeType: DATE_RANGE_TYPES.WEEK },
-  { key: 'monthly', label: 'মাসিক', rangeType: DATE_RANGE_TYPES.MONTH },
+  { key: 'daily', labelKey: 'dashboard.daily', rangeType: DATE_RANGE_TYPES.TODAY },
+  { key: 'weekly', labelKey: 'dashboard.weekly', rangeType: DATE_RANGE_TYPES.WEEK },
+  { key: 'monthly', labelKey: 'dashboard.monthly', rangeType: DATE_RANGE_TYPES.MONTH },
 ];
 
 const SECONDARY_NAV = [
-  { icon: 'groups', label: 'কাস্টমার', route: 'Customers' },
-  { icon: 'inventory-2', label: 'মাল', route: 'Products' },
-  { icon: 'analytics', label: 'রিপোর্ট', route: 'Reports' },
+  { icon: 'groups', labelKey: 'dashboard.customers', route: 'Customers' },
+  { icon: 'inventory-2', labelKey: 'dashboard.products', route: 'Products' },
+  { icon: 'analytics', labelKey: 'dashboard.reports', route: 'Reports' },
 ];
 
 const toNumber = (value, fallback = 0) => {
@@ -44,6 +45,7 @@ const formatMoney = (value) => `৳${toNumber(value, 0).toFixed(2)}`;
 export default function DashboardScreen() {
   const navigation = useNavigation();
   const { isOnline, session } = useAuth();
+  const { t } = useLanguage();
   const {
     products,
     customers,
@@ -120,11 +122,11 @@ export default function DashboardScreen() {
       setActivityInsightExample(pilotExample?.example || null);
       setLastRefreshAt(new Date().toISOString());
     } catch (error) {
-      setLoadError(error?.message || 'ড্যাশবোর্ড লোড হয়নি।');
+      setLoadError(error?.message || t('dashboard.loadError'));
     } finally {
       setLoading(false);
     }
-  }, [getDashboardKpiSummary, getStockMovementCountInRange, isOnline, period, session?.access_token]);
+  }, [getDashboardKpiSummary, getStockMovementCountInRange, isOnline, period, session?.access_token, t]);
 
   const handleRefresh = useCallback(async () => {
     try {
@@ -160,8 +162,8 @@ export default function DashboardScreen() {
         {/* ── Header ──────────────────────────────────────── */}
         <View style={styles.headerRow}>
           <View style={styles.headerLeft}>
-            <Text style={styles.headerTitle}>হিসাব</Text>
-            <Text style={styles.headerSubtitle}>আজকের সারসংক্ষেপ</Text>
+            <Text style={styles.headerTitle}>{t('dashboard.title')}</Text>
+            <Text style={styles.headerSubtitle}>{t('dashboard.subtitle')}</Text>
           </View>
           <TouchableOpacity
             style={styles.profileBtn}
@@ -174,21 +176,21 @@ export default function DashboardScreen() {
 
         {/* ── Hero metric ──────────────────────────────────── */}
         <View style={styles.heroCard}>
-          <Text style={styles.heroLabel}>মোট বাকি</Text>
+          <Text style={styles.heroLabel}>{t('dashboard.totalDue')}</Text>
           <Text style={styles.heroAmount} adjustsFontSizeToFit numberOfLines={1}>
             {formatMoney(summary.totalOutstandingDue)}
           </Text>
 
           <View style={styles.metricsRow}>
             <View style={styles.metricBlock}>
-              <Text style={styles.metricLabel}>আজকের বিক্রি</Text>
+              <Text style={styles.metricLabel}>{t('dashboard.todaySales')}</Text>
               <Text style={styles.metricValue}>{formatMoney(todaySales)}</Text>
             </View>
 
             <View style={styles.metricDivider} />
 
             <View style={styles.metricBlock}>
-              <Text style={styles.metricLabel}>আজকের জমা</Text>
+              <Text style={styles.metricLabel}>{t('dashboard.todayPayments')}</Text>
               <Text style={[styles.metricValue, styles.metricValueGreen]}>
                 {formatMoney(kpis.totalPayment)}
               </Text>
@@ -204,7 +206,7 @@ export default function DashboardScreen() {
             onPress={() => navigation.navigate('Baki')}
           >
             <MaterialIcons name="sync-alt" size={24} color={UI_COLORS.textOnPrimary} />
-            <Text style={styles.ctaPrimaryText}>বাকি দিন/নিন</Text>
+            <Text style={styles.ctaPrimaryText}>{t('dashboard.bakiAction')}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -213,7 +215,7 @@ export default function DashboardScreen() {
             onPress={() => navigation.navigate('Sales')}
           >
             <MaterialIcons name="shopping-cart" size={24} color={UI_COLORS.textOnPrimary} />
-            <Text style={styles.ctaGreenText}>বিক্রি করুন</Text>
+            <Text style={styles.ctaGreenText}>{t('dashboard.sellAction')}</Text>
           </TouchableOpacity>
         </View>
 
@@ -229,7 +231,7 @@ export default function DashboardScreen() {
               <View style={styles.secondaryNavIcon}>
                 <MaterialIcons name={item.icon} size={24} color={UI_COLORS.primary} />
               </View>
-              <Text style={styles.secondaryNavLabel}>{item.label}</Text>
+              <Text style={styles.secondaryNavLabel}>{t(item.labelKey)}</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -240,7 +242,7 @@ export default function DashboardScreen() {
           activeOpacity={0.75}
           onPress={() => setShowAnalytics((v) => !v)}
         >
-          <Text style={styles.analyticsToggleText}>বিশ্লেষণ</Text>
+          <Text style={styles.analyticsToggleText}>{t('dashboard.analytics')}</Text>
           <MaterialIcons
             name={showAnalytics ? 'keyboard-arrow-up' : 'keyboard-arrow-down'}
             size={20}
@@ -253,12 +255,12 @@ export default function DashboardScreen() {
           <>
             {/* Period selector — ghost/outlined feel */}
             <AppCard variant="outlined" style={styles.card}>
-              <Text style={styles.cardTitle}>সময়কাল</Text>
+              <Text style={styles.cardTitle}>{t('dashboard.period')}</Text>
               <View style={styles.periodRow}>
                 {REPORT_PERIODS.map((option) => (
                   <AppButton
                     key={option.key}
-                    title={option.label}
+                    title={t(option.labelKey)}
                     variant={period === option.key ? 'primary' : 'secondary'}
                     size="sm"
                     style={styles.periodButton}
@@ -392,13 +394,13 @@ export default function DashboardScreen() {
               color={isOnline ? UI_COLORS.textSuccess : UI_COLORS.textMuted}
             />
             <Text style={[styles.footerText, isOnline && { color: UI_COLORS.textSuccess }]}>
-              {isOnline ? 'সংযুক্ত' : 'অফলাইন'}
+               {isOnline ? t('dashboard.connected') : t('dashboard.offline')}
             </Text>
           </View>
         </View>
 
         {loading && !refreshing && (
-          <Text style={styles.statusText}>লোড হচ্ছে...</Text>
+          <Text style={styles.statusText}>{t('dashboard.loading')}</Text>
         )}
         {loadError ? <Text style={styles.errorText}>{loadError}</Text> : null}
       </ScrollView>
@@ -421,7 +423,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   headerLeft: { flex: 1 },
-  headerTitle: { ...TYPOGRAPHY.h2, color: UI_COLORS.textPrimary, fontWeight: '800' },
+  headerTitle: { ...TYPOGRAPHY.h2, color: UI_COLORS.textPrimary, fontFamily: 'AnekBangla_800ExtraBold' },
   headerSubtitle: { ...TYPOGRAPHY.small, color: UI_COLORS.textSecondary, marginTop: 2 },
   profileBtn: {
     width: 44,
@@ -447,13 +449,13 @@ const styles = StyleSheet.create({
   },
   heroLabel: {
     fontSize: 13,
-    fontWeight: '600',
+    fontFamily: 'AnekBangla_600SemiBold',
     color: UI_COLORS.textSecondary,
     letterSpacing: 0.5,
   },
   heroAmount: {
     fontSize: 48,
-    fontWeight: '800',
+    fontFamily: 'AnekBangla_800ExtraBold',
     color: UI_COLORS.textPrimary,
     letterSpacing: -1,
     lineHeight: 54,
@@ -470,8 +472,8 @@ const styles = StyleSheet.create({
     backgroundColor: UI_COLORS.borderSoft,
     marginHorizontal: SPACING.md,
   },
-  metricLabel: { fontSize: 12, color: UI_COLORS.textMuted, fontWeight: '600' },
-  metricValue: { fontSize: 20, fontWeight: '700', color: UI_COLORS.textPrimary },
+  metricLabel: { fontSize: 12, color: UI_COLORS.textMuted, fontFamily: 'AnekBangla_600SemiBold' },
+  metricValue: { fontSize: 20, fontFamily: 'AnekBangla_700Bold', color: UI_COLORS.textPrimary },
   metricValueGreen: { color: UI_COLORS.textSuccess },
 
   /* primary CTAs */
@@ -489,7 +491,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     paddingVertical: 18,
   },
-  ctaPrimaryText: { fontSize: 16, fontWeight: '800', color: UI_COLORS.textOnPrimary },
+  ctaPrimaryText: { fontSize: 16, fontFamily: 'AnekBangla_800ExtraBold', color: UI_COLORS.textOnPrimary },
   ctaGreen: {
     flex: 1,
     flexDirection: 'row',
@@ -500,7 +502,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     paddingVertical: 18,
   },
-  ctaGreenText: { fontSize: 16, fontWeight: '800', color: UI_COLORS.textOnPrimary },
+  ctaGreenText: { fontSize: 16, fontFamily: 'AnekBangla_800ExtraBold', color: UI_COLORS.textOnPrimary },
 
   /* secondary nav */
   secondaryNav: {
@@ -527,7 +529,7 @@ const styles = StyleSheet.create({
   },
   secondaryNavLabel: {
     fontSize: 12,
-    fontWeight: '700',
+    fontFamily: 'AnekBangla_700Bold',
     color: UI_COLORS.textPrimary,
     textAlign: 'center',
   },
@@ -544,12 +546,12 @@ const styles = StyleSheet.create({
     borderColor: UI_COLORS.border,
     backgroundColor: UI_COLORS.surface,
   },
-  analyticsToggleText: { ...TYPOGRAPHY.body, color: UI_COLORS.primary, fontWeight: '600' },
+  analyticsToggleText: { ...TYPOGRAPHY.body, color: UI_COLORS.primary, fontFamily: 'AnekBangla_600SemiBold' },
 
   /* analytics cards */
   card: {},
   cardTitle: { ...TYPOGRAPHY.subheading, color: UI_COLORS.textPrimary, marginBottom: SPACING.sm },
-  cardSubtitle: { ...TYPOGRAPHY.small, color: UI_COLORS.textPrimary, marginTop: SPACING.sm, fontWeight: '700' },
+  cardSubtitle: { ...TYPOGRAPHY.small, color: UI_COLORS.textPrimary, marginTop: SPACING.sm, fontFamily: 'AnekBangla_700Bold' },
   cardLine: { ...TYPOGRAPHY.small, color: UI_COLORS.textSecondary },
   periodRow: { flexDirection: 'row', gap: SPACING.sm, flexWrap: 'wrap' },
   periodButton: { flexGrow: 1 },
@@ -557,8 +559,8 @@ const styles = StyleSheet.create({
   inlineButton: { flex: 1 },
   inlineMetrics: { flexDirection: 'row', gap: 12, marginBottom: SPACING.xs },
   inlineMetricItem: { gap: 2 },
-  inlineMetricValue: { fontSize: 18, fontWeight: '800', color: UI_COLORS.textPrimary },
-  inlineMetricLabel: { fontSize: 11, fontWeight: '600', color: UI_COLORS.textMuted },
+  inlineMetricValue: { fontSize: 18, fontFamily: 'AnekBangla_800ExtraBold', color: UI_COLORS.textPrimary },
+  inlineMetricLabel: { fontSize: 11, fontFamily: 'AnekBangla_600SemiBold', color: UI_COLORS.textMuted },
 
   /* footer */
   footer: {

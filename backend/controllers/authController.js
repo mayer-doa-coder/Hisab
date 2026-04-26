@@ -320,6 +320,7 @@ const toPublicUser = (userDoc) => ({
   id: String(userDoc._id),
   email: userDoc.email,
   name: userDoc.name || null,
+  profileImageUrl: userDoc.profileImageUrl || null,
   phone: userDoc.phone || null,
   role: canonicalizeRole(userDoc.role),
   status: String(userDoc.status || 'ACTIVE').trim().toUpperCase(),
@@ -1476,6 +1477,59 @@ const getProfile = async (req, res) => {
   }
 };
 
+const updateProfile = async (req, res) => {
+  try {
+    if (!req.user) {
+      return sendAuthError(req, res, {
+        statusCode: 401,
+        code: 'AUTH_UNAUTHORIZED',
+        message: 'Unauthorized.',
+      });
+    }
+
+    const requestedName = normalizeTrimmed(req.body?.name) || null;
+    const requestedProfileImageUrl = normalizeTrimmed(req.body?.profileImageUrl) || null;
+
+    if (!requestedName) {
+      return sendAuthError(req, res, {
+        statusCode: 400,
+        code: 'PROFILE_NAME_REQUIRED',
+        message: 'Name is required.',
+      });
+    }
+
+    if (requestedName.length > 120) {
+      return sendAuthError(req, res, {
+        statusCode: 400,
+        code: 'PROFILE_NAME_TOO_LONG',
+        message: 'Name is too long.',
+      });
+    }
+
+    if (requestedProfileImageUrl && requestedProfileImageUrl.length > 2048) {
+      return sendAuthError(req, res, {
+        statusCode: 400,
+        code: 'PROFILE_IMAGE_URL_TOO_LONG',
+        message: 'Profile image URL is too long.',
+      });
+    }
+
+    req.user.name = requestedName;
+    req.user.profileImageUrl = requestedProfileImageUrl;
+    await req.user.save();
+
+    return res.status(200).json({
+      user: toPublicUser(req.user),
+    });
+  } catch {
+    return sendAuthError(req, res, {
+      statusCode: 500,
+      code: 'PROFILE_UPDATE_FAILED',
+      message: 'Failed to update profile.',
+    });
+  }
+};
+
 module.exports = {
   signup,
   login,
@@ -1492,4 +1546,5 @@ module.exports = {
   updatePassword,
   logout,
   getProfile,
+  updateProfile,
 };

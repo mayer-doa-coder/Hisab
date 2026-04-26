@@ -1,13 +1,13 @@
 {
   "schema_version": "1.0.0",
   "source": "phase8_runtime_react_native",
-  "ingested_at": "2026-04-26T11:51:34.993Z",
-  "generated_at": "2026-04-26T11:51:36.175Z",
-  "snapshot_version": 2,
+  "ingested_at": "2026-04-26T14:06:15.888Z",
+  "generated_at": "2026-04-26T14:06:13.905Z",
+  "snapshot_version": 4,
   "request_count": 1,
   "fallback_rate": 1,
   "error_rate": 0,
-  "latency_ms_p95": 3,
+  "latency_ms_p95": 1,
   "rollout_observed_percentage": 100,
   "business_loss_increase_pct": null,
   "metrics": {
@@ -81,7 +81,7 @@
   "alerts_recent": [],
   "metadata": {
     "app_version": "1.0.0",
-    "user_id": "69e714b85d7387797cc112c5",
+    "user_id": "69d9ca4361ba86616f019e14",
     "rollout_stage": "stage_1_canary",
     "rollout_percentage": 5
   }

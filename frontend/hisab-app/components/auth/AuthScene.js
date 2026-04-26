@@ -101,8 +101,8 @@ export const AUTH_FORM_STYLES = StyleSheet.create({
   },
   linkButton: {
     marginTop: SPACING.sm,
-    alignItems: 'center',
     paddingVertical: SPACING.xs,
+    width: '100%',
   },
   linkText: {
     fontFamily: 'AnekBangla_600SemiBold',
