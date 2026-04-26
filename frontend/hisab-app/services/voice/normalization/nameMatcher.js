@@ -1,5 +1,6 @@
 const normalizeText = (value) =>
   String(value || '')
+    .normalize('NFC')
     .trim()
     .toLowerCase()
     .replace(/[^\p{L}\p{M}\p{N}\s]/gu, ' ')

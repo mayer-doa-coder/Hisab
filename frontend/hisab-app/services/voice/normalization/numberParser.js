@@ -131,7 +131,7 @@ const NUMBER_WORDS = Object.freeze({
   // Avoids false-positive scale multiplication when spoken as one token.
   dersho: 150, dershoo: 150, দেড়শ: 150, দেড়শো: 150,
   duisho: 200, duiso: 200, dusho: 200, দুইশ: 200, দুইশো: 200, দুশো: 200, দুশ: 200,
-  tinsho: 300, tinsho: 300, তিনশ: 300, তিনশো: 300, তিনশত: 300, tinsha: 300,
+  tinsho: 300, তিনশ: 300, তিনশো: 300, তিনশত: 300, tinsha: 300,
   charsho: 400, চারশ: 400, চারশো: 400, চারশত: 400,
   pachsho: 500, panchsho: 500, panso: 500, পাঁচশ: 500, পাঁচশো: 500,
   choysho: 600, choisho: 600, ছয়শ: 600, ছয়শো: 600,
@@ -153,9 +153,9 @@ const NUMBER_WORDS = Object.freeze({
   // ── Common compound thousands ─────────────────────────────────────────────
   barosho: 1200, বারোশো: 1200,
   ponersho: 1500, পনেরোশো: 1500,
-  duihajar: 2000, দুই হাজার: 2000,
-  panchhajar: 5000, পাঁচ হাজার: 5000,
-  dashajar: 10000, দশ হাজার: 10000,
+  duihajar: 2000, 'দুই হাজার': 2000,
+  panchhajar: 5000, 'পাঁচ হাজার': 5000,
+  dashajar: 10000, 'দশ হাজার': 10000,
 });
 
 const STRIP_WORDS = new Set([

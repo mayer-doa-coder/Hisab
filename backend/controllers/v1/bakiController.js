@@ -11,6 +11,9 @@ const { asyncHandler, getUserIdFromReq } = require('./controllerUtils');
 const { trackEvent } = require('../../analytics/eventTracker');
 
 const DEFAULT_DUE_TERMS_DAYS = 30;
+const PAYMENT_CODE_TTL_HOURS = 24;
+
+const generatePaymentCode = () => String(Math.floor(100000 + Math.random() * 900000));
 const RISK_LEVELS = Object.freeze({
   LOW: 'low',
   MEDIUM: 'medium',
@@ -137,6 +140,9 @@ const serializeEntry = (doc) => ({
   note: doc.note || null,
   occurredAt: toIso(doc.occurredAt),
   createdAt: toIso(doc.createdAt || doc.occurredAt),
+  paymentCode: doc.paymentCode || null,
+  paymentCodeExpiresAt: doc.paymentCodeExpiresAt ? toIso(doc.paymentCodeExpiresAt) : null,
+  paymentCodeUsed: Boolean(doc.paymentCodeUsed),
 });
 
 const ensureCustomer = async ({ userId, customerId }) => {
@@ -194,6 +200,11 @@ const createEntry = async ({
     ? 'paid'
     : (effectiveDueDate && effectiveDueDate.getTime() < Date.now() ? 'overdue' : 'open');
 
+  const paymentCode = type === 'credit' ? generatePaymentCode() : null;
+  const paymentCodeExpiresAt = type === 'credit'
+    ? new Date(Date.now() + PAYMENT_CODE_TTL_HOURS * 60 * 60 * 1000)
+    : null;
+
   const created = await BakiEntry.create({
     userId,
     customerId,
@@ -207,6 +218,9 @@ const createEntry = async ({
     paymentMethod: type === 'payment' ? paymentMethod || 'cash' : null,
     note,
     occurredAt,
+    paymentCode,
+    paymentCodeExpiresAt,
+    paymentCodeUsed: false,
   });
 
   if (type === 'payment') {

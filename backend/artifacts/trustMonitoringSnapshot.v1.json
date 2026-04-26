@@ -1,13 +1,13 @@
 {
   "schema_version": "1.0.0",
   "source": "phase8_runtime_react_native",
-  "ingested_at": "2026-04-25T13:52:57.941Z",
-  "generated_at": "2026-04-25T13:52:58.744Z",
-  "snapshot_version": 2,
-  "request_count": 1,
+  "ingested_at": "2026-04-26T05:51:26.883Z",
+  "generated_at": "2026-04-26T05:51:22.121Z",
+  "snapshot_version": 42,
+  "request_count": 6,
   "fallback_rate": 1,
   "error_rate": 0,
-  "latency_ms_p95": 24,
+  "latency_ms_p95": 4,
   "rollout_observed_percentage": 100,
   "business_loss_increase_pct": null,
   "metrics": {
@@ -35,43 +35,43 @@
     "due_amount": {
       "mean_shift": 0,
       "variance_shift": 1,
-      "sample_count": 1
+      "sample_count": 6
     },
     "late_count": {
       "mean_shift": 0,
       "variance_shift": 1,
-      "sample_count": 1
+      "sample_count": 6
     },
     "avg_delay_days": {
       "mean_shift": 0,
       "variance_shift": 1,
-      "sample_count": 1
+      "sample_count": 6
     },
     "transaction_depth": {
       "mean_shift": 0,
       "variance_shift": 1,
-      "sample_count": 1
+      "sample_count": 6
     },
     "recency_days": {
-      "mean_shift": 0,
-      "variance_shift": 1,
-      "sample_count": 1
+      "mean_shift": 0.0003255720787899872,
+      "variance_shift": 55.26476945235734,
+      "sample_count": 6
     },
     "payment_consistency": {
       "mean_shift": 0,
       "variance_shift": 1,
-      "sample_count": 1
+      "sample_count": 6
     },
     "payment_volatility": {
       "mean_shift": 0,
       "variance_shift": 1,
-      "sample_count": 1
+      "sample_count": 6
     }
   },
   "segment_summary": {
     "sparse_history": {
-      "request_count": 1,
-      "fallback_count": 1,
+      "request_count": 6,
+      "fallback_count": 6,
       "error_count": 0,
       "fallback_rate": 1,
       "error_rate": 0
@@ -81,7 +81,7 @@
   "alerts_recent": [],
   "metadata": {
     "app_version": "1.0.0",
-    "user_id": "69e714b85d7387797cc112c5",
+    "user_id": "69d9ca4361ba86616f019e14",
     "rollout_stage": "stage_1_canary",
     "rollout_percentage": 5
   }

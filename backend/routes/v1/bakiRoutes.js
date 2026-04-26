@@ -1,4 +1,5 @@
 const express = require('express');
+const multer = require('multer');
 const {
   addCredit,
   addPayment,
@@ -13,11 +14,28 @@ const {
   getCustomerStatement,
   exportCustomerStatementCsv,
 } = require('../../controllers/v1/bakiController');
+const { uploadMiddleware, uploadBakiImage } = require('../../controllers/v1/bakiImageController');
 const { withIdempotency } = require('../../controllers/v1/controllerUtils');
 const { requirePermission } = require('../../middleware/permissionMiddleware');
 const { ACTIONS } = require('../../security/rbac');
+const { error: sendError } = require('../../utils/apiResponse');
 
 const router = express.Router();
+
+const handleUpload = (req, res, next) => {
+  uploadMiddleware(req, res, (err) => {
+    if (!err) return next();
+    if (err instanceof multer.MulterError) {
+      const msg = err.code === 'LIMIT_FILE_SIZE'
+        ? 'Image must be under 5 MB.'
+        : 'Invalid file upload.';
+      return sendError(req, res, { statusCode: 400, code: 'INVALID_FILE', message: msg });
+    }
+    return sendError(req, res, { statusCode: 400, code: 'INVALID_FILE', message: 'Only JPEG, PNG, or WebP images are allowed.' });
+  });
+};
+
+router.post('/upload-image', requirePermission(ACTIONS.SALES_CREATE), handleUpload, uploadBakiImage);
 
 router.post('/credits', requirePermission(ACTIONS.SALES_CREATE), withIdempotency(addCredit));
 router.post('/payments', requirePermission(ACTIONS.SALES_CREATE), withIdempotency(addPayment));

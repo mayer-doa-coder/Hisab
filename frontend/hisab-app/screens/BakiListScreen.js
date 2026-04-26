@@ -13,12 +13,18 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { UI_COLORS } from '../constants/ui-theme';
-import { useAppData } from '../context/AppDataContext';
+import CustomerPhotoCapture from '../components/baki/CustomerPhotoCapture';
+import PaymentCodeModal from '../components/baki/PaymentCodeModal';
+import PhotoPreviewBadge from '../components/baki/PhotoPreviewBadge';
 import CustomerChipSelector from '../components/customers/CustomerChipSelector';
 import CustomerQuickAddModal from '../components/customers/CustomerQuickAddModal';
+import { UI_COLORS } from '../constants/ui-theme';
+import { useAppData } from '../context/AppDataContext';
+import { uploadBakiImage } from '../services/backend/bakiImageApi';
 import BakiFilters from './baki/BakiFilters';
 import BakiListItem from './baki/BakiListItem';
+
+const TRUST_PHOTO_THRESHOLD = 50;
 
 const MODE_CREDIT = 'credit';
 const MODE_PAYMENT = 'payment';
@@ -45,6 +51,9 @@ export default function BakiListScreen() {
   const [saving, setSaving] = useState(false);
   const [showNote, setShowNote] = useState(false);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [showCamera, setShowCamera] = useState(false);
+  const [capturedImageUri, setCapturedImageUri] = useState(null);
+  const [paymentCodeRow, setPaymentCodeRow] = useState(null);
 
   // list-level filter state (separate from form)
   const [search, setSearch] = useState('');
@@ -60,6 +69,18 @@ export default function BakiListScreen() {
   }, [bakiRows]);
 
   const selectedCustomerDue = dueByCustomerId.get(Number(selectedCustomerId)) || 0;
+
+  const selectedCustomer = useMemo(
+    () => customers.find((c) => String(c.id) === String(selectedCustomerId)) || null,
+    [customers, selectedCustomerId],
+  );
+  const selectedTrustScore = Number.isFinite(Number(selectedCustomer?.trust_score))
+    ? Number(selectedCustomer.trust_score)
+    : null;
+  const requiresPhoto =
+    activeMode === MODE_CREDIT &&
+    selectedTrustScore !== null &&
+    selectedTrustScore < TRUST_PHOTO_THRESHOLD;
 
   const filteredRows = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -89,12 +110,14 @@ export default function BakiListScreen() {
     setAmount('');
     setNote('');
     setShowNote(false);
+    setCapturedImageUri(null);
   };
 
   const resetForm = (keepCustomer = false) => {
     setAmount('');
     setNote('');
     setShowNote(false);
+    setCapturedImageUri(null);
     if (!keepCustomer) setSelectedCustomerId('');
   };
 
@@ -157,12 +180,37 @@ export default function BakiListScreen() {
         ],
       );
     } else {
+      if (requiresPhoto && !capturedImageUri) {
+        Alert.alert(
+          'ছবি প্রয়োজন',
+          'এই কাস্টমারের বিশ্বাসযোগ্যতা কম। ছবি সংরক্ষণ করুন।',
+          [
+            { text: 'বাতিল', style: 'cancel' },
+            { text: 'ছবি তুলুন', onPress: () => setShowCamera(true) },
+          ],
+        );
+        return;
+      }
       try {
         setSaving(true);
+        let imageUrl = null;
+        if (capturedImageUri) {
+          try {
+            const result = await uploadBakiImage({
+              imageUri: capturedImageUri,
+              customerId: Number(selectedCustomerId),
+            });
+            imageUrl = result?.image_url || null;
+          } catch {
+            // upload failed — save entry anyway with local uri as fallback
+            imageUrl = capturedImageUri;
+          }
+        }
         await addBaki({
           customerId: Number(selectedCustomerId),
           amount: numericAmount,
           note,
+          imageUrl,
         });
         resetForm(true);
         Alert.alert('সফল', 'বাকি যোগ হয়েছে।');
@@ -178,6 +226,10 @@ export default function BakiListScreen() {
     setSelectedCustomerId(String(row.customer_id));
     switchMode(MODE_PAYMENT);
     listRef.current?.scrollToOffset({ offset: 0, animated: true });
+  };
+
+  const handleShowPaymentCode = (row) => {
+    setPaymentCodeRow(row);
   };
 
   const isPayment = activeMode === MODE_PAYMENT;
@@ -384,6 +436,53 @@ export default function BakiListScreen() {
                   </TouchableOpacity>
                 )}
 
+                {/* ── Photo capture — credit mode + low trust ──── */}
+                {!isPayment && selectedCustomerId ? (
+                  <View style={styles.photoSection}>
+                    {requiresPhoto && !capturedImageUri && (
+                      <View style={styles.trustAlert}>
+                        <MaterialIcons name="warning" size={16} color={UI_COLORS.textWarning} />
+                        <Text style={styles.trustAlertText}>
+                          এই কাস্টমারের বিশ্বাসযোগ্যতা কম। ছবি সংরক্ষণ করুন।
+                        </Text>
+                      </View>
+                    )}
+
+                    {capturedImageUri ? (
+                      <PhotoPreviewBadge
+                        uri={capturedImageUri}
+                        onRemove={() => setCapturedImageUri(null)}
+                      />
+                    ) : (
+                      <View style={styles.photoButtons}>
+                        <TouchableOpacity
+                          style={[styles.photoBtn, requiresPhoto && styles.photoBtnRequired]}
+                          onPress={() => setShowCamera(true)}
+                          activeOpacity={0.8}
+                        >
+                          <MaterialIcons
+                            name="photo-camera"
+                            size={22}
+                            color={requiresPhoto ? UI_COLORS.textWarning : UI_COLORS.primary}
+                          />
+                          <Text style={[styles.photoBtnText, requiresPhoto && styles.photoBtnTextRequired]}>
+                            ছবি তুলুন
+                          </Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          style={styles.photoBtn}
+                          onPress={() => setShowCamera(true)}
+                          activeOpacity={0.8}
+                        >
+                          <MaterialIcons name="photo-library" size={22} color={UI_COLORS.primary} />
+                          <Text style={styles.photoBtnText}>আপলোড করুন</Text>
+                        </TouchableOpacity>
+                      </View>
+                    )}
+                  </View>
+                ) : null}
+
                 {/* Primary CTA */}
                 <TouchableOpacity
                   style={[
@@ -440,7 +539,11 @@ export default function BakiListScreen() {
           }
           ListEmptyComponent={<Text style={styles.emptyText}>কোনো বাকি নেই।</Text>}
           renderItem={({ item }) => (
-            <BakiListItem item={item} onStartPayment={handleStartPayment} />
+            <BakiListItem
+              item={item}
+              onStartPayment={handleStartPayment}
+              onShowPaymentCode={handleShowPaymentCode}
+            />
           )}
         />
       </KeyboardAvoidingView>
@@ -448,6 +551,22 @@ export default function BakiListScreen() {
         visible={showQuickAdd}
         onDismiss={() => setShowQuickAdd(false)}
         onAdded={(id) => { setSelectedCustomerId(id); setShowQuickAdd(false); }}
+      />
+      <CustomerPhotoCapture
+        visible={showCamera}
+        onClose={() => setShowCamera(false)}
+        onPhotoCaptured={(uri) => {
+          setCapturedImageUri(uri);
+          setShowCamera(false);
+        }}
+      />
+      <PaymentCodeModal
+        visible={Boolean(paymentCodeRow)}
+        onClose={() => setPaymentCodeRow(null)}
+        paymentCode={paymentCodeRow?.latest_payment_code || null}
+        expiresAt={paymentCodeRow?.latest_payment_code_expires_at || null}
+        customerName={paymentCodeRow?.customer_name || null}
+        amount={paymentCodeRow?.due_amount || null}
       />
     </SafeAreaView>
   );
@@ -658,4 +777,55 @@ const styles = StyleSheet.create({
   },
   refreshBtnText: { color: UI_COLORS.primary, fontSize: 12, fontWeight: '600' },
   emptyText: { fontSize: 14, color: UI_COLORS.textMuted, textAlign: 'center', paddingTop: 20 },
+
+  /* photo capture */
+  photoSection: {
+    gap: 10,
+  },
+  trustAlert: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: UI_COLORS.surfaceWarning,
+    borderWidth: 1,
+    borderColor: UI_COLORS.borderWarning,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  trustAlertText: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '600',
+    color: UI_COLORS.textWarning,
+    lineHeight: 18,
+  },
+  photoButtons: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  photoBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderWidth: 1.5,
+    borderColor: UI_COLORS.border,
+    borderRadius: 12,
+    paddingVertical: 14,
+    backgroundColor: UI_COLORS.surface,
+  },
+  photoBtnRequired: {
+    borderColor: UI_COLORS.borderWarning,
+    backgroundColor: UI_COLORS.surfaceWarning,
+  },
+  photoBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: UI_COLORS.primary,
+  },
+  photoBtnTextRequired: {
+    color: UI_COLORS.textWarning,
+  },
 });

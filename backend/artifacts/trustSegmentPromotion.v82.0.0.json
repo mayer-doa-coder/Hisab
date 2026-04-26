@@ -1,0 +1,43 @@
+{
+  "gate_version": "1.0.0",
+  "generated_at": "2026-04-26T06:12:40.169878Z",
+  "dataset_source": "synthetic_seed_1337",
+  "promoted_segments": [],
+  "segment_decisions": {
+    "sparse_history": {
+      "status": "KEEP_CHAMPION",
+      "promoted": false,
+      "reason": "No eligible windows for evaluation.",
+      "evaluated_windows": 0,
+      "window_pass_ratio": 0
+    },
+    "normal_history": {
+      "status": "KEEP_CHAMPION",
+      "promoted": false,
+      "reason": "Window-level lift is not consistent enough. Statistical lift thresholds are not met. Calibration degradation exceeds gate limits. Business gain thresholds are not met.",
+      "evaluated_windows": 5,
+      "window_pass_ratio": 0.0
+    },
+    "rich_volatile": {
+      "status": "KEEP_CHAMPION",
+      "promoted": false,
+      "reason": "Window-level lift is not consistent enough. Statistical lift thresholds are not met. Calibration degradation exceeds gate limits. Business gain thresholds are not met.",
+      "evaluated_windows": 5,
+      "window_pass_ratio": 0.0
+    },
+    "high_due_amount": {
+      "status": "KEEP_CHAMPION",
+      "promoted": false,
+      "reason": "Window-level lift is not consistent enough. Statistical lift thresholds are not met. Calibration degradation exceeds gate limits. Business gain thresholds are not met.",
+      "evaluated_windows": 4,
+      "window_pass_ratio": 0.0
+    },
+    "high_delay": {
+      "status": "KEEP_CHAMPION",
+      "promoted": false,
+      "reason": "Window-level lift is not consistent enough. Statistical lift thresholds are not met. Calibration degradation exceeds gate limits. Business gain thresholds are not met.",
+      "evaluated_windows": 5,
+      "window_pass_ratio": 0.0
+    }
+  }
+}
