@@ -1,0 +1,83 @@
+{
+  "event_type": "quarterly_retraining",
+  "generated_at": "2026-04-26T21:19:46.374Z",
+  "bundle_version": "98.0.0",
+  "model_version_label": "trust_model_v98.0",
+  "dataset_source": "synthetic_fallback",
+  "deployment_status": "candidate_bundle",
+  "lifecycle_state": "candidate_bundle",
+  "pipeline_steps": [
+    "dataset rebuild with latest snapshots",
+    "feature recomputation with Phase 1 schema",
+    "champion retraining (monotonic logistic)",
+    "challenger retraining (lightgbm)",
+    "phase 7 rolling-window backtest",
+    "phase 8 guardrail gate check before deployment candidate creation"
+  ],
+  "metrics": {
+    "champion": {
+      "auc_pr": 0.866493,
+      "recall_at_precision_90": 0.441176,
+      "brier_calibrated": 0.154384,
+      "ece_calibrated": 0.00638
+    },
+    "challenger": {
+      "auc_pr": 0.987072,
+      "recall_at_precision_90": 0.985294,
+      "brier_raw": 0.062945,
+      "brier_calibrated": 0.034547,
+      "ece_calibrated": 0.004813
+    },
+    "challenger_comparison": {
+      "delta_auc_pr": 0.136091,
+      "delta_recall_at_precision_90": 0.544118,
+      "delta_brier": 0.13221,
+      "estimated_loss_reduction_vs_champion": 0.929615
+    }
+  },
+  "gate_results": {
+    "objective": {
+      "pass": true,
+      "checks": {
+        "champion_auc_pr_ok": true,
+        "champion_recall_p90_ok": true,
+        "champion_brier_ok": true,
+        "champion_ece_ok": true,
+        "challenger_auc_pr_ok": true,
+        "challenger_recall_p90_ok": true,
+        "challenger_brier_ok": true,
+        "challenger_ece_ok": true,
+        "business_loss_reduction_ok": true
+      },
+      "diagnostics": []
+    },
+    "phase7": {
+      "pass": true,
+      "reason": "phase7_backtest_completed",
+      "evaluated_segments": 4
+    },
+    "phase8": {
+      "pass": true,
+      "reason": "no_guardrail_breach",
+      "triggered_guardrails": []
+    }
+  },
+  "artifacts": {
+    "champion_model": {
+      "path": "D:\\Hisab\\backend\\artifacts\\trustChampionModel.v98.0.0.json",
+      "sha256": "6b47624bad158341a97cb3ba0f96113ae81fab3c17de6981fec06b8c3c9ce3c2"
+    },
+    "challenger_model": {
+      "path": "D:\\Hisab\\backend\\artifacts\\trustChallengerModel.v98.0.0.json",
+      "sha256": "ad58202b050be4b8048c0b55b455dc9fb7564bab66e7886a172b1ce3f5d0fef5"
+    },
+    "backtest_report": {
+      "path": "D:\\Hisab\\backend\\artifacts\\trustBacktestReport.v98.0.0.json",
+      "sha256": "5812da97b5105f8eb5275b1045e1432c36798360fb2c53d7f6ac637ba09e40e0"
+    },
+    "segment_decisions": {
+      "path": "D:\\Hisab\\backend\\artifacts\\trustSegmentPromotion.v98.0.0.json",
+      "sha256": "f38c0c3933e1e68292f1799d95acb90c9a4fea2b456bd4b1523251c93799f0e8"
+    }
+  }
+}

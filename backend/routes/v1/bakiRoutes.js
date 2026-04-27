@@ -19,6 +19,7 @@ const { withIdempotency } = require('../../controllers/v1/controllerUtils');
 const { requirePermission } = require('../../middleware/permissionMiddleware');
 const { ACTIONS } = require('../../security/rbac');
 const { error: sendError } = require('../../utils/apiResponse');
+const { bakiPinMiddleware } = require('../../middleware/bakiPinMiddleware');
 
 const router = express.Router();
 
@@ -37,7 +38,7 @@ const handleUpload = (req, res, next) => {
 
 router.post('/upload-image', requirePermission(ACTIONS.SALES_CREATE), handleUpload, uploadBakiImage);
 
-router.post('/credits', requirePermission(ACTIONS.SALES_CREATE), withIdempotency(addCredit));
+router.post('/credits', requirePermission(ACTIONS.SALES_CREATE), bakiPinMiddleware, withIdempotency(addCredit));
 router.post('/payments', requirePermission(ACTIONS.SALES_CREATE), withIdempotency(addPayment));
 router.get('/customers/:customerId/ledger', requirePermission(ACTIONS.CUSTOMERS_VIEW), getCustomerLedger);
 router.get('/customers/:customerId/statement', requirePermission(ACTIONS.REPORTS_VIEW), getCustomerStatement);

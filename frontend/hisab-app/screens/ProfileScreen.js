@@ -121,49 +121,53 @@ export default function ProfileScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
-        <View style={styles.section}>
-          <View style={styles.profileHeader}>
-            <View>
-              {profileImageUri ? (
-                <Image source={{ uri: profileImageUri }} style={styles.avatarImage} />
-              ) : (
-                <View style={styles.avatarCircle}>
-                  <MaterialIcons name="person" size={28} color={UI_COLORS.primary} />
-                </View>
-              )}
+        {/* ── Identity card ─────────────────────────────────────── */}
+        <View style={styles.identityCard}>
+          {/* Avatar — tap to change photo */}
+          <TouchableOpacity style={styles.avatarTouchable} onPress={handleChangePhoto} activeOpacity={0.82}>
+            {profileImageUri ? (
+              <Image source={{ uri: profileImageUri }} style={styles.avatarImage} />
+            ) : (
+              <View style={styles.avatarCircle}>
+                <MaterialIcons name="person" size={32} color={UI_COLORS.primary} />
+              </View>
+            )}
+            <View style={styles.cameraOverlay}>
+              <MaterialIcons name="photo-camera" size={14} color="#fff" />
             </View>
-            <View style={styles.profileMeta}>
-              <Text style={styles.profileTitle}>{localizedName}</Text>
-              <Text style={styles.profileSubtitle}>{String(user?.email || t('profile.noEmail'))}</Text>
-            </View>
-          </View>
+          </TouchableOpacity>
 
-          <View style={styles.buttonGroup}>
-            <AppButton title={t('profile.editPhoto')} variant="secondary" onPress={handleChangePhoto} />
+          {/* Name + email column */}
+          <View style={styles.identityMeta}>
             {editingName ? (
-              <View style={styles.editNameWrap}>
+              <View style={styles.nameEditRow}>
                 <TextInput
-                  style={styles.editNameInput}
+                  style={styles.nameInput}
                   value={nameDraft}
                   onChangeText={setNameDraft}
                   placeholder={t('profile.changeUsernamePlaceholder')}
-                  placeholderTextColor={UI_COLORS.textSecondary}
+                  placeholderTextColor={UI_COLORS.textMuted}
+                  autoFocus
                 />
-                <View style={styles.inlineButtons}>
-                  <AppButton title={t('profile.changeUsernameSubmit')} onPress={handleSaveName} />
-                  <AppButton
-                    title={t('profile.changeUsernameCancel')}
-                    variant="secondary"
-                    onPress={() => {
-                      setEditingName(false);
-                      setNameDraft(String(user?.name || ''));
-                    }}
-                  />
-                </View>
+                <TouchableOpacity style={styles.saveNameBtn} onPress={handleSaveName} disabled={busy}>
+                  <MaterialIcons name="check" size={18} color={UI_COLORS.textOnPrimary} />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.cancelNameBtn}
+                  onPress={() => { setEditingName(false); setNameDraft(String(user?.name || '')); }}
+                >
+                  <MaterialIcons name="close" size={18} color={UI_COLORS.textSecondary} />
+                </TouchableOpacity>
               </View>
             ) : (
-              <AppButton title={t('profile.changeUsername')} variant="secondary" onPress={() => setEditingName(true)} />
+              <TouchableOpacity style={styles.nameRow} onPress={() => setEditingName(true)} activeOpacity={0.75}>
+                <Text style={styles.profileTitle} numberOfLines={1}>{localizedName}</Text>
+                <MaterialIcons name="edit" size={15} color={UI_COLORS.textMuted} style={styles.editIcon} />
+              </TouchableOpacity>
             )}
+            <Text style={styles.profileSubtitle} numberOfLines={1}>
+              {String(user?.email || t('profile.noEmail'))}
+            </Text>
           </View>
         </View>
 
@@ -233,34 +237,106 @@ const styles = StyleSheet.create({
   section: {
     gap: SPACING.sm,
   },
-  profileHeader: {
+
+  // ── Identity card (avatar + name, not centered) ────────────────
+  identityCard: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: SPACING.md,
-    marginBottom: SPACING.sm,
+    paddingVertical: SPACING.sm,
+  },
+  avatarTouchable: {
+    position: 'relative',
   },
   avatarCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    borderWidth: 1,
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    borderWidth: 2,
     borderColor: UI_COLORS.border,
     backgroundColor: UI_COLORS.surfaceSoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  profileMeta: {
+  avatarImage: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    borderWidth: 2,
+    borderColor: UI_COLORS.border,
+  },
+  cameraOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: UI_COLORS.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: UI_COLORS.background,
+  },
+  identityMeta: {
     flex: 1,
+    paddingTop: 4,
+    gap: SPACING.xs,
+  },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexShrink: 1,
   },
   profileTitle: {
     ...TYPOGRAPHY.h2,
     color: UI_COLORS.textPrimary,
+    flexShrink: 1,
+  },
+  editIcon: {
+    marginTop: 2,
   },
   profileSubtitle: {
     ...TYPOGRAPHY.body,
     color: UI_COLORS.textSecondary,
-    marginTop: SPACING.xs,
   },
+  nameEditRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  nameInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: UI_COLORS.border,
+    borderRadius: 8,
+    backgroundColor: UI_COLORS.surface,
+    color: UI_COLORS.textPrimary,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: 6,
+    fontFamily: 'AnekBangla_600SemiBold',
+    fontSize: 15,
+  },
+  saveNameBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: UI_COLORS.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cancelNameBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: UI_COLORS.surfaceSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: UI_COLORS.border,
+  },
+
   sectionTitle: {
     ...TYPOGRAPHY.subheading,
     color: UI_COLORS.textPrimary,
@@ -289,27 +365,6 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.small,
     color: UI_COLORS.textSecondary,
     marginTop: 2,
-  },
-  avatarImage: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-  },
-  editNameWrap: {
-    gap: SPACING.sm,
-  },
-  editNameInput: {
-    borderWidth: 1,
-    borderColor: UI_COLORS.border,
-    borderRadius: 10,
-    backgroundColor: UI_COLORS.surface,
-    color: UI_COLORS.textPrimary,
-    paddingHorizontal: SPACING.sm,
-    paddingVertical: SPACING.sm,
-    ...TYPOGRAPHY.body,
-  },
-  inlineButtons: {
-    gap: SPACING.sm,
   },
   langToggleGroup: {
     flexDirection: 'row',

@@ -1,13 +1,13 @@
 {
   "schema_version": "1.0.0",
   "source": "phase8_runtime_react_native",
-  "ingested_at": "2026-04-26T14:06:15.888Z",
-  "generated_at": "2026-04-26T14:06:13.905Z",
-  "snapshot_version": 4,
-  "request_count": 1,
+  "ingested_at": "2026-04-26T15:06:41.460Z",
+  "generated_at": "2026-04-26T15:06:39.649Z",
+  "snapshot_version": 25,
+  "request_count": 4,
   "fallback_rate": 1,
   "error_rate": 0,
-  "latency_ms_p95": 1,
+  "latency_ms_p95": 2,
   "rollout_observed_percentage": 100,
   "business_loss_increase_pct": null,
   "metrics": {
@@ -35,43 +35,43 @@
     "due_amount": {
       "mean_shift": 0,
       "variance_shift": 1,
-      "sample_count": 1
+      "sample_count": 4
     },
     "late_count": {
       "mean_shift": 0,
       "variance_shift": 1,
-      "sample_count": 1
+      "sample_count": 4
     },
     "avg_delay_days": {
       "mean_shift": 0,
       "variance_shift": 1,
-      "sample_count": 1
+      "sample_count": 4
     },
     "transaction_depth": {
       "mean_shift": 0,
       "variance_shift": 1,
-      "sample_count": 1
+      "sample_count": 4
     },
     "recency_days": {
-      "mean_shift": 0,
-      "variance_shift": 1,
-      "sample_count": 1
+      "mean_shift": 0.00010320654531208314,
+      "variance_shift": 9.83634481266563,
+      "sample_count": 4
     },
     "payment_consistency": {
       "mean_shift": 0,
       "variance_shift": 1,
-      "sample_count": 1
+      "sample_count": 4
     },
     "payment_volatility": {
       "mean_shift": 0,
       "variance_shift": 1,
-      "sample_count": 1
+      "sample_count": 4
     }
   },
   "segment_summary": {
     "sparse_history": {
-      "request_count": 1,
-      "fallback_count": 1,
+      "request_count": 4,
+      "fallback_count": 4,
       "error_count": 0,
       "fallback_rate": 1,
       "error_rate": 0

@@ -6,18 +6,19 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppButton, AppCard, AppInput } from '../components/ui';
 import { UI_COLORS } from '../constants/ui-theme';
 import { useAppData } from '../context/AppDataContext';
+import { useLanguage } from '../context/LanguageContext';
 
 const formatMoney = (value) => `৳${Number(value || 0).toFixed(2)}`;
 
 const CATEGORY_OPTIONS = [
-  'GENERAL',
-  'RENT',
-  'SALARY',
-  'UTILITIES',
-  'TRANSPORT',
-  'MARKETING',
-  'MAINTENANCE',
-  'OTHER',
+  { value: 'GENERAL', label: 'সাধারণ' },
+  { value: 'RENT', label: 'ভাড়া' },
+  { value: 'SALARY', label: 'বেতন' },
+  { value: 'UTILITIES', label: 'ইউটিলিটি' },
+  { value: 'TRANSPORT', label: 'পরিবহন' },
+  { value: 'MARKETING', label: 'মার্কেটিং' },
+  { value: 'MAINTENANCE', label: 'রক্ষণাবেক্ষণ' },
+  { value: 'OTHER', label: 'অন্যান্য' },
 ];
 
 const PAYMENT_OPTIONS = [
@@ -30,6 +31,7 @@ const PAYMENT_OPTIONS = [
 ];
 
 export default function ExpenseScreen() {
+  const { mapText } = useLanguage();
   const {
     createExpense,
     getExpenses,
@@ -128,21 +130,29 @@ export default function ExpenseScreen() {
 
               <Text style={styles.label}>বিভাগ</Text>
               <View style={styles.pickerWrap}>
-                <Picker selectedValue={category} onValueChange={(value) => setCategory(String(value))}>
-                  {CATEGORY_OPTIONS.map((option) => (
-                    <Picker.Item key={`expense-category-${option}`} label={option} value={option} />
-                  ))}
-                </Picker>
-              </View>
+                  <Picker selectedValue={category} onValueChange={(value) => setCategory(String(value))}>
+                    {CATEGORY_OPTIONS.map((option) => (
+                      <Picker.Item
+                        key={`expense-category-${option.value}`}
+                        label={mapText(option.label)}
+                        value={option.value}
+                      />
+                    ))}
+                  </Picker>
+                </View>
 
               <Text style={styles.label}>পেমেন্ট পদ্ধতি</Text>
-              <View style={styles.pickerWrap}>
-                <Picker selectedValue={paymentMethod} onValueChange={(value) => setPaymentMethod(String(value))}>
-                  {PAYMENT_OPTIONS.map((option) => (
-                    <Picker.Item key={`expense-method-${option}`} label={option} value={option} />
-                  ))}
-                </Picker>
-              </View>
+                <View style={styles.pickerWrap}>
+                  <Picker selectedValue={paymentMethod} onValueChange={(value) => setPaymentMethod(String(value))}>
+                    {PAYMENT_OPTIONS.map((option) => (
+                      <Picker.Item
+                        key={`expense-method-${option.value}`}
+                        label={mapText(option.label)}
+                        value={option.value}
+                      />
+                    ))}
+                  </Picker>
+                </View>
 
               <AppInput value={note} onChangeText={setNote} placeholder="নোট (ঐচ্ছিক)" />
 
@@ -170,7 +180,11 @@ export default function ExpenseScreen() {
               <Text style={styles.rowTitle}>{item.title}</Text>
               <Text style={styles.rowAmount}>{formatMoney(item.amount)}</Text>
             </View>
-            <Text style={styles.meta}>{(CATEGORY_OPTIONS.find(o => o.value === item.category) || {label: item.category}).label} | {(PAYMENT_OPTIONS.find(o => o.value === item.payment_method) || {label: item.payment_method || 'অজানা'}).label}</Text>
+            <Text style={styles.meta}>
+              {(CATEGORY_OPTIONS.find((option) => option.value === item.category)?.label || mapText(item.category || 'সাধারণ'))}
+              {' | '}
+              {(PAYMENT_OPTIONS.find((option) => option.value === item.payment_method)?.label || mapText(item.payment_method || 'অন্যান্য'))}
+            </Text>
             <Text style={styles.meta}>{item.expense_date || 'অজানা'}</Text>
             <Text style={styles.meta}>{item.note || 'নোট নেই'}</Text>
           </AppCard>

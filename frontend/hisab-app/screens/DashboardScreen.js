@@ -29,10 +29,12 @@ const REPORT_PERIODS = [
   { key: 'monthly', labelKey: 'dashboard.monthly', rangeType: DATE_RANGE_TYPES.MONTH },
 ];
 
-const SECONDARY_NAV = [
-  { icon: 'groups', labelKey: 'dashboard.customers', route: 'Customers' },
-  { icon: 'inventory-2', labelKey: 'dashboard.products', route: 'Products' },
-  { icon: 'analytics', labelKey: 'dashboard.reports', route: 'Reports' },
+const QUICK_OPTIONS = [
+  { route: 'Sales', labelKey: 'dashboard.quick.sales', icon: 'point-of-sale' },
+  { route: 'Baki', labelKey: 'dashboard.quick.baki', icon: 'account-balance' },
+  { route: 'Cashbook', labelKey: 'dashboard.quick.cashbook', icon: 'account-balance-wallet' },
+  { route: 'Expenses', labelKey: 'dashboard.quick.expenses', icon: 'receipt' },
+  { route: 'DayClose', labelKey: 'dashboard.quick.dayClose', icon: 'event-available' },
 ];
 
 const toNumber = (value, fallback = 0) => {
@@ -47,7 +49,6 @@ export default function DashboardScreen() {
   const { isOnline, session } = useAuth();
   const { t } = useLanguage();
   const {
-    products,
     customers,
     refreshAll,
     getDashboardKpiSummary,
@@ -65,6 +66,7 @@ export default function DashboardScreen() {
   const [kpis, setKpis] = useState({
     totalCredit: 0,
     totalPayment: 0,
+    totalSales: 0,
     net: 0,
     activeCustomers: 0,
   });
@@ -74,12 +76,9 @@ export default function DashboardScreen() {
       (sum, row) => sum + Math.max(0, toNumber(row.total_due, 0)),
       0,
     );
-    return {
-      totalProducts: (products || []).length,
-      totalCustomers: (customers || []).length,
-      totalOutstandingDue,
-    };
-  }, [customers, products]);
+    return { totalOutstandingDue };
+  }, [customers]);
+  const totalCustomers = (customers || []).length;
 
   const loadDashboard = useCallback(async () => {
     const selectedPeriod = REPORT_PERIODS.find((r) => r.key === period) || REPORT_PERIODS[0];
@@ -115,6 +114,7 @@ export default function DashboardScreen() {
       setKpis({
         totalCredit: toNumber(kpiSummary?.total_credit, 0),
         totalPayment: toNumber(kpiSummary?.total_payment, 0),
+        totalSales: toNumber(kpiSummary?.total_sales, 0),
         net: toNumber(kpiSummary?.net, 0),
         activeCustomers: toNumber(kpiSummary?.active_customers, 0),
       });
@@ -143,8 +143,8 @@ export default function DashboardScreen() {
   }, [loadDashboard]);
 
   const todaySales = toNumber(
-    complianceDashboard?.sales?.totalSales ?? kpis.totalCredit,
-    kpis.totalCredit,
+    complianceDashboard?.sales?.totalSales ?? kpis.totalSales,
+    kpis.totalSales,
   );
 
   return (
@@ -165,13 +165,6 @@ export default function DashboardScreen() {
             <Text style={styles.headerTitle}>{t('dashboard.title')}</Text>
             <Text style={styles.headerSubtitle}>{t('dashboard.subtitle')}</Text>
           </View>
-          <TouchableOpacity
-            style={styles.profileBtn}
-            onPress={() => navigation.navigate('Profile')}
-            accessibilityRole="button"
-          >
-            <MaterialIcons name="account-circle" size={30} color={UI_COLORS.primary} />
-          </TouchableOpacity>
         </View>
 
         {/* ── Hero metric ──────────────────────────────────── */}
@@ -219,19 +212,18 @@ export default function DashboardScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* ── Secondary navigation ─────────────────────────── */}
-        <View style={styles.secondaryNav}>
-          {SECONDARY_NAV.map((item) => (
+        <View style={styles.quickOptionsWrap}>
+          {QUICK_OPTIONS.map((option) => (
             <TouchableOpacity
-              key={item.route}
-              style={styles.secondaryNavItem}
-              activeOpacity={0.78}
-              onPress={() => navigation.navigate(item.route)}
+              key={option.route}
+              style={styles.quickOptionCard}
+              activeOpacity={0.84}
+              onPress={() => navigation.navigate(option.route)}
             >
-              <View style={styles.secondaryNavIcon}>
-                <MaterialIcons name={item.icon} size={24} color={UI_COLORS.primary} />
+              <View style={styles.quickOptionIconWrap}>
+                <MaterialIcons name={option.icon} size={18} color={UI_COLORS.primary} />
               </View>
-              <Text style={styles.secondaryNavLabel}>{t(item.labelKey)}</Text>
+              <Text style={styles.quickOptionLabel}>{t(option.labelKey)}</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -272,89 +264,89 @@ export default function DashboardScreen() {
 
             {/* Sales — flat background, inline metrics */}
             <AppCard variant="flat" style={styles.card}>
-              <Text style={styles.cardTitle}>বিক্রির হিসাব</Text>
+              <Text style={styles.cardTitle}>{t('dashboard.salesReport')}</Text>
               <View style={styles.inlineMetrics}>
                 <View style={styles.inlineMetricItem}>
                   <Text style={styles.inlineMetricValue}>{formatMoney(complianceDashboard?.sales?.totalSales)}</Text>
-                  <Text style={styles.inlineMetricLabel}>মোট বিক্রি</Text>
+                  <Text style={styles.inlineMetricLabel}>{t('dashboard.totalSales')}</Text>
                 </View>
                 <View style={styles.inlineMetricItem}>
                   <Text style={styles.inlineMetricValue}>{toNumber(complianceDashboard?.sales?.transactionCount, 0)}</Text>
-                  <Text style={styles.inlineMetricLabel}>লেনদেন</Text>
+                  <Text style={styles.inlineMetricLabel}>{t('dashboard.transactions')}</Text>
                 </View>
               </View>
-              <Text style={styles.cardSubtitle}>সেরা পণ্য</Text>
+              <Text style={styles.cardSubtitle}>{t('dashboard.topProducts')}</Text>
               {(complianceDashboard?.sales?.topSellingProducts || []).slice(0, 5).map((row) => (
                 <Text key={`top-${row.productId}`} style={styles.cardLine}>
-                  {row.productName}: {toNumber(row.unitsSold, 0)} টি
+                  {row.productName}: {toNumber(row.unitsSold, 0)}
                 </Text>
               ))}
             </AppCard>
 
             {/* Inventory — default with stronger border */}
             <AppCard style={styles.card}>
-              <Text style={styles.cardTitle}>মালের হিসাব</Text>
+              <Text style={styles.cardTitle}>{t('dashboard.inventoryReport')}</Text>
               <View style={styles.inlineMetrics}>
                 <View style={styles.inlineMetricItem}>
                   <Text style={styles.inlineMetricValue}>{(complianceDashboard?.inventory?.currentStockLevels || []).length}</Text>
-                  <Text style={styles.inlineMetricLabel}>বর্তমান</Text>
+                  <Text style={styles.inlineMetricLabel}>{t('dashboard.current')}</Text>
                 </View>
                 <View style={[styles.inlineMetricItem, { borderLeftWidth: 1, borderLeftColor: UI_COLORS.borderSoft, paddingLeft: 12 }]}>
                   <Text style={[styles.inlineMetricValue, { color: UI_COLORS.textWarning }]}>{(complianceDashboard?.inventory?.lowStockItems || []).length}</Text>
-                  <Text style={styles.inlineMetricLabel}>কম</Text>
+                  <Text style={styles.inlineMetricLabel}>{t('dashboard.low')}</Text>
                 </View>
                 <View style={[styles.inlineMetricItem, { borderLeftWidth: 1, borderLeftColor: UI_COLORS.borderSoft, paddingLeft: 12 }]}>
                   <Text style={[styles.inlineMetricValue, { color: UI_COLORS.textDanger }]}>{(complianceDashboard?.inventory?.deadStockItems || []).length}</Text>
-                  <Text style={styles.inlineMetricLabel}>বন্ধ</Text>
+                  <Text style={styles.inlineMetricLabel}>{t('dashboard.dead')}</Text>
                 </View>
               </View>
             </AppCard>
 
             {/* Finance — accent stripe */}
             <AppCard variant="accent" style={styles.card}>
-              <Text style={styles.cardTitle}>আর্থিক হিসাব</Text>
+              <Text style={styles.cardTitle}>{t('dashboard.financeReport')}</Text>
               <View style={styles.inlineMetrics}>
                 <View style={styles.inlineMetricItem}>
                   <Text style={[styles.inlineMetricValue, { color: UI_COLORS.textSuccess }]}>{formatMoney(complianceDashboard?.finance?.totalRevenue)}</Text>
-                  <Text style={styles.inlineMetricLabel}>আয়</Text>
+                  <Text style={styles.inlineMetricLabel}>{t('dashboard.income')}</Text>
                 </View>
                 <View style={styles.inlineMetricItem}>
                   <Text style={[styles.inlineMetricValue, { color: UI_COLORS.textDanger }]}>{formatMoney(complianceDashboard?.finance?.totalExpenses)}</Text>
-                  <Text style={styles.inlineMetricLabel}>খরচ</Text>
+                  <Text style={styles.inlineMetricLabel}>{t('dashboard.expense')}</Text>
                 </View>
                 <View style={styles.inlineMetricItem}>
                   <Text style={styles.inlineMetricValue}>{formatMoney(complianceDashboard?.finance?.netProfit)}</Text>
-                  <Text style={styles.inlineMetricLabel}>লাভ</Text>
+                  <Text style={styles.inlineMetricLabel}>{t('dashboard.profit')}</Text>
                 </View>
               </View>
             </AppCard>
 
             {/* Collections — elevated */}
             <AppCard variant="elevated" style={styles.card}>
-              <Text style={styles.cardTitle}>আদায়ের হিসাব</Text>
-              <Text style={styles.cardLine}>মোট বাকি: {formatMoney(complianceDashboard?.collections?.totalBaki)}</Text>
-              <Text style={styles.cardLine}>বকেয়া: {formatMoney(complianceDashboard?.collections?.overdueAmount)}</Text>
-              <Text style={styles.cardLine}>আদায়ের হার: {toNumber(complianceDashboard?.collections?.recoveryRate, 0).toFixed(2)}%</Text>
+              <Text style={styles.cardTitle}>{t('dashboard.collectionsReport')}</Text>
+              <Text style={styles.cardLine}>{t('dashboard.totalBaki', { amount: formatMoney(complianceDashboard?.collections?.totalBaki) })}</Text>
+              <Text style={styles.cardLine}>{t('dashboard.overdue', { amount: formatMoney(complianceDashboard?.collections?.overdueAmount) })}</Text>
+              <Text style={styles.cardLine}>{t('dashboard.recoveryRate', { rate: toNumber(complianceDashboard?.collections?.recoveryRate, 0).toFixed(2) })}</Text>
             </AppCard>
 
             {/* Tip — accent */}
             <AppCard variant="accent" style={styles.card}>
-              <Text style={styles.cardTitle}>পরামর্শ</Text>
+              <Text style={styles.cardTitle}>{t('dashboard.tip')}</Text>
               <Text style={styles.cardLine}>{getDashboardTip({
                 period,
-                totalCustomers: summary.totalCustomers,
+                totalCustomers,
                 isOnline,
               })}</Text>
               <View style={styles.inlineButtonRow}>
                 <AppButton
-                  title="পরিচিতি"
+                  title={t('dashboard.onboarding')}
                   variant="secondary"
                   size="sm"
                   style={styles.inlineButton}
                   onPress={() => navigation.navigate('Onboarding')}
                 />
                 <AppButton
-                  title="সাহায্য"
+                  title={t('dashboard.help')}
                   variant="secondary"
                   size="sm"
                   style={styles.inlineButton}
@@ -365,39 +357,15 @@ export default function DashboardScreen() {
 
             {/* Activity — flat */}
             <AppCard variant="flat" style={styles.card}>
-              <Text style={styles.cardTitle}>কার্যক্রমের বিশ্লেষণ</Text>
-              <Text style={styles.cardLine}>কার্যক্রম: {activityInsightExample?.activity?.event_type || 'sale_created'}</Text>
-              <Text style={styles.cardLine}>{activityInsightExample?.metrics?.dao || 'অপারেটরের কার্যক্রম DAO আপডেট করে।'}</Text>
-              <Text style={styles.cardLine}>{activityInsightExample?.metrics?.digitalSalesRatio || 'বিক্রির মোট ডিজিটাল অনুপাত আপডেট করে।'}</Text>
-              <Text style={styles.cardLine}>{activityInsightExample?.metrics?.featureUsage || 'ফিচার ব্যবহারের সংখ্যা বাড়ে।'}</Text>
-              <Text style={styles.cardLine}>{activityInsightExample?.insight || 'গ্রহণযোগ্যতার সংকেত কার্যকর অন্তর্দৃষ্টিতে রূপান্তরিত হয়।'}</Text>
+              <Text style={styles.cardTitle}>{t('dashboard.activityReport')}</Text>
+              <Text style={styles.cardLine}>{activityInsightExample?.activity?.event_type || 'sale_created'}</Text>
+              <Text style={styles.cardLine}>{activityInsightExample?.metrics?.dao || ''}</Text>
+              <Text style={styles.cardLine}>{activityInsightExample?.metrics?.digitalSalesRatio || ''}</Text>
+              <Text style={styles.cardLine}>{activityInsightExample?.metrics?.featureUsage || ''}</Text>
+              <Text style={styles.cardLine}>{activityInsightExample?.insight || ''}</Text>
             </AppCard>
           </>
         )}
-
-        {/* ── Footer ──────────────────────────────────────── */}
-        <View style={styles.footer}>
-          <View style={styles.footerItem}>
-            <MaterialIcons name="groups" size={14} color={UI_COLORS.textMuted} />
-            <Text style={styles.footerText}>{summary.totalCustomers} কাস্টমার</Text>
-          </View>
-          <Text style={styles.footerDot}>·</Text>
-          <View style={styles.footerItem}>
-            <MaterialIcons name="inventory-2" size={14} color={UI_COLORS.textMuted} />
-            <Text style={styles.footerText}>{summary.totalProducts} পণ্য</Text>
-          </View>
-          <Text style={styles.footerDot}>·</Text>
-          <View style={styles.footerItem}>
-            <MaterialIcons
-              name={isOnline ? 'cloud-done' : 'cloud-off'}
-              size={14}
-              color={isOnline ? UI_COLORS.textSuccess : UI_COLORS.textMuted}
-            />
-            <Text style={[styles.footerText, isOnline && { color: UI_COLORS.textSuccess }]}>
-               {isOnline ? t('dashboard.connected') : t('dashboard.offline')}
-            </Text>
-          </View>
-        </View>
 
         {loading && !refreshing && (
           <Text style={styles.statusText}>{t('dashboard.loading')}</Text>
@@ -504,6 +472,46 @@ const styles = StyleSheet.create({
   },
   ctaGreenText: { fontSize: 16, fontFamily: 'AnekBangla_800ExtraBold', color: UI_COLORS.textOnPrimary },
 
+  quickOptionsWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  quickOptionCard: {
+    width: '31.8%',
+    minHeight: 82,
+    borderRadius: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: UI_COLORS.surface,
+    borderWidth: 1,
+    borderColor: UI_COLORS.borderSoft,
+    shadowColor: '#FFFFFF',
+    shadowOffset: { width: -2, height: -2 },
+    shadowOpacity: 0.35,
+    shadowRadius: 3,
+    elevation: 4,
+  },
+  quickOptionIconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: UI_COLORS.surfaceSoft,
+    borderWidth: 1,
+    borderColor: UI_COLORS.border,
+  },
+  quickOptionLabel: {
+    fontSize: 12,
+    fontFamily: 'AnekBangla_700Bold',
+    color: UI_COLORS.textPrimary,
+    textAlign: 'center',
+  },
+
   /* secondary nav */
   secondaryNav: {
     flexDirection: 'row',
@@ -561,18 +569,6 @@ const styles = StyleSheet.create({
   inlineMetricItem: { gap: 2 },
   inlineMetricValue: { fontSize: 18, fontFamily: 'AnekBangla_800ExtraBold', color: UI_COLORS.textPrimary },
   inlineMetricLabel: { fontSize: 11, fontFamily: 'AnekBangla_600SemiBold', color: UI_COLORS.textMuted },
-
-  /* footer */
-  footer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    flexWrap: 'wrap',
-  },
-  footerItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  footerText: { fontSize: 12, color: UI_COLORS.textMuted },
-  footerDot: { fontSize: 12, color: UI_COLORS.textMuted },
 
   statusText: { ...TYPOGRAPHY.small, color: UI_COLORS.textMuted, textAlign: 'center' },
   errorText: { ...TYPOGRAPHY.small, color: UI_COLORS.danger, textAlign: 'center' },

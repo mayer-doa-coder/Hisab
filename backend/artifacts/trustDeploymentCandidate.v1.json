@@ -1,7 +1,7 @@
 {
-  "generated_at": "2026-04-26T13:44:50.797Z",
-  "bundle_version": "90.0.0",
-  "model_version_label": "trust_model_v90.0",
+  "generated_at": "2026-04-27T02:22:45.046Z",
+  "bundle_version": "104.0.0",
+  "model_version_label": "trust_model_v104.0",
   "deployment_status": "candidate_bundle",
   "required_rollout_stages": [
     "5%",
@@ -38,20 +38,20 @@
   },
   "artifacts": {
     "champion_model": {
-      "path": "D:\\Hisab\\backend\\artifacts\\trustChampionModel.v90.0.0.json",
-      "sha256": "7907d29e25426426ac8622abfa2fe09bd25dd21b82595f78a0a2bafb311d1614"
+      "path": "D:\\Hisab\\backend\\artifacts\\trustChampionModel.v104.0.0.json",
+      "sha256": "4e64f4588b8ffbd99bc52410f1422f7f4fb197bb314911e651efb5f562cc9fbc"
     },
     "challenger_model": {
-      "path": "D:\\Hisab\\backend\\artifacts\\trustChallengerModel.v90.0.0.json",
-      "sha256": "fe9ec356c7e39607bb3f9768f8008ee2ebcf3b4aa960141d82d57421a24828da"
+      "path": "D:\\Hisab\\backend\\artifacts\\trustChallengerModel.v104.0.0.json",
+      "sha256": "bfb949315008f2351db22d62a80bdb2529cca6acec9e5ddb7dd7c58a42fec93c"
     },
     "backtest_report": {
-      "path": "D:\\Hisab\\backend\\artifacts\\trustBacktestReport.v90.0.0.json",
-      "sha256": "15b92679e14e020ced83a78a2fc11ff5961e55d6f3a16013d0b0ed553babe628"
+      "path": "D:\\Hisab\\backend\\artifacts\\trustBacktestReport.v104.0.0.json",
+      "sha256": "0d51eda2414698e15e8c4293a5e6ca030ba9ac9c2763bb3b16194e48f9a75ac7"
     },
     "segment_decisions": {
-      "path": "D:\\Hisab\\backend\\artifacts\\trustSegmentPromotion.v90.0.0.json",
-      "sha256": "b74df69d672eaf2b1959e022e0ee1e9887c467f3428bc55087f9509379d5997a"
+      "path": "D:\\Hisab\\backend\\artifacts\\trustSegmentPromotion.v104.0.0.json",
+      "sha256": "20aabc7f12511be024c9c28c5fb907913212b19b36fd76e36701312f29e31844"
     }
   }
 }

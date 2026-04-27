@@ -363,11 +363,11 @@ export default function SalesScreen() {
 
       <View style={styles.stepIndicator}>
         <View style={[styles.stepDot, step === 1 && styles.stepDotActive]}>
-          <Text style={[styles.stepDotText, step === 1 && styles.stepDotTextActive]}>১</Text>
+          <Text style={[styles.stepDotText, step === 1 && styles.stepDotTextActive]}>1</Text>
         </View>
         <View style={[styles.stepConnector, step === 2 && styles.stepConnectorActive]} />
         <View style={[styles.stepDot, step === 2 && styles.stepDotActive]}>
-          <Text style={[styles.stepDotText, step === 2 && styles.stepDotTextActive]}>২</Text>
+          <Text style={[styles.stepDotText, step === 2 && styles.stepDotTextActive]}>2</Text>
         </View>
       </View>
 

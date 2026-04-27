@@ -7,6 +7,7 @@ import {
   resolveFallbackReason,
   createStandardTrustOutput,
 } from './trustFallbackPolicy.js';
+import { evaluateTrustGate, buildBlockedTrustOutput, TRUST_SCOPE } from './trustGating.js';
 import { predictChampionTrust } from './trustChampionModel.js';
 import {
   predictChallengerTrust,
@@ -1023,8 +1024,44 @@ export const applyCustomerRiskClassification = (
       average_payment_delay: null,
     };
     const featureItem = featureMap.get(customerId) || null;
+    const verificationLevel = customer.verification_level ?? customer.verificationLevel ?? 'L0';
+    const trustGate = evaluateTrustGate(verificationLevel);
     let scoring = null;
     let scoringErrored = false;
+
+    if (!trustGate.trustAllowed) {
+      const blockedOutput = buildBlockedTrustOutput(trustGate);
+      return {
+        ...customer,
+        risk_level: 'Low Risk',
+        risk_score: 50,
+        trust_score: 50,
+        risk_reasons: [trustGate.message],
+        trust_score_output: blockedOutput,
+        trust_scoring_method: blockedOutput.method,
+        trust_scoring_reason_code: blockedOutput.reason,
+        trust_scoring_explanation: blockedOutput.explanation,
+        trust_scoring_confidence: null,
+        trust_scoring_probability: null,
+        trust_scoring_contributions: null,
+        trust_scoring_confidence_components: null,
+        trust_scoring_model_key: null,
+        trust_scoring_model_version: null,
+        contributing_factors: [],
+        trust_routing_decision: null,
+        trust_routing_event: null,
+        trust_shadow_comparison: null,
+        trust_fallback_event: null,
+        trust_scope: trustGate.scope,
+        trust_gate: trustGate,
+        number_of_transactions: 0,
+        number_of_late_payments: 0,
+        average_payment_delay: null,
+        trust_features: null,
+        trust_feature_schema: null,
+        trust_feature_validation: null,
+      };
+    }
 
     try {
       scoring = scoreCustomerTrust({
@@ -1119,6 +1156,8 @@ export const applyCustomerRiskClassification = (
       trust_routing_event: scoring?.routingLog || null,
       trust_shadow_comparison: scoring?.shadowComparison || null,
       trust_fallback_event: scoring.fallbackLog,
+      trust_scope: trustGate.scope,
+      trust_gate: trustGate,
     };
 
     if (monitoringEngine && typeof monitoringEngine.recordRequest === 'function') {

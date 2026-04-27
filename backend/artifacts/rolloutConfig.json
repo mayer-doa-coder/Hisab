@@ -30,6 +30,6 @@
     "anonymous_token": "anonymous",
     "use_product_segmentation": true
   },
-  "updated_at": "2026-04-26T14:04:15.865Z",
+  "updated_at": "2026-04-26T22:05:54.663Z",
   "disabled_reason": "phase9_auto_guardrail: Fallback rate exceeded threshold; Confidence drift exceeded threshold; Suggestion acceptance rate dropped"
 }

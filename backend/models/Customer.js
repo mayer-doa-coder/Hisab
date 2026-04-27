@@ -86,6 +86,13 @@ const customerSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    // optional link to the cross-shop global identity; null for unlinked customers
+    globalCustomerId: {
+      type: String,
+      ref: 'GlobalCustomerIdentity',
+      default: null,
+      index: true,
+    },
   },
   {
     timestamps: true,

@@ -3,6 +3,15 @@ import en from '../locales/en';
 
 const BN_TO_EN = new Map();
 const EN_TO_BN = new Map();
+const BN_TO_EN_NORMALIZED = new Map();
+const EN_TO_BN_NORMALIZED = new Map();
+
+const normalizeUiText = (value) =>
+  String(value || '')
+    .replace(/\s+/g, ' ')
+    .replace(/\s*([|:,.!?])\s*/g, '$1 ')
+    .replace(/\s+/g, ' ')
+    .trim();
 
 Object.keys(en).forEach((key) => {
   const enValue = typeof en[key] === 'string' ? en[key].trim() : '';
@@ -16,6 +25,16 @@ Object.keys(en).forEach((key) => {
   }
   if (!EN_TO_BN.has(enValue)) {
     EN_TO_BN.set(enValue, bnValue);
+  }
+
+  const normalizedBn = normalizeUiText(bnValue);
+  const normalizedEn = normalizeUiText(enValue);
+
+  if (normalizedBn && !BN_TO_EN_NORMALIZED.has(normalizedBn)) {
+    BN_TO_EN_NORMALIZED.set(normalizedBn, enValue);
+  }
+  if (normalizedEn && !EN_TO_BN_NORMALIZED.has(normalizedEn)) {
+    EN_TO_BN_NORMALIZED.set(normalizedEn, bnValue);
   }
 });
 
@@ -34,10 +53,51 @@ export const toLocalizedUiText = (value, language = runtimeLanguage) => {
   }
 
   if (language === 'en') {
-    return BN_TO_EN.get(text) || value;
+    const normalized = normalizeUiText(text);
+    const exact = BN_TO_EN.get(text) || BN_TO_EN_NORMALIZED.get(normalized);
+    if (exact) {
+      return exact;
+    }
+
+    const phraseMapped = replaceMappedPhrases(text, 'bn');
+    return hasBanglaChars(phraseMapped) ? transliterateBanglaToLatin(phraseMapped) : phraseMapped;
   }
 
-  return EN_TO_BN.get(text) || value;
+  const normalized = normalizeUiText(text);
+  return EN_TO_BN.get(text) || EN_TO_BN_NORMALIZED.get(normalized) || replaceMappedPhrases(text, 'en');
+};
+
+const hasBanglaChars = (value) => /[\u0980-\u09FF]/.test(String(value || ''));
+const hasLatinChars = (value) => /[A-Za-z]/.test(String(value || ''));
+
+const phraseCache = {
+  bn: null,
+  en: null,
+};
+
+const getSortedPhrasePairs = (direction) => {
+  if (phraseCache[direction]) {
+    return phraseCache[direction];
+  }
+
+  const sourceMap = direction === 'bn' ? BN_TO_EN : EN_TO_BN;
+  const pairs = Array.from(sourceMap.entries())
+    .filter(([from]) => typeof from === 'string' && from.length >= 2)
+    .sort((a, b) => b[0].length - a[0].length);
+
+  phraseCache[direction] = pairs;
+  return pairs;
+};
+
+const replaceMappedPhrases = (text, direction) => {
+  let next = text;
+  for (const [from, to] of getSortedPhrasePairs(direction)) {
+    if (!from || !to || !next.includes(from)) {
+      continue;
+    }
+    next = next.split(from).join(to);
+  }
+  return next;
 };
 
 const LATIN_TO_BN = Object.freeze({
@@ -118,10 +178,23 @@ const BN_TO_LATIN = Object.freeze({
   'ং': 'ng',
   'ঃ': 'h',
   'ঁ': 'n',
+  '০': '0',
+  '১': '1',
+  '২': '2',
+  '৩': '3',
+  '৪': '4',
+  '৫': '5',
+  '৬': '6',
+  '৭': '7',
+  '৮': '8',
+  '৯': '9',
 });
 
-const hasBanglaChars = (value) => /[\u0980-\u09FF]/.test(String(value || ''));
-const hasLatinChars = (value) => /[A-Za-z]/.test(String(value || ''));
+const transliterateBanglaToLatin = (value) =>
+  String(value || '')
+    .split('')
+    .map((char) => BN_TO_LATIN[char] || char)
+    .join('');
 
 export const localizePersonName = (value, language = runtimeLanguage) => {
   const text = String(value || '').trim();

@@ -210,9 +210,16 @@ export const executeCommand = async ({
       return {
         status: 'FAILED',
         message: 'Execution is blocked until command is explicitly confirmed.',
-        data: {
-          code: 'FSM_CONFIRMATION_REQUIRED',
-        },
+        data: { code: 'FSM_CONFIRMATION_REQUIRED' },
+        idempotency_key: null,
+      };
+    }
+
+    if (!context?.pinVerified) {
+      return {
+        status: 'FAILED',
+        message: 'PIN verification required before execution.',
+        data: { code: 'PIN_VERIFICATION_REQUIRED' },
         idempotency_key: null,
       };
     }

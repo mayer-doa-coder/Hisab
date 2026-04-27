@@ -91,6 +91,7 @@ import {
   updateCustomer as dbUpdateCustomer,
   updateProduct as dbUpdateProduct,
 } from './database/db';
+import { seedDemoData, isDemoDataSeeded } from './database/seedData';
 import BakiListScreen from './screens/BakiListScreen';
 import CustomerLedgerScreen from './screens/CustomerLedgerScreen';
 import CustomerListScreen from './screens/CustomerListScreen';
@@ -227,8 +228,29 @@ if (!TextInput.__hisabPatchedRender && typeof TextInput.render === 'function') {
     }
 
     return cloneElement(origin, {
+      placeholder:
+        typeof origin.props.placeholder === 'string'
+          ? toLocalizedUiText(origin.props.placeholder, getRuntimeLanguage())
+          : origin.props.placeholder,
       style: [{ fontFamily: 'AnekBangla_500Medium', includeFontPadding: false }, origin.props.style],
     });
+  };
+}
+
+if (!Alert.__hisabPatchedAlert) {
+  Alert.__hisabPatchedAlert = true;
+  const nativeAlert = Alert.alert;
+  Alert.alert = (title, message, buttons, options, type) => {
+    const language = getRuntimeLanguage();
+    const localizedTitle = typeof title === 'string' ? toLocalizedUiText(title, language) : title;
+    const localizedMessage = typeof message === 'string' ? toLocalizedUiText(message, language) : message;
+    const localizedButtons = Array.isArray(buttons)
+      ? buttons.map((button) => ({
+          ...button,
+          text: typeof button?.text === 'string' ? toLocalizedUiText(button.text, language) : button?.text,
+        }))
+      : buttons;
+    return nativeAlert(localizedTitle, localizedMessage, localizedButtons, options, type);
   };
 }
 
@@ -988,6 +1010,30 @@ function MainDataShell() {
   }, [loadAllData]);
 
   useEffect(() => {
+    if (typeof __DEV__ === 'undefined' || !__DEV__) return;
+    const uid = Number(user?.id);
+    if (!uid || !Number.isFinite(uid)) return;
+
+    let disposed = false;
+    const runSeed = async () => {
+      try {
+        const alreadySeeded = await isDemoDataSeeded(uid);
+        if (!alreadySeeded && !disposed) {
+          await seedDemoData(uid);
+          if (!disposed) {
+            await loadAllData();
+          }
+        }
+      } catch (err) {
+        console.warn('[APP] demo seed skipped:', err?.message || err);
+      }
+    };
+
+    void runSeed();
+    return () => { disposed = true; };
+  }, [user?.id, loadAllData]);
+
+  useEffect(() => {
     const notificationsEnabled = Boolean(authDeviceProfile?.lowStockNotificationsEnabled);
     if (!notificationsEnabled || !Array.isArray(lowStockProducts)) {
       lowStockAlertRef.current = '';
@@ -1414,8 +1460,8 @@ function MainDataShell() {
   );
 
   const addBaki = useCallback(
-    async ({ customerId, amount, note, dueDate, dueTermsDays, referenceId }) => {
-      const saved = await dbAddBaki({ customerId, amount, note, dueDate, dueTermsDays, referenceId });
+    async ({ customerId, amount, note, dueDate, dueTermsDays, referenceId, imageUrl }) => {
+      const saved = await dbAddBaki({ customerId, amount, note, dueDate, dueTermsDays, referenceId, imageUrl });
       await refreshAll();
       await runOnlineSync();
       return saved;

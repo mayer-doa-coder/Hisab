@@ -6,16 +6,18 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppButton, AppCard, AppInput } from '../components/ui';
 import { UI_COLORS } from '../constants/ui-theme';
 import { useAppData } from '../context/AppDataContext';
+import { useLanguage } from '../context/LanguageContext';
 
 const formatMoney = (value) => `৳${Number(value || 0).toFixed(2)}`;
 
 const ENTRY_TYPES = [
-  { label: 'All', value: '' },
-  { label: 'IN', value: 'IN' },
-  { label: 'OUT', value: 'OUT' },
+  { value: '', label: 'সব' },
+  { value: 'IN', label: 'আয়' },
+  { value: 'OUT', label: 'ব্যয়' },
 ];
 
 export default function CashbookScreen() {
+  const { mapText } = useLanguage();
   const {
     getCashbookEntries,
     getCashflowSummary,
@@ -71,7 +73,11 @@ export default function CashbookScreen() {
                   <View style={styles.pickerWrap}>
                     <Picker selectedValue={entryType} onValueChange={(value) => setEntryType(String(value))}>
                       {ENTRY_TYPES.map((option) => (
-                        <Picker.Item key={`entry-type-${option.value || 'all'}`} label={option.label} value={option.value} />
+                        <Picker.Item
+                          key={`entry-type-${option.value || 'all'}`}
+                          label={mapText(option.label)}
+                          value={option.value}
+                        />
                       ))}
                     </Picker>
                   </View>

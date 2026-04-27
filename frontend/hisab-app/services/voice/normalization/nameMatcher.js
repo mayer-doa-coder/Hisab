@@ -354,6 +354,7 @@ export {
   toPhonetic,
   levenshteinDistance,
   similarityFromDistance,
+  scoreCandidate,
   buildHotwordDictionary,
   findBestNameMatch,
 };

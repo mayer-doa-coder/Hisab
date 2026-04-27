@@ -2005,6 +2005,10 @@ export const createTables = async () => {
 	await ensureColumn('baki_transactions', 'payment_code', `ALTER TABLE baki_transactions ADD COLUMN payment_code TEXT;`);
 	await ensureColumn('baki_transactions', 'payment_code_expires_at', `ALTER TABLE baki_transactions ADD COLUMN payment_code_expires_at DATETIME;`);
 	await ensureColumn('baki_transactions', 'payment_code_used', `ALTER TABLE baki_transactions ADD COLUMN payment_code_used INTEGER NOT NULL DEFAULT 0;`);
+	await ensureColumn('baki_transactions', 'image_url', `ALTER TABLE baki_transactions ADD COLUMN image_url TEXT;`);
+	await ensureColumn('customers', 'pin_hash', `ALTER TABLE customers ADD COLUMN pin_hash TEXT;`);
+	await ensureColumn('customers', 'verification_level', `ALTER TABLE customers ADD COLUMN verification_level TEXT NOT NULL DEFAULT 'L0';`);
+	await ensureColumn('customers', 'global_id', `ALTER TABLE customers ADD COLUMN global_id TEXT;`);
 	await ensureColumn('stock_movements', 'user_id', `ALTER TABLE stock_movements ADD COLUMN user_id INTEGER;`);
 	await ensureColumn('stock_movements', 'server_id', `ALTER TABLE stock_movements ADD COLUMN server_id TEXT;`);
 	await ensureColumn('stock_movements', 'client_ref_id', `ALTER TABLE stock_movements ADD COLUMN client_ref_id TEXT;`);
@@ -3320,6 +3324,7 @@ const insertBakiTransaction = async ({
 	dueDate = null,
 	dueTermsDays = null,
 	referenceId = null,
+	imageUrl = null,
 }) => {
 	const userId = await getActiveScopedUserId();
 	const syncUpdatedAt = new Date().toISOString();
@@ -3423,6 +3428,7 @@ const insertBakiTransaction = async ({
 				resolved_at,
 				note,
 				payment_method,
+				image_url,
 				client_ref_id,
 				sync_version,
 				sync_updated_at,
@@ -3431,7 +3437,7 @@ const insertBakiTransaction = async ({
 				payment_code_expires_at,
 				payment_code_used
 			)
-			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, 0);`,
+			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, 0);`,
 			userId,
 			normalizedCustomerId,
 			normalizedType,
@@ -3445,6 +3451,7 @@ const insertBakiTransaction = async ({
 			normalizedType === 'payment' ? syncUpdatedAt : null,
 			normalizedNote || null,
 			normalizedType === 'payment' ? normalizedPaymentMethod || 'cash' : null,
+			typeof imageUrl === 'string' && imageUrl.trim() ? imageUrl.trim() : null,
 			null,
 			1,
 			syncUpdatedAt,
@@ -3602,8 +3609,8 @@ const insertBakiTransaction = async ({
 	}
 };
 
-export const insertBakiEntry = ({ customerId, amount, note = null, dueDate = null, dueTermsDays = null, referenceId = null }) =>
-	insertBakiTransaction({ customerId, type: 'credit', amount, note, dueDate, dueTermsDays, referenceId });
+export const insertBakiEntry = ({ customerId, amount, note = null, dueDate = null, dueTermsDays = null, referenceId = null, imageUrl = null }) =>
+	insertBakiTransaction({ customerId, type: 'credit', amount, note, dueDate, dueTermsDays, referenceId, imageUrl });
 
 export const addBaki = (payload) => insertBakiEntry(payload);
 
@@ -4702,6 +4709,19 @@ export const getDashboardKpiSummary = ({ startDateIso, endDateIso, transactionTy
 		return Promise.reject(new Error('startDateIso cannot be after endDateIso.'));
 	}
 
+	const salesRow = await db.getFirstAsync(
+		`SELECT ROUND(COALESCE(SUM(total_amount_cents), 0) / 100.0, 2) AS total_sales
+		 FROM sales_header
+		 WHERE datetime(COALESCE(timestamp, created_at)) >= datetime(?)
+		   AND datetime(COALESCE(timestamp, created_at)) <= datetime(?)
+		   AND user_id = ?
+		   AND (deleted_at IS NULL)
+		   AND status = 'posted';`,
+		start.toISOString(),
+		end.toISOString(),
+		userId,
+	);
+
 	return db
 		.getFirstAsync(
 			`WITH filtered AS (
@@ -4778,6 +4798,7 @@ export const getDashboardKpiSummary = ({ startDateIso, endDateIso, transactionTy
 		.then((row) => ({
 			total_credit: Number(row?.total_credit || 0),
 			total_payment: Number(row?.total_payment || 0),
+			total_sales: Number(salesRow?.total_sales || 0),
 			net: Number(row?.net || 0),
 			transactions_count: Number(row?.transactions_count || 0),
 			active_customers: Number(row?.active_customers || 0),

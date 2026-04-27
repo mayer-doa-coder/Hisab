@@ -1,0 +1,62 @@
+{
+  "event_type": "monthly_recalibration",
+  "generated_at": "2026-04-26T23:19:39.467Z",
+  "bundle_version": "99.1.0",
+  "model_version_label": "trust_model_v99.1",
+  "dataset_source": "synthetic_fallback",
+  "samples_total": 320,
+  "models": [
+    {
+      "model_key": "champion",
+      "samples": 320,
+      "calibration_before": {
+        "a": 1.009938,
+        "b": -0.012712
+      },
+      "calibration_after": {
+        "a": 0.829077,
+        "b": 0.120192,
+        "blend_alpha": 1,
+        "base_rate": 0.553125
+      },
+      "brier_before": 0.183719,
+      "brier_after": 0.183148,
+      "calibration_shift_before": 0.021815,
+      "calibration_shift_after": 0.000001
+    },
+    {
+      "model_key": "challenger",
+      "samples": 320,
+      "calibration_before": {
+        "a": 0.546359,
+        "b": 0.027786
+      },
+      "calibration_after": {
+        "a": 0.772809,
+        "b": 0.120084,
+        "blend_alpha": 1,
+        "base_rate": 0.553125
+      },
+      "brier_before": 0.190216,
+      "brier_after": 0.185607,
+      "calibration_shift_before": 0.022721,
+      "calibration_shift_after": 0.000001
+    }
+  ],
+  "artifact_snapshots": {
+    "champion": {
+      "version": "99.1.0",
+      "path": "D:\\Hisab\\backend\\artifacts\\trustChampionModel.v99.1.0.json",
+      "sha256": "9528c3d7b501b691bf7e8e2c884bb9130498810384b06ae870d580548bd9fe05",
+      "source_path": "D:\\Hisab\\backend\\artifacts\\trustChampionModel.v1.json"
+    },
+    "challenger": {
+      "version": "99.1.0",
+      "path": "D:\\Hisab\\backend\\artifacts\\trustChallengerModel.v99.1.0.json",
+      "sha256": "db1c69e7a0e957fd1572a9ce8ead9105313bed632520d0d3b2f33b23b77d1464",
+      "source_path": "D:\\Hisab\\backend\\artifacts\\trustChallengerModel.v1.json"
+    }
+  },
+  "deployment_status": "candidate_bundle",
+  "lifecycle_state": "candidate_bundle"
+}

@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "retentionPolicy": {
+    "maxBackupsPerUser": 10,
+    "maxBackupAgeDays": 30,
+    "maxConflictAgeDays": 30,
+    "maxConflictRecords": 1000
+  },
+  "backups": []
+}
