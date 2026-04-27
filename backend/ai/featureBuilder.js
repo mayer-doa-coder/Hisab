@@ -5,8 +5,24 @@ const SalesHeader = require('../models/SalesHeader');
 const SalesItem = require('../models/SalesItem');
 
 const HORIZON_DAYS = Object.freeze({
+  '1D': 1,
+  '7D': 7,
   '1W': 7,
   '1M': 30,
+});
+
+const HORIZON_ALIASES = Object.freeze({
+  '1d': '1D',
+  '1_day': '1D',
+  daily: '1D',
+  '7d': '7D',
+  '7_day': '7D',
+  '1w': '7D',
+  '1_week': '7D',
+  weekly: '7D',
+  '1m': '1M',
+  '1_month': '1M',
+  monthly: '1M',
 });
 
 const DEMAND_STATES = Object.freeze({
@@ -109,11 +125,17 @@ const normalizeObjectId = (value) => {
 const normalizeHorizons = (horizons = []) => {
   const safeHorizons = Array.isArray(horizons) ? horizons : [];
   const tokens = safeHorizons
-    .map((item) => String(item || '').trim().toUpperCase())
+    .map((item) => {
+      const token = String(item || '').trim();
+      if (!token) {
+        return '';
+      }
+      return HORIZON_ALIASES[token.toLowerCase()] || token.toUpperCase();
+    })
     .filter((token) => HORIZON_DAYS[token]);
 
   if (tokens.length === 0) {
-    return ['1W', '1M'];
+    return ['7D', '1D'];
   }
 
   return [...new Set(tokens)];
@@ -273,7 +295,7 @@ const deriveSalesFeaturesFromSeries = ({
   inventory = 0,
   reorderLevel = 0,
   leadTimeDays = 7,
-  horizons = ['1W', '1M'],
+  horizons = ['7D', '1D'],
   anchorDate = null,
 } = {}) => {
   const safeSeries = Array.isArray(series) ? [...series] : [];
@@ -340,7 +362,7 @@ const buildSalesFeatureSetForUser = async ({
   lookbackDays = 120,
   leadTimeDays = 7,
   symbol = '',
-  horizons = ['1W', '1M'],
+  horizons = ['7D', '1D'],
 } = {}) => {
   const userObjectId = normalizeObjectId(userId);
   if (!userObjectId) {

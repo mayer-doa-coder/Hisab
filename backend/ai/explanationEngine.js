@@ -49,14 +49,21 @@ const describeDemandRegime = (distribution = {}) => {
 };
 
 const buildSuggestionExplanation = ({
-  horizon = '1W',
+  horizon = '7D',
   decision = 'HOLD',
   buyQuantity = 0,
   confidenceBand = {},
   features = {},
   modelBreakdown = {},
 } = {}) => {
-  const horizonLabel = String(horizon || '').trim().toUpperCase() === '1M' ? '30 days' : '7 days';
+  const horizonToken = String(horizon || '').trim().toUpperCase();
+  const horizonLabel = horizonToken === '1D'
+    ? '1 day'
+    : horizonToken === '7D' || horizonToken === '1W'
+      ? '7 days'
+      : horizonToken === '1M'
+        ? '30 days'
+        : horizonToken;
   const trendPct = toNumber(features?.trend_pct, 0);
   const trendLabel = describeTrend(trendPct);
 

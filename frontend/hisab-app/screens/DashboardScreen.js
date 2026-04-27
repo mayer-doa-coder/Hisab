@@ -245,8 +245,23 @@ export default function DashboardScreen() {
         {/* ── Collapsible analytics ────────────────────────── */}
         {showAnalytics && (
           <>
+            <View style={styles.analyticsKpiGrid}>
+              <View style={styles.analyticsKpiCard}>
+                <Text style={styles.analyticsKpiValue}>{formatMoney(kpis.totalSales)}</Text>
+                <Text style={styles.analyticsKpiLabel}>{t('dashboard.totalSales')}</Text>
+              </View>
+              <View style={styles.analyticsKpiCard}>
+                <Text style={[styles.analyticsKpiValue, { color: UI_COLORS.textSuccess }]}>{formatMoney(kpis.totalPayment)}</Text>
+                <Text style={styles.analyticsKpiLabel}>{t('dashboard.todayPayments')}</Text>
+              </View>
+              <View style={styles.analyticsKpiCard}>
+                <Text style={styles.analyticsKpiValue}>{toNumber(kpis.activeCustomers, 0)}</Text>
+                <Text style={styles.analyticsKpiLabel}>{t('dashboard.activeCustomers')}</Text>
+              </View>
+            </View>
+
             {/* Period selector — ghost/outlined feel */}
-            <AppCard variant="outlined" style={styles.card}>
+            <AppCard variant="outlined" style={[styles.card, styles.analyticsCardNeo]}>
               <Text style={styles.cardTitle}>{t('dashboard.period')}</Text>
               <View style={styles.periodRow}>
                 {REPORT_PERIODS.map((option) => (
@@ -263,7 +278,7 @@ export default function DashboardScreen() {
             </AppCard>
 
             {/* Sales — flat background, inline metrics */}
-            <AppCard variant="flat" style={styles.card}>
+            <AppCard variant="flat" style={[styles.card, styles.analyticsCardNeo]}>
               <Text style={styles.cardTitle}>{t('dashboard.salesReport')}</Text>
               <View style={styles.inlineMetrics}>
                 <View style={styles.inlineMetricItem}>
@@ -284,18 +299,18 @@ export default function DashboardScreen() {
             </AppCard>
 
             {/* Inventory — default with stronger border */}
-            <AppCard style={styles.card}>
+            <AppCard style={[styles.card, styles.analyticsCardNeo]}>
               <Text style={styles.cardTitle}>{t('dashboard.inventoryReport')}</Text>
               <View style={styles.inlineMetrics}>
                 <View style={styles.inlineMetricItem}>
                   <Text style={styles.inlineMetricValue}>{(complianceDashboard?.inventory?.currentStockLevels || []).length}</Text>
                   <Text style={styles.inlineMetricLabel}>{t('dashboard.current')}</Text>
                 </View>
-                <View style={[styles.inlineMetricItem, { borderLeftWidth: 1, borderLeftColor: UI_COLORS.borderSoft, paddingLeft: 12 }]}>
+                <View style={styles.inlineMetricItem}>
                   <Text style={[styles.inlineMetricValue, { color: UI_COLORS.textWarning }]}>{(complianceDashboard?.inventory?.lowStockItems || []).length}</Text>
                   <Text style={styles.inlineMetricLabel}>{t('dashboard.low')}</Text>
                 </View>
-                <View style={[styles.inlineMetricItem, { borderLeftWidth: 1, borderLeftColor: UI_COLORS.borderSoft, paddingLeft: 12 }]}>
+                <View style={styles.inlineMetricItem}>
                   <Text style={[styles.inlineMetricValue, { color: UI_COLORS.textDanger }]}>{(complianceDashboard?.inventory?.deadStockItems || []).length}</Text>
                   <Text style={styles.inlineMetricLabel}>{t('dashboard.dead')}</Text>
                 </View>
@@ -303,7 +318,7 @@ export default function DashboardScreen() {
             </AppCard>
 
             {/* Finance — accent stripe */}
-            <AppCard variant="accent" style={styles.card}>
+            <AppCard variant="accent" style={[styles.card, styles.analyticsCardNeo]}>
               <Text style={styles.cardTitle}>{t('dashboard.financeReport')}</Text>
               <View style={styles.inlineMetrics}>
                 <View style={styles.inlineMetricItem}>
@@ -322,7 +337,7 @@ export default function DashboardScreen() {
             </AppCard>
 
             {/* Collections — elevated */}
-            <AppCard variant="elevated" style={styles.card}>
+            <AppCard variant="elevated" style={[styles.card, styles.analyticsCardNeo]}>
               <Text style={styles.cardTitle}>{t('dashboard.collectionsReport')}</Text>
               <Text style={styles.cardLine}>{t('dashboard.totalBaki', { amount: formatMoney(complianceDashboard?.collections?.totalBaki) })}</Text>
               <Text style={styles.cardLine}>{t('dashboard.overdue', { amount: formatMoney(complianceDashboard?.collections?.overdueAmount) })}</Text>
@@ -330,7 +345,7 @@ export default function DashboardScreen() {
             </AppCard>
 
             {/* Tip — accent */}
-            <AppCard variant="accent" style={styles.card}>
+            <AppCard variant="accent" style={[styles.card, styles.analyticsCardNeo]}>
               <Text style={styles.cardTitle}>{t('dashboard.tip')}</Text>
               <Text style={styles.cardLine}>{getDashboardTip({
                 period,
@@ -356,7 +371,7 @@ export default function DashboardScreen() {
             </AppCard>
 
             {/* Activity — flat */}
-            <AppCard variant="flat" style={styles.card}>
+            <AppCard variant="flat" style={[styles.card, styles.analyticsCardNeo]}>
               <Text style={styles.cardTitle}>{t('dashboard.activityReport')}</Text>
               <Text style={styles.cardLine}>{activityInsightExample?.activity?.event_type || 'sale_created'}</Text>
               <Text style={styles.cardLine}>{activityInsightExample?.metrics?.dao || ''}</Text>
@@ -475,10 +490,12 @@ const styles = StyleSheet.create({
   quickOptionsWrap: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    justifyContent: 'space-between',
+    rowGap: 10,
   },
   quickOptionCard: {
-    width: '31.8%',
+    flexBasis: '31%',
+    maxWidth: '31%',
     minHeight: 82,
     borderRadius: 14,
     paddingVertical: 12,
@@ -553,11 +570,57 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: UI_COLORS.border,
     backgroundColor: UI_COLORS.surface,
+    shadowColor: '#FFFFFF',
+    shadowOffset: { width: -4, height: -4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 4,
+    elevation: 4,
   },
   analyticsToggleText: { ...TYPOGRAPHY.body, color: UI_COLORS.primary, fontFamily: 'AnekBangla_600SemiBold' },
 
   /* analytics cards */
   card: {},
+  analyticsKpiGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: SPACING.sm,
+  },
+  analyticsKpiCard: {
+    flex: 1,
+    backgroundColor: UI_COLORS.surface,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: UI_COLORS.borderSoft,
+    paddingVertical: SPACING.md,
+    paddingHorizontal: SPACING.sm,
+    alignItems: 'center',
+    shadowColor: '#FFFFFF',
+    shadowOffset: { width: -4, height: -4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  analyticsKpiValue: {
+    fontSize: 16,
+    fontFamily: 'AnekBangla_800ExtraBold',
+    color: UI_COLORS.textPrimary,
+  },
+  analyticsKpiLabel: {
+    ...TYPOGRAPHY.small,
+    color: UI_COLORS.textMuted,
+    marginTop: 2,
+    textAlign: 'center',
+  },
+  analyticsCardNeo: {
+    borderWidth: 1,
+    borderColor: UI_COLORS.borderSoft,
+    backgroundColor: UI_COLORS.surface,
+    shadowColor: '#FFFFFF',
+    shadowOffset: { width: -4, height: -4 },
+    shadowOpacity: 0.45,
+    shadowRadius: 4,
+    elevation: 4,
+  },
   cardTitle: { ...TYPOGRAPHY.subheading, color: UI_COLORS.textPrimary, marginBottom: SPACING.sm },
   cardSubtitle: { ...TYPOGRAPHY.small, color: UI_COLORS.textPrimary, marginTop: SPACING.sm, fontFamily: 'AnekBangla_700Bold' },
   cardLine: { ...TYPOGRAPHY.small, color: UI_COLORS.textSecondary },
@@ -565,8 +628,23 @@ const styles = StyleSheet.create({
   periodButton: { flexGrow: 1 },
   inlineButtonRow: { flexDirection: 'row', gap: SPACING.sm, marginTop: SPACING.sm },
   inlineButton: { flex: 1 },
-  inlineMetrics: { flexDirection: 'row', gap: 12, marginBottom: SPACING.xs },
-  inlineMetricItem: { gap: 2 },
+  inlineMetrics: { flexDirection: 'row', gap: SPACING.sm, marginBottom: SPACING.xs, flexWrap: 'wrap' },
+  inlineMetricItem: {
+    flexBasis: '31%',
+    maxWidth: '31%',
+    gap: 2,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: UI_COLORS.borderSoft,
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.xs,
+    backgroundColor: UI_COLORS.surface,
+    shadowColor: '#FFFFFF',
+    shadowOffset: { width: -3, height: -3 },
+    shadowOpacity: 0.4,
+    shadowRadius: 3,
+    elevation: 3,
+  },
   inlineMetricValue: { fontSize: 18, fontFamily: 'AnekBangla_800ExtraBold', color: UI_COLORS.textPrimary },
   inlineMetricLabel: { fontSize: 11, fontFamily: 'AnekBangla_600SemiBold', color: UI_COLORS.textMuted },
 

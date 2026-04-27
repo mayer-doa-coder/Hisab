@@ -9,6 +9,74 @@
 
 import * as SQLite from 'expo-sqlite';
 
+let seedDbInstance = null;
+let seedDbPragmaInitialized = false;
+
+const isNativeDatabaseNullError = (error) => {
+  if (!error) {
+    return false;
+  }
+
+  const text = String(error?.message || error);
+  return text.includes('NativeDatabase.prepareAsync')
+    || text.includes('NativeDatabase.execAsync')
+    || text.includes('NullPointerException');
+};
+
+const getSeedDbInstance = () => {
+  if (!seedDbInstance) {
+    seedDbInstance = SQLite.openDatabaseSync('hisab.db');
+    seedDbPragmaInitialized = false;
+  }
+
+  if (!seedDbPragmaInitialized) {
+    seedDbInstance.execSync('PRAGMA foreign_keys = ON;');
+    seedDbPragmaInitialized = true;
+  }
+
+  return seedDbInstance;
+};
+
+const bindSeedDbMethod = (methodName) => {
+  return (...args) => {
+    const execute = () => {
+      const connection = getSeedDbInstance();
+      const method = connection?.[methodName];
+      if (typeof method !== 'function') {
+        throw new Error(`SQLite method ${methodName} is not available.`);
+      }
+      return method.call(connection, ...args);
+    };
+
+    try {
+      const result = execute();
+      if (result && typeof result.then === 'function') {
+        return result.catch((error) => {
+          if (!isNativeDatabaseNullError(error)) {
+            throw error;
+          }
+          seedDbInstance = null;
+          return execute();
+        });
+      }
+      return result;
+    } catch (error) {
+      if (!isNativeDatabaseNullError(error)) {
+        throw error;
+      }
+      seedDbInstance = null;
+      return execute();
+    }
+  };
+};
+
+const seedDb = new Proxy({}, {
+  get(_, prop) {
+    const methodName = String(prop);
+    return bindSeedDbMethod(methodName);
+  },
+});
+
 // ─── Seeded RNG (deterministic, seed 1337) ────────────────────────────────────
 
 const createRng = (seed = 1337) => {
@@ -293,7 +361,7 @@ function generateDailySales(dayOffset, productIds) {
 // ─── Main seeder ──────────────────────────────────────────────────────────────
 
 export async function seedDemoData(userId) {
-  const db = SQLite.openDatabaseSync('hisab.db');
+  const db = seedDb;
   const uid = Number(userId);
 
   if (!uid || !Number.isFinite(uid)) throw new Error('seedDemoData: valid userId required');
@@ -463,7 +531,7 @@ export async function seedDemoData(userId) {
  * Check if demo data has already been seeded for this user.
  */
 export async function isDemoDataSeeded(userId) {
-  const db = SQLite.openDatabaseSync('hisab.db');
+  const db = seedDb;
   const row = await db.getFirstAsync(
     `SELECT COUNT(*) as cnt FROM customers WHERE user_id=? AND client_ref_id LIKE 'demo_%'`,
     Number(userId)
@@ -475,7 +543,7 @@ export async function isDemoDataSeeded(userId) {
  * Clear all demo data for a user (useful for re-seeding in dev).
  */
 export async function clearDemoData(userId) {
-  const db = SQLite.openDatabaseSync('hisab.db');
+  const db = seedDb;
   const uid = Number(userId);
 
   // Get demo customer and product IDs

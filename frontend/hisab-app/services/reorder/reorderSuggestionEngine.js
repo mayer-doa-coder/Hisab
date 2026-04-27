@@ -102,6 +102,31 @@ const normalizeSuggestionHorizon = (value) => {
   return token === '1M' ? '1M' : '1W';
 };
 
+const normalizeEnsembleRationale = (rationale, diagnostics = {}) => {
+  const text = String(rationale || '').trim();
+  if (!text) {
+    return '';
+  }
+
+  if (text.includes('ensemble_feature_disabled')) {
+    return 'Advanced ensemble mode is temporarily paused, so the threshold baseline model is being used.';
+  }
+  if (text.includes('baseline_only_mode_enabled')) {
+    return 'System is currently running in baseline-only mode for stable stock suggestions.';
+  }
+  if (text.includes('subject_not_in_rollout_segment')) {
+    return 'This item is currently in the baseline segment while ensemble rollout is in progress.';
+  }
+  if (text.includes('baseline_fallback_disabled')) {
+    return 'Advanced ensemble mode is unavailable and fallback is disabled; no reorder was recommended.';
+  }
+  if (Boolean(diagnostics?.fallback_applied) && text.startsWith('Ensemble disabled')) {
+    return 'Advanced ensemble mode is currently unavailable, and a safe baseline decision was used.';
+  }
+
+  return text;
+};
+
 const buildReasonText = ({ reorderByDays, reorderByStock, dailySalesRate, daysRemaining }) => {
   if (reorderByDays && reorderByStock) {
     return 'Low projected days remaining and stock below reorder point.';
@@ -623,7 +648,10 @@ const buildEnsembleSuggestionRow = ({
   };
 
   const urgencyScore = toUrgencyScore(decision, confidence);
-  const rationale = String(ensembleDecision?.rationale || thresholdSuggestion?.reason || '').trim();
+  const rationale = normalizeEnsembleRationale(
+    ensembleDecision?.rationale || thresholdSuggestion?.reason || '',
+    ensembleDecision?.diagnostics
+  );
 
   return {
     symbol: resolveProductSymbol(product),

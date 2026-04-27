@@ -17,8 +17,10 @@ export const fetchStockSuggestionsOnline = async ({
   accessToken = null,
   currentState = 'SIDEWAYS_STABLE',
   symbol = '',
-  horizons = ['1W', '1M'],
+  horizons = ['7D', '1D'],
   allocationBase = 100,
+  holidayDates = [],
+  holidayImpact = 1,
 } = {}) => {
   const params = new URLSearchParams();
 
@@ -32,6 +34,29 @@ export const fetchStockSuggestionsOnline = async ({
 
   if (Array.isArray(horizons) && horizons.length > 0) {
     params.set('horizons', horizons.map((item) => String(item || '').trim()).filter(Boolean).join(','));
+  }
+
+  if (Array.isArray(holidayDates) && holidayDates.length > 0) {
+    const encoded = holidayDates
+      .map((item) => {
+        const date = String(item?.date || '').trim();
+        if (!date) {
+          return '';
+        }
+        const name = String(item?.name || 'Holiday').trim() || 'Holiday';
+        return `${date}|${name}`;
+      })
+      .filter(Boolean)
+      .join(',');
+
+    if (encoded) {
+      params.set('holiday_dates', encoded);
+    }
+  }
+
+  const safeHolidayImpact = Number(holidayImpact);
+  if (Number.isFinite(safeHolidayImpact) && safeHolidayImpact >= 0 && safeHolidayImpact <= 2) {
+    params.set('holiday_impact', String(safeHolidayImpact));
   }
 
   params.set('allocation_base', String(Math.max(0, Number(allocationBase) || 0)));

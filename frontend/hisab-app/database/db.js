@@ -1,8 +1,72 @@
 import * as SQLite from 'expo-sqlite';
 
-const db = SQLite.openDatabaseSync('hisab.db');
+let dbInstance = null;
+let pragmaInitialized = false;
 
-db.execSync('PRAGMA foreign_keys = ON;');
+const isNativeDatabaseNullError = (error) => {
+	if (!error) {
+		return false;
+	}
+
+	const text = String(error?.message || error);
+	return text.includes('NativeDatabase.prepareAsync')
+		|| text.includes('NativeDatabase.execAsync')
+		|| text.includes('NullPointerException');
+};
+
+const getDbInstance = () => {
+	if (!dbInstance) {
+		dbInstance = SQLite.openDatabaseSync('hisab.db');
+		pragmaInitialized = false;
+	}
+
+	if (!pragmaInitialized) {
+		dbInstance.execSync('PRAGMA foreign_keys = ON;');
+		pragmaInitialized = true;
+	}
+
+	return dbInstance;
+};
+
+const bindDbMethod = (methodName) => {
+	return (...args) => {
+		const execute = () => {
+			const connection = getDbInstance();
+			const method = connection?.[methodName];
+			if (typeof method !== 'function') {
+				throw new Error(`SQLite method ${methodName} is not available.`);
+			}
+			return method.call(connection, ...args);
+		};
+
+		try {
+			const result = execute();
+			if (result && typeof result.then === 'function') {
+				return result.catch((error) => {
+					if (!isNativeDatabaseNullError(error)) {
+						throw error;
+					}
+					dbInstance = null;
+					return execute();
+				});
+			}
+			return result;
+		} catch (error) {
+			if (!isNativeDatabaseNullError(error)) {
+				throw error;
+			}
+			dbInstance = null;
+			return execute();
+		}
+	};
+};
+
+const db = new Proxy({}, {
+	get(_, prop) {
+		const methodName = String(prop);
+		return bindDbMethod(methodName);
+	},
+});
 
 const ensureColumn = async (tableName, columnName, alterSql) => {
 	const tableInfo = await db.getAllAsync(`PRAGMA table_info(${tableName});`);

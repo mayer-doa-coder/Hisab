@@ -1,10 +1,15 @@
-const STOCK_SUGGESTION_HORIZONS = Object.freeze(['1W', '1M']);
+const STOCK_SUGGESTION_HORIZONS = Object.freeze(['1D', '7D', '1W', '1M']);
 const STOCK_SUGGESTION_DECISIONS = Object.freeze(['BUY_NOW', 'WATCH', 'HOLD']);
 
 const HORIZON_ALIASES = Object.freeze({
   '1w': '1W',
+  '7d': '7D',
+  '7_day': '7D',
   '1_week': '1W',
   weekly: '1W',
+  '1d': '1D',
+  '1_day': '1D',
+  daily: '1D',
   '1m': '1M',
   '1_month': '1M',
   monthly: '1M',
@@ -14,7 +19,7 @@ const STOCK_SUGGESTION_SCHEMA = Object.freeze({
   symbol: 'string',
   buy_quantity: 'number',
   confidence: 'number',
-  horizon: '1W | 1M',
+  horizon: '1D | 7D | 1W | 1M',
   decision: 'BUY_NOW | WATCH | HOLD',
   model_votes: {
     markov: 'number',
@@ -144,7 +149,7 @@ const validateStockSuggestionRow = (row = {}, {
 
   const horizon = normalizeSuggestionHorizonToken(row.horizon);
   if (!horizon) {
-    throw new Error('horizon must be one of: 1W, 1M.');
+    throw new Error('horizon must be one of: 1D, 7D, 1W, 1M.');
   }
 
   const decision = String(row.decision || '').trim().toUpperCase();

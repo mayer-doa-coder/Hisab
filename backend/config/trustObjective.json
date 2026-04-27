@@ -6,11 +6,77 @@
   "lock_rationale": "Prediction objectives and horizon-specific metrics are frozen before downstream modeling.",
   "default_horizon": "1_month",
   "supported_horizons": [
+    "1_day",
     "1_week",
     "1_month",
     "3_month"
   ],
   "horizons": {
+    "1_day": {
+      "time_window_days": 1,
+      "target_types": {
+        "direction_classes": [
+          "IMPROVING",
+          "STABLE",
+          "WORSENING"
+        ],
+        "return_buckets": [
+          "LOW_RISK",
+          "MEDIUM_RISK",
+          "HIGH_RISK"
+        ],
+        "expected_return_interval": {
+          "type": "risk_probability_range",
+          "unit": "probability",
+          "interval_half_width": 0.05
+        },
+        "return_bucket_thresholds": {
+          "LOW_RISK": {
+            "min_risk_score": 0,
+            "max_risk_score": 30
+          },
+          "MEDIUM_RISK": {
+            "min_risk_score": 31,
+            "max_risk_score": 60
+          },
+          "HIGH_RISK": {
+            "min_risk_score": 61,
+            "max_risk_score": 100
+          }
+        }
+      },
+      "label_definitions": {
+        "improvement": {
+          "on_time_ratio_min": 0.9,
+          "late_payment_rate_max": 0.1,
+          "payment_coverage_ratio_min": 0.92,
+          "due_change_ratio_max": -0.02,
+          "minimum_payment_events": 1
+        },
+        "deterioration": {
+          "on_time_ratio_max": 0.5,
+          "late_payment_rate_min": 0.5,
+          "payment_coverage_ratio_max": 0.5,
+          "due_change_ratio_min": 0.1,
+          "minimum_payment_events": 1
+        },
+        "default_risk": {
+          "risk_score_min": 82,
+          "late_payment_rate_min": 0.58,
+          "absolute_due_min": 4500
+        }
+      },
+      "metrics_thresholds": {
+        "auc_pr_min": 0.72,
+        "recall_at_fixed_precision": {
+          "precision": 0.9,
+          "recall_min": 0.7,
+          "priority": "high_recall"
+        },
+        "brier_score_max": 0.2,
+        "bad_debt_reduction_min_pct": 6
+      }
+    },
     "1_week": {
       "time_window_days": 7,
       "target_types": {

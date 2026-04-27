@@ -974,19 +974,17 @@ function MainDataShell() {
   useEffect(() => {
     let disposed = false;
 
-    const boot = async () => {
+    const bootAndHydrate = async () => {
       try {
         await createTables();
       } catch (error) {
         console.error('[APP] boot failed:', error);
-      } finally {
-        if (!disposed) {
-          setBooting(false);
-        }
       }
-    };
 
-    const hydrateAfterPaint = async () => {
+      if (disposed) {
+        return;
+      }
+
       try {
         await loadAllData();
       } catch (error) {
@@ -994,15 +992,12 @@ function MainDataShell() {
       } finally {
         if (!disposed) {
           setInitialDataLoading(false);
+          setBooting(false);
         }
       }
     };
 
-    boot();
-
-    requestAnimationFrame(() => {
-      void hydrateAfterPaint();
-    });
+    void bootAndHydrate();
 
     return () => {
       disposed = true;
@@ -1010,6 +1005,7 @@ function MainDataShell() {
   }, [loadAllData]);
 
   useEffect(() => {
+    if (booting) return;
     if (typeof __DEV__ === 'undefined' || !__DEV__) return;
     const uid = Number(user?.id);
     if (!uid || !Number.isFinite(uid)) return;
@@ -1031,7 +1027,7 @@ function MainDataShell() {
 
     void runSeed();
     return () => { disposed = true; };
-  }, [user?.id, loadAllData]);
+  }, [booting, user?.id, loadAllData]);
 
   useEffect(() => {
     const notificationsEnabled = Boolean(authDeviceProfile?.lowStockNotificationsEnabled);
@@ -1071,7 +1067,7 @@ function MainDataShell() {
   }, [loadAllData]);
 
   const runOnlineSync = useCallback(async () => {
-    if (!isOnline || !session?.token || !user?.id) {
+    if (booting || !isOnline || !session?.token || !user?.id) {
       return { synced: 0, appliedServerChanges: 0, skipped: true };
     }
 
@@ -1145,10 +1141,10 @@ function MainDataShell() {
       syncInFlightRef.current = false;
       setSyncingData(false);
     }
-  }, [ensureValidAccessToken, isOnline, loadAllData, session?.token, trustMonitoringEngine, trustRolloutController, user?.id]);
+  }, [booting, ensureValidAccessToken, isOnline, loadAllData, session?.token, trustMonitoringEngine, trustRolloutController, user?.id]);
 
   useEffect(() => {
-    if (!isOnline || !session?.access_token || !user?.id) {
+    if (booting || !isOnline || !session?.access_token || !user?.id) {
       return undefined;
     }
 
@@ -1169,7 +1165,7 @@ function MainDataShell() {
       disposed = true;
       clearInterval(timer);
     };
-  }, [isOnline, runOnlineSync, session?.access_token, user?.id]);
+  }, [booting, isOnline, runOnlineSync, session?.access_token, user?.id]);
 
   const addProduct = useCallback(
     async ({ name, quantity, price, expiryDate, lowStockThreshold }) => {

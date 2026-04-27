@@ -1,6 +1,6 @@
 {
   "schema_version": "rollout_config_v2",
-  "enabled": false,
+  "enabled": true,
   "candidate_version": null,
   "stages": [
     5,
@@ -8,8 +8,8 @@
     50,
     100
   ],
-  "stage_index": 0,
-  "rollback_on_alert": true,
+  "stage_index": 3,
+  "rollback_on_alert": false,
   "thresholds": {
     "drift_alert_required": true,
     "stability_alert_required": true,
@@ -21,15 +21,14 @@
     "unstable_outputs_alert": true
   },
   "feature_flags": {
-    "ensemble_enabled": false,
+    "ensemble_enabled": true,
     "baseline_fallback_enabled": true,
-    "baseline_only_mode": true
+    "baseline_only_mode": false
   },
   "segmentation": {
     "hash_scope": "ensemble_rollout",
     "anonymous_token": "anonymous",
     "use_product_segmentation": true
   },
-  "updated_at": "2026-04-27T03:45:04.528Z",
-  "disabled_reason": "phase9_auto_guardrail: Fallback rate exceeded threshold; Confidence drift exceeded threshold; Suggestion acceptance rate dropped"
+  "updated_at": "2026-04-27T05:10:06.005Z"
 }

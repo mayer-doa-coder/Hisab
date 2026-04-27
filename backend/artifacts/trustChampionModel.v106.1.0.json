@@ -1,7 +1,7 @@
-export const TRUST_CHAMPION_MODEL = {
+{
   "model_name": "hisab_trust_champion",
   "version": "1.0.0",
-  "created_at": "2026-04-27T05:07:19.827Z",
+  "created_at": "2026-04-27T03:43:52.943Z",
   "method": "monotonic_logistic_regression",
   "dataset_source": "synthetic_seed_1337",
   "feature_order": [
@@ -33,11 +33,11 @@ export const TRUST_CHAMPION_MODEL = {
     "payment_volatility": 0.006018
   },
   "calibration": {
-    "method": "isotonic_regression",
-    "a": 1.009938,
-    "b": -0.012712,
+    "method": "platt_scaling",
+    "a": 0.829077,
+    "b": 0.120192,
     "blend_alpha": 1,
-    "base_rate": 0.523077,
+    "base_rate": 0.553125,
     "x_thresholds": [
       0,
       0.042903,
@@ -97,7 +97,9 @@ export const TRUST_CHAMPION_MODEL = {
       1,
       1,
       1
-    ]
+    ],
+    "updated_at": "2026-04-27T04:35:30.574Z",
+    "update_type": "monthly_recalibration"
   },
   "probability_thresholds": {
     "medium_risk_min": 0.4,
@@ -124,11 +126,10 @@ export const TRUST_CHAMPION_MODEL = {
     "locked_at": "2026-04-12T00:00:00.000Z",
     "default_horizon": "1_month",
     "supported_horizons": [
-      "1_day",
       "1_week",
       "1_month",
       "3_month"
     ],
     "source_path": "D:\\Hisab\\backend\\config\\trustObjective.json"
   }
-};
+}

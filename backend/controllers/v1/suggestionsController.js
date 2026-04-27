@@ -36,13 +36,38 @@ const parseHorizonsFromQuery = (query = {}) => {
   const fromHorizons = String(query.horizons || '').trim();
   const fromHorizon = String(query.horizon || '').trim();
 
-  const raw = fromHorizons || fromHorizon || '1W,1M';
+  const raw = fromHorizons || fromHorizon || '7D,1D';
   const tokens = raw
     .split(',')
     .map((token) => String(token || '').trim().toUpperCase())
     .filter(Boolean);
 
   return normalizeHorizons(tokens);
+};
+
+const parseHolidayDatesFromQuery = (query = {}) => {
+  const raw = String(query.holiday_dates ?? query.holidayDates ?? '').trim();
+  if (!raw) {
+    return [];
+  }
+
+  return raw
+    .split(',')
+    .map((token) => token.trim())
+    .filter(Boolean)
+    .map((token) => {
+      const [dateToken, ...nameParts] = token.split('|');
+      const parsedDate = new Date(String(dateToken || '').trim());
+      if (!Number.isFinite(parsedDate.getTime())) {
+        return null;
+      }
+      const name = String(nameParts.join('|') || 'Holiday').trim() || 'Holiday';
+      return {
+        name,
+        date: parsedDate.toISOString(),
+      };
+    })
+    .filter(Boolean);
 };
 
 const buildEngineConfigFromQuery = (query = {}) => {
@@ -78,6 +103,8 @@ const getStockSuggestions = asyncHandler(async (req, res) => {
   const config = buildEngineConfigFromQuery(query);
   const includeBacktesting = parseBoolean(query.include_backtesting ?? query.includeBacktesting, true);
   const includeStability = parseBoolean(query.include_stability ?? query.includeStability, true);
+  const holidayImpactScale = Number(query.holiday_impact ?? query.holidayImpact ?? 1);
+  const manualHolidays = parseHolidayDatesFromQuery(query);
 
   const result = await generateTrustworthySuggestions({
     userId,
@@ -87,6 +114,8 @@ const getStockSuggestions = asyncHandler(async (req, res) => {
     config,
     includeBacktesting,
     includeStability,
+    manualHolidays,
+    holidayImpactScale,
   });
 
   return success(req, res, {

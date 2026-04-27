@@ -6,6 +6,7 @@ import {
   Pressable,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -21,6 +22,20 @@ const DEFAULT_FILTERS = {
   confidenceThreshold: 0,
   horizon: 'all',
   category: 'all',
+};
+
+const normalizeHorizon = (value) => {
+  const token = String(value || '').trim().toUpperCase();
+  if (token === '1D') {
+    return '1D';
+  }
+  if (token === '1W' || token === '7D') {
+    return '7D';
+  }
+  if (token === '1M') {
+    return '1M';
+  }
+  return '7D';
 };
 
 const toNumber = (value, fallback = 0) => {
@@ -77,6 +92,31 @@ export default function StockSuggestionsScreen() {
   const [categoryOptions, setCategoryOptions] = useState([]);
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
   const [expandedMap, setExpandedMap] = useState({});
+  const [holidayNameInput, setHolidayNameInput] = useState('');
+  const [holidayDateInput, setHolidayDateInput] = useState('');
+  const [manualHolidays, setManualHolidays] = useState([]);
+
+  const addManualHoliday = useCallback(() => {
+    const name = String(holidayNameInput || '').trim();
+    const date = String(holidayDateInput || '').trim();
+    if (!name || !date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return;
+    }
+
+    setManualHolidays((prev) => {
+      const key = `${date}|${name.toLowerCase()}`;
+      if (prev.some((item) => `${item.date}|${String(item.name || '').toLowerCase()}` === key)) {
+        return prev;
+      }
+      return [...prev, { name, date }];
+    });
+    setHolidayNameInput('');
+    setHolidayDateInput('');
+  }, [holidayDateInput, holidayNameInput]);
+
+  const removeManualHoliday = useCallback((index) => {
+    setManualHolidays((prev) => prev.filter((_, itemIndex) => itemIndex !== index));
+  }, []);
 
   const loadSuggestions = useCallback(async () => {
     try {
@@ -86,7 +126,9 @@ export default function StockSuggestionsScreen() {
       const data = await fetchStockSuggestionsOnline({
         accessToken: session?.access_token || null,
         currentState: 'SIDEWAYS_STABLE',
-        horizons: ['1W', '1M'],
+        horizons: ['7D', '1D'],
+        holidayDates: manualHolidays,
+        holidayImpact: 1,
       });
 
       const rows = Array.isArray(data?.suggestions) ? data.suggestions : [];
@@ -104,7 +146,7 @@ export default function StockSuggestionsScreen() {
     } finally {
       setLoading(false);
     }
-  }, [session?.access_token]);
+  }, [manualHolidays, session?.access_token]);
 
   useEffect(() => {
     loadSuggestions();
@@ -114,7 +156,7 @@ export default function StockSuggestionsScreen() {
     return suggestions.filter((row) => {
       const rowUrgency = deriveUrgency(row);
       const rowConfidence = toNumber(row?.confidence, 0);
-      const rowHorizon = String(row?.horizon || '').trim().toUpperCase() === '1M' ? '1M' : '1W';
+      const rowHorizon = normalizeHorizon(row?.horizon);
       const rowCategory = String(row?.category || 'General').trim() || 'General';
 
       if (filters.urgency !== 'all' && rowUrgency !== filters.urgency) {
@@ -165,6 +207,41 @@ export default function StockSuggestionsScreen() {
           onChange={onChangeFilters}
         />
 
+        <View style={styles.holidayCard}>
+          <Text style={styles.holidayTitle}>Holiday adjustment</Text>
+          <Text style={styles.holidaySubtitle}>Add manual dates (YYYY-MM-DD) for Ramadan, Eid, or any holiday.</Text>
+          <View style={styles.holidayRow}>
+            <TextInput
+              value={holidayNameInput}
+              onChangeText={setHolidayNameInput}
+              placeholder="Holiday name"
+              style={styles.holidayInput}
+            />
+            <TextInput
+              value={holidayDateInput}
+              onChangeText={setHolidayDateInput}
+              placeholder="YYYY-MM-DD"
+              style={styles.holidayInput}
+            />
+            <Pressable style={styles.holidayAddButton} onPress={addManualHoliday}>
+              <Text style={styles.holidayAddButtonText}>Add</Text>
+            </Pressable>
+          </View>
+          {manualHolidays.length > 0 ? (
+            <View style={styles.holidayChipWrap}>
+              {manualHolidays.map((item, index) => (
+                <Pressable
+                  key={`${item.date}-${item.name}-${index}`}
+                  style={styles.holidayChip}
+                  onPress={() => removeManualHoliday(index)}
+                >
+                  <Text style={styles.holidayChipText}>{`${item.name} (${item.date})`}</Text>
+                </Pressable>
+              ))}
+            </View>
+          ) : null}
+        </View>
+
         {loading ? (
           <View style={styles.centerState}>
             <ActivityIndicator size="large" color={UI_COLORS.primary} />
@@ -179,9 +256,9 @@ export default function StockSuggestionsScreen() {
         {!loading && !error ? (
           <FlatList
             data={filteredSuggestions}
-            keyExtractor={(item, index) => `${String(item?.symbol || 'row')}-${String(item?.horizon || '1W')}-${index}`}
+            keyExtractor={(item, index) => `${String(item?.symbol || 'row')}-${String(item?.horizon || '7D')}-${index}`}
             renderItem={({ item, index }) => {
-              const key = `${String(item?.symbol || 'row')}-${String(item?.horizon || '1W')}-${index}`;
+              const key = `${String(item?.symbol || 'row')}-${String(item?.horizon || '7D')}-${index}`;
               return (
                 <SuggestionCard
                   suggestion={item}
@@ -214,6 +291,71 @@ const styles = StyleSheet.create({
   header: {
     marginBottom: 10,
     gap: 4,
+  },
+  holidayCard: {
+    backgroundColor: UI_COLORS.surfaceSubtle,
+    borderWidth: 1,
+    borderColor: UI_COLORS.borderSoft,
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 10,
+    gap: 8,
+  },
+  holidayTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: UI_COLORS.textPrimary,
+  },
+  holidaySubtitle: {
+    fontSize: 12,
+    color: UI_COLORS.textSecondary,
+  },
+  holidayRow: {
+    flexDirection: 'row',
+    gap: 8,
+    alignItems: 'center',
+  },
+  holidayInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: UI_COLORS.borderSoft,
+    borderRadius: 8,
+    backgroundColor: UI_COLORS.surface,
+    color: UI_COLORS.textPrimary,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    fontSize: 12,
+  },
+  holidayAddButton: {
+    minHeight: 36,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: UI_COLORS.primary,
+  },
+  holidayAddButtonText: {
+    color: UI_COLORS.surface,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  holidayChipWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  holidayChip: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: UI_COLORS.borderSoft,
+    backgroundColor: UI_COLORS.surface,
+  },
+  holidayChipText: {
+    fontSize: 11,
+    color: UI_COLORS.textSecondary,
+    fontWeight: '600',
   },
   title: {
     fontSize: 24,

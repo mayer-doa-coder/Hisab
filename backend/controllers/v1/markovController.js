@@ -190,6 +190,12 @@ const parseEmaHorizonsInput = (value) => {
 
 const mapForecastHorizonTokenToEma = (value) => {
   const token = String(value || '').trim().toLowerCase();
+  if (token === '1_day' || token === '1d') {
+    return '1W';
+  }
+  if (token === '7_day' || token === '7d') {
+    return '1W';
+  }
   if (token === '1_week' || token === '1w') {
     return '1W';
   }
@@ -206,7 +212,7 @@ const mapForecastHorizonTokenToSuggestion = (value) => {
   }
 
   const normalized = String(value || '').trim().toUpperCase();
-  if (normalized === '1W' || normalized === '1M') {
+  if (normalized === '1D' || normalized === '7D' || normalized === '1W' || normalized === '1M') {
     return normalized;
   }
 
@@ -643,8 +649,14 @@ const mapForecastHorizonToSuggestionHorizon = (value = '') => {
   }
 
   const normalized = String(value || '').trim().toLowerCase();
+  if (normalized === '1_day') {
+    return '1D';
+  }
+  if (normalized === '7_day') {
+    return '7D';
+  }
   if (normalized === '1_week') {
-    return '1W';
+    return '7D';
   }
   if (normalized === '1_month') {
     return '1M';
@@ -655,6 +667,12 @@ const mapForecastHorizonToSuggestionHorizon = (value = '') => {
 
 const mapSuggestionHorizonToForecastHorizon = (value = '') => {
   const token = normalizeSuggestionHorizonToken(value);
+  if (token === '1D') {
+    return '1_day';
+  }
+  if (token === '7D') {
+    return '1_week';
+  }
   if (token === '1W') {
     return '1_week';
   }
@@ -1498,7 +1516,7 @@ const postMarkovStockSuggestions = asyncHandler(async (req, res) => {
     .filter(Boolean);
   const forecastHorizons = normalizedForecastHorizons.length > 0
     ? normalizedForecastHorizons
-    : ['1_week', '1_month'];
+    : ['1_week', '1_day'];
 
   const decisionConstraints = parseObjectOrNull(
     req.body?.decision_constraints
