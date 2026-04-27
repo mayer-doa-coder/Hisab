@@ -15,6 +15,25 @@ const toMs = (minutes, fallbackMinutes) => {
   return safeMinutes * 60 * 1000;
 };
 
+// Node's setInterval stores the delay in a 32-bit signed integer (max ~24.8 days).
+// Values larger than that overflow to 1ms, causing runaway firing.
+// This wrapper uses an hourly tick for any interval that exceeds the limit.
+const MAX_INTERVAL_MS = 2_147_483_647;
+const SAFE_TICK_MS    = 60 * 60 * 1_000; // 1 hour
+
+const safeSetInterval = (fn, intervalMs) => {
+  if (intervalMs <= MAX_INTERVAL_MS) {
+    return setInterval(fn, intervalMs);
+  }
+  let nextRun = Date.now() + intervalMs;
+  return setInterval(() => {
+    if (Date.now() >= nextRun) {
+      nextRun = Date.now() + intervalMs;
+      fn();
+    }
+  }, SAFE_TICK_MS);
+};
+
 const createSkipLogger = ({ logger = console } = {}) => {
   const cache = new Map();
 
@@ -126,16 +145,16 @@ const startLifecycleScheduler = ({ logger = console } = {}) => {
     logger.info(`[LIFECYCLE] Drift monitoring run complete. rollback=${Boolean(result?.rollback?.rollback_executed)}`);
   });
 
-  const monthlyHandle = setInterval(() => {
+  const monthlyHandle = safeSetInterval(() => {
     runMonthly();
   }, monthlyIntervalMs);
-  const driftHandle = setInterval(() => {
+  const driftHandle = safeSetInterval(() => {
     runDrift();
   }, driftIntervalMs);
 
   let quarterlyHandle = null;
   if (retrainUserId) {
-    quarterlyHandle = setInterval(() => {
+    quarterlyHandle = safeSetInterval(() => {
       runQuarterly();
     }, quarterlyIntervalMs);
   } else {

@@ -1,7 +1,7 @@
-export const TRUST_CHAMPION_MODEL = {
+{
   "model_name": "hisab_trust_champion",
   "version": "1.0.0",
-  "created_at": "2026-04-27T03:43:52.943Z",
+  "created_at": "2026-04-27T03:22:31.916Z",
   "method": "monotonic_logistic_regression",
   "dataset_source": "synthetic_seed_1337",
   "feature_order": [
@@ -130,4 +130,4 @@ export const TRUST_CHAMPION_MODEL = {
     ],
     "source_path": "D:\\Hisab\\backend\\config\\trustObjective.json"
   }
-};
+}

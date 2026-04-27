@@ -19,7 +19,7 @@ const {
   applyLaplaceSmoothing,
   normalizeCounts,
   initCountMatrix,
-} = require('./markov/transitionBuilder');  // reuse existing
+} = require('../models/markov/transitionBuilder');  // reuse existing
 
 const {
   predictNextStateDist,
@@ -27,7 +27,7 @@ const {
   predictMostLikelyState,
   computeNextStateAccuracy,
   computeCalibrationStats,
-} = require('./markov/predictor');  // reuse existing
+} = require('../models/markov/predictor');  // reuse existing
 
 const {
   buildCustomerSnapshotRows,

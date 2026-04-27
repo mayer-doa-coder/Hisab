@@ -1,7 +1,7 @@
 {
   "model_name": "hisab_trust_challenger",
   "version": "1.0.0",
-  "created_at": "2026-04-27T03:43:56.535966Z",
+  "created_at": "2026-04-27T03:22:34.933491Z",
   "method": "lightgbm_shallow_challenger",
   "enabled_default": false,
   "dataset_source": "synthetic_seed_1337",
