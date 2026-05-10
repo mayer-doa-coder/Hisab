@@ -334,8 +334,11 @@ export const fetchMarkovForecastForReorder = async ({
   product = {},
   thresholdSuggestion = {},
   config = {},
+  salesHistoryRows = [],
   horizon = '1W',
   currentState = 'SIDEWAYS_STABLE',
+  regime = null,
+  holidayContext = null,
   features = {},
 } = {}) => {
   const normalizedHorizon = normalizeHorizon(horizon);
@@ -345,6 +348,21 @@ export const fetchMarkovForecastForReorder = async ({
   const leadTimeDays = Math.max(1, Math.trunc(Number(config?.leadTimeDays || 3)));
   const dailySalesRate = Math.max(0, Number(thresholdSuggestion?.dailySalesRate || 0));
   const baselineDemand = Math.max(0, Number(thresholdSuggestion?.targetLevel || 0));
+  const normalizedSalesRows = Array.isArray(salesHistoryRows)
+    ? salesHistoryRows
+      .map((row) => {
+        const saleDate = String(row?.sale_date || '').trim();
+        const unitsSold = Number(row?.units_sold);
+        if (!saleDate || !Number.isFinite(unitsSold)) {
+          return null;
+        }
+        return {
+          timestamp: saleDate.includes('T') ? saleDate : `${saleDate}T00:00:00.000Z`,
+          units_sold: Math.max(0, unitsSold),
+        };
+      })
+      .filter(Boolean)
+    : [];
 
   const response = await requestBackendJson({
     path: '/api/v1/markov/forecast',
@@ -356,12 +374,26 @@ export const fetchMarkovForecastForReorder = async ({
     body: {
       product_id: String(product?.id || ''),
       symbol: normalizeSymbol(product),
+      regime: regime ? String(regime).trim().toUpperCase() : null,
+      asOf: holidayContext?.asOfIso || null,
       features: features && typeof features === 'object' ? features : {},
       feature_input: {
         current_inventory: quantity,
         lead_time_days: leadTimeDays,
         historical_average_sales_velocity: dailySalesRate,
         minimum_safe_stock_level: Math.max(0, Number(product?.low_stock_threshold || 0)),
+        sales_rows: normalizedSalesRows,
+        holiday_context: holidayContext && typeof holidayContext === 'object'
+          ? {
+            season_key: holidayContext.seasonKey || 'NORMAL',
+            label: holidayContext.label || 'Normal demand',
+            demand_multiplier: Number(holidayContext.demandMultiplier || 1),
+            is_holiday_window: Boolean(holidayContext.isHolidayWindow),
+            eid_fitr_date: holidayContext.eidFitrDate || null,
+            ramadan_start_date: holidayContext.ramadanStartDate || null,
+          }
+          : null,
+        seasonal_demand_multiplier: Number(holidayContext?.demandMultiplier || 1),
         ...(features && typeof features === 'object' ? features : {}),
       },
       current_state: String(currentState || 'SIDEWAYS_STABLE').trim().toUpperCase(),

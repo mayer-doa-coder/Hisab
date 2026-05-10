@@ -1,5 +1,5 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   RefreshControl,
@@ -142,10 +142,13 @@ export default function DashboardScreen() {
     loadDashboard();
   }, [loadDashboard]);
 
-  const todaySales = toNumber(
-    complianceDashboard?.sales?.totalSales ?? kpis.totalSales,
-    kpis.totalSales,
+  useFocusEffect(
+    useCallback(() => {
+      void loadDashboard();
+    }, [loadDashboard])
   );
+
+  const todaySales = toNumber(kpis.totalSales, 0);
 
   return (
     <SafeAreaView style={styles.safeArea}>

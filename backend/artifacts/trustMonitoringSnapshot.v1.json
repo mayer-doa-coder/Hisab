@@ -1,14 +1,14 @@
 {
   "schema_version": "1.0.0",
   "source": "phase8_runtime_react_native",
-  "ingested_at": "2026-04-26T15:06:41.460Z",
-  "generated_at": "2026-04-26T15:06:39.649Z",
-  "snapshot_version": 25,
-  "request_count": 4,
-  "fallback_rate": 1,
+  "ingested_at": "2026-04-27T06:29:04.203Z",
+  "generated_at": "2026-04-27T06:29:04.609Z",
+  "snapshot_version": 28,
+  "request_count": 48,
+  "fallback_rate": 0.5,
   "error_rate": 0,
-  "latency_ms_p95": 2,
-  "rollout_observed_percentage": 100,
+  "latency_ms_p95": 5,
+  "rollout_observed_percentage": 83.33333333333334,
   "business_loss_increase_pct": null,
   "metrics": {
     "auc_pr": null,
@@ -33,55 +33,512 @@
   ],
   "feature_drift": {
     "due_amount": {
-      "mean_shift": 0,
-      "variance_shift": 1,
-      "sample_count": 4
+      "mean_shift": 0.056818181818181816,
+      "variance_shift": 0.02799968671679192,
+      "sample_count": 48
     },
     "late_count": {
       "mean_shift": 0,
       "variance_shift": 1,
-      "sample_count": 4
+      "sample_count": 48
     },
     "avg_delay_days": {
-      "mean_shift": 0,
-      "variance_shift": 1,
-      "sample_count": 4
+      "mean_shift": 0.0000053047842811797426,
+      "variance_shift": 0.0030293643615081694,
+      "sample_count": 48
     },
     "transaction_depth": {
-      "mean_shift": 0,
-      "variance_shift": 1,
-      "sample_count": 4
+      "mean_shift": 0.03125,
+      "variance_shift": 0.05989583333333339,
+      "sample_count": 48
     },
     "recency_days": {
-      "mean_shift": 0.00010320654531208314,
-      "variance_shift": 9.83634481266563,
-      "sample_count": 4
+      "mean_shift": 0.16369985585270644,
+      "variance_shift": 0.12041138600447977,
+      "sample_count": 48
     },
     "payment_consistency": {
-      "mean_shift": 0,
-      "variance_shift": 1,
-      "sample_count": 4
+      "mean_shift": 0.01041666666666663,
+      "variance_shift": 0.0017361111111111605,
+      "sample_count": 48
     },
     "payment_volatility": {
-      "mean_shift": 0,
-      "variance_shift": 1,
-      "sample_count": 4
+      "mean_shift": 1.6940658945086007e-21,
+      "variance_shift": 0.9997353028788027,
+      "sample_count": 48
     }
   },
   "segment_summary": {
+    "normal_history": {
+      "request_count": 24,
+      "fallback_count": 0,
+      "error_count": 0,
+      "fallback_rate": 0,
+      "error_rate": 0
+    },
     "sparse_history": {
-      "request_count": 4,
-      "fallback_count": 4,
+      "request_count": 24,
+      "fallback_count": 24,
       "error_count": 0,
       "fallback_rate": 1,
       "error_rate": 0
     }
   },
-  "triggered_guardrails": [],
-  "alerts_recent": [],
+  "triggered_guardrails": [
+    {
+      "scope": "global",
+      "segmentKey": null,
+      "metric": "fallback_rate",
+      "reason": "fallback_rate breached (threshold=0.3, actual=0.5)",
+      "timestamp": null
+    },
+    {
+      "scope": "global",
+      "segmentKey": null,
+      "metric": "prediction_drift_psi",
+      "reason": "prediction_drift_psi breached (threshold=0.25, actual=12.43385588583866)",
+      "timestamp": null
+    },
+    {
+      "scope": "global",
+      "segmentKey": null,
+      "metric": "feature_drift",
+      "reason": "feature_drift breached for late_count (mean_shift=0, variance_shift=1)",
+      "timestamp": null
+    },
+    {
+      "scope": "global",
+      "segmentKey": null,
+      "metric": "feature_drift",
+      "reason": "feature_drift breached for payment_volatility (mean_shift=1.6940658945086007e-21, variance_shift=0.9997353028788027)",
+      "timestamp": null
+    }
+  ],
+  "alerts_recent": [
+    {
+      "timestamp": "2026-04-27T06:23:57.479Z",
+      "scope": "global",
+      "metric": "fallback_rate",
+      "reason": "fallback_rate breached (threshold=0.3, actual=0.5)",
+      "snapshot_version": 13
+    },
+    {
+      "timestamp": "2026-04-27T06:23:57.479Z",
+      "scope": "global",
+      "metric": "prediction_drift_psi",
+      "reason": "prediction_drift_psi breached (threshold=0.25, actual=12.43385588583866)",
+      "snapshot_version": 13
+    },
+    {
+      "timestamp": "2026-04-27T06:23:57.479Z",
+      "scope": "global",
+      "metric": "feature_drift",
+      "reason": "feature_drift breached for late_count (mean_shift=0, variance_shift=1)",
+      "snapshot_version": 13
+    },
+    {
+      "timestamp": "2026-04-27T06:23:57.479Z",
+      "scope": "global",
+      "metric": "feature_drift",
+      "reason": "feature_drift breached for payment_volatility (mean_shift=1.6940658945086007e-21, variance_shift=0.9997353028788027)",
+      "snapshot_version": 13
+    },
+    {
+      "timestamp": "2026-04-27T06:24:24.520Z",
+      "scope": "global",
+      "metric": "fallback_rate",
+      "reason": "fallback_rate breached (threshold=0.3, actual=0.5)",
+      "snapshot_version": 14
+    },
+    {
+      "timestamp": "2026-04-27T06:24:24.520Z",
+      "scope": "global",
+      "metric": "prediction_drift_psi",
+      "reason": "prediction_drift_psi breached (threshold=0.25, actual=12.43385588583866)",
+      "snapshot_version": 14
+    },
+    {
+      "timestamp": "2026-04-27T06:24:24.520Z",
+      "scope": "global",
+      "metric": "feature_drift",
+      "reason": "feature_drift breached for late_count (mean_shift=0, variance_shift=1)",
+      "snapshot_version": 14
+    },
+    {
+      "timestamp": "2026-04-27T06:24:24.520Z",
+      "scope": "global",
+      "metric": "feature_drift",
+      "reason": "feature_drift breached for payment_volatility (mean_shift=1.6940658945086007e-21, variance_shift=0.9997353028788027)",
+      "snapshot_version": 14
+    },
+    {
+      "timestamp": "2026-04-27T06:24:44.520Z",
+      "scope": "global",
+      "metric": "fallback_rate",
+      "reason": "fallback_rate breached (threshold=0.3, actual=0.5)",
+      "snapshot_version": 15
+    },
+    {
+      "timestamp": "2026-04-27T06:24:44.520Z",
+      "scope": "global",
+      "metric": "prediction_drift_psi",
+      "reason": "prediction_drift_psi breached (threshold=0.25, actual=12.43385588583866)",
+      "snapshot_version": 15
+    },
+    {
+      "timestamp": "2026-04-27T06:24:44.520Z",
+      "scope": "global",
+      "metric": "feature_drift",
+      "reason": "feature_drift breached for late_count (mean_shift=0, variance_shift=1)",
+      "snapshot_version": 15
+    },
+    {
+      "timestamp": "2026-04-27T06:24:44.520Z",
+      "scope": "global",
+      "metric": "feature_drift",
+      "reason": "feature_drift breached for payment_volatility (mean_shift=1.6940658945086007e-21, variance_shift=0.9997353028788027)",
+      "snapshot_version": 15
+    },
+    {
+      "timestamp": "2026-04-27T06:25:04.526Z",
+      "scope": "global",
+      "metric": "fallback_rate",
+      "reason": "fallback_rate breached (threshold=0.3, actual=0.5)",
+      "snapshot_version": 16
+    },
+    {
+      "timestamp": "2026-04-27T06:25:04.526Z",
+      "scope": "global",
+      "metric": "prediction_drift_psi",
+      "reason": "prediction_drift_psi breached (threshold=0.25, actual=12.43385588583866)",
+      "snapshot_version": 16
+    },
+    {
+      "timestamp": "2026-04-27T06:25:04.526Z",
+      "scope": "global",
+      "metric": "feature_drift",
+      "reason": "feature_drift breached for late_count (mean_shift=0, variance_shift=1)",
+      "snapshot_version": 16
+    },
+    {
+      "timestamp": "2026-04-27T06:25:04.526Z",
+      "scope": "global",
+      "metric": "feature_drift",
+      "reason": "feature_drift breached for payment_volatility (mean_shift=1.6940658945086007e-21, variance_shift=0.9997353028788027)",
+      "snapshot_version": 16
+    },
+    {
+      "timestamp": "2026-04-27T06:25:24.534Z",
+      "scope": "global",
+      "metric": "fallback_rate",
+      "reason": "fallback_rate breached (threshold=0.3, actual=0.5)",
+      "snapshot_version": 17
+    },
+    {
+      "timestamp": "2026-04-27T06:25:24.534Z",
+      "scope": "global",
+      "metric": "prediction_drift_psi",
+      "reason": "prediction_drift_psi breached (threshold=0.25, actual=12.43385588583866)",
+      "snapshot_version": 17
+    },
+    {
+      "timestamp": "2026-04-27T06:25:24.534Z",
+      "scope": "global",
+      "metric": "feature_drift",
+      "reason": "feature_drift breached for late_count (mean_shift=0, variance_shift=1)",
+      "snapshot_version": 17
+    },
+    {
+      "timestamp": "2026-04-27T06:25:24.534Z",
+      "scope": "global",
+      "metric": "feature_drift",
+      "reason": "feature_drift breached for payment_volatility (mean_shift=1.6940658945086007e-21, variance_shift=0.9997353028788027)",
+      "snapshot_version": 17
+    },
+    {
+      "timestamp": "2026-04-27T06:25:44.548Z",
+      "scope": "global",
+      "metric": "fallback_rate",
+      "reason": "fallback_rate breached (threshold=0.3, actual=0.5)",
+      "snapshot_version": 18
+    },
+    {
+      "timestamp": "2026-04-27T06:25:44.548Z",
+      "scope": "global",
+      "metric": "prediction_drift_psi",
+      "reason": "prediction_drift_psi breached (threshold=0.25, actual=12.43385588583866)",
+      "snapshot_version": 18
+    },
+    {
+      "timestamp": "2026-04-27T06:25:44.548Z",
+      "scope": "global",
+      "metric": "feature_drift",
+      "reason": "feature_drift breached for late_count (mean_shift=0, variance_shift=1)",
+      "snapshot_version": 18
+    },
+    {
+      "timestamp": "2026-04-27T06:25:44.548Z",
+      "scope": "global",
+      "metric": "feature_drift",
+      "reason": "feature_drift breached for payment_volatility (mean_shift=1.6940658945086007e-21, variance_shift=0.9997353028788027)",
+      "snapshot_version": 18
+    },
+    {
+      "timestamp": "2026-04-27T06:26:04.543Z",
+      "scope": "global",
+      "metric": "fallback_rate",
+      "reason": "fallback_rate breached (threshold=0.3, actual=0.5)",
+      "snapshot_version": 19
+    },
+    {
+      "timestamp": "2026-04-27T06:26:04.543Z",
+      "scope": "global",
+      "metric": "prediction_drift_psi",
+      "reason": "prediction_drift_psi breached (threshold=0.25, actual=12.43385588583866)",
+      "snapshot_version": 19
+    },
+    {
+      "timestamp": "2026-04-27T06:26:04.543Z",
+      "scope": "global",
+      "metric": "feature_drift",
+      "reason": "feature_drift breached for late_count (mean_shift=0, variance_shift=1)",
+      "snapshot_version": 19
+    },
+    {
+      "timestamp": "2026-04-27T06:26:04.543Z",
+      "scope": "global",
+      "metric": "feature_drift",
+      "reason": "feature_drift breached for payment_volatility (mean_shift=1.6940658945086007e-21, variance_shift=0.9997353028788027)",
+      "snapshot_version": 19
+    },
+    {
+      "timestamp": "2026-04-27T06:26:24.553Z",
+      "scope": "global",
+      "metric": "fallback_rate",
+      "reason": "fallback_rate breached (threshold=0.3, actual=0.5)",
+      "snapshot_version": 20
+    },
+    {
+      "timestamp": "2026-04-27T06:26:24.553Z",
+      "scope": "global",
+      "metric": "prediction_drift_psi",
+      "reason": "prediction_drift_psi breached (threshold=0.25, actual=12.43385588583866)",
+      "snapshot_version": 20
+    },
+    {
+      "timestamp": "2026-04-27T06:26:24.553Z",
+      "scope": "global",
+      "metric": "feature_drift",
+      "reason": "feature_drift breached for late_count (mean_shift=0, variance_shift=1)",
+      "snapshot_version": 20
+    },
+    {
+      "timestamp": "2026-04-27T06:26:24.553Z",
+      "scope": "global",
+      "metric": "feature_drift",
+      "reason": "feature_drift breached for payment_volatility (mean_shift=1.6940658945086007e-21, variance_shift=0.9997353028788027)",
+      "snapshot_version": 20
+    },
+    {
+      "timestamp": "2026-04-27T06:26:44.566Z",
+      "scope": "global",
+      "metric": "fallback_rate",
+      "reason": "fallback_rate breached (threshold=0.3, actual=0.5)",
+      "snapshot_version": 21
+    },
+    {
+      "timestamp": "2026-04-27T06:26:44.566Z",
+      "scope": "global",
+      "metric": "prediction_drift_psi",
+      "reason": "prediction_drift_psi breached (threshold=0.25, actual=12.43385588583866)",
+      "snapshot_version": 21
+    },
+    {
+      "timestamp": "2026-04-27T06:26:44.566Z",
+      "scope": "global",
+      "metric": "feature_drift",
+      "reason": "feature_drift breached for late_count (mean_shift=0, variance_shift=1)",
+      "snapshot_version": 21
+    },
+    {
+      "timestamp": "2026-04-27T06:26:44.566Z",
+      "scope": "global",
+      "metric": "feature_drift",
+      "reason": "feature_drift breached for payment_volatility (mean_shift=1.6940658945086007e-21, variance_shift=0.9997353028788027)",
+      "snapshot_version": 21
+    },
+    {
+      "timestamp": "2026-04-27T06:27:04.570Z",
+      "scope": "global",
+      "metric": "fallback_rate",
+      "reason": "fallback_rate breached (threshold=0.3, actual=0.5)",
+      "snapshot_version": 22
+    },
+    {
+      "timestamp": "2026-04-27T06:27:04.570Z",
+      "scope": "global",
+      "metric": "prediction_drift_psi",
+      "reason": "prediction_drift_psi breached (threshold=0.25, actual=12.43385588583866)",
+      "snapshot_version": 22
+    },
+    {
+      "timestamp": "2026-04-27T06:27:04.570Z",
+      "scope": "global",
+      "metric": "feature_drift",
+      "reason": "feature_drift breached for late_count (mean_shift=0, variance_shift=1)",
+      "snapshot_version": 22
+    },
+    {
+      "timestamp": "2026-04-27T06:27:04.570Z",
+      "scope": "global",
+      "metric": "feature_drift",
+      "reason": "feature_drift breached for payment_volatility (mean_shift=1.6940658945086007e-21, variance_shift=0.9997353028788027)",
+      "snapshot_version": 22
+    },
+    {
+      "timestamp": "2026-04-27T06:27:24.586Z",
+      "scope": "global",
+      "metric": "fallback_rate",
+      "reason": "fallback_rate breached (threshold=0.3, actual=0.5)",
+      "snapshot_version": 23
+    },
+    {
+      "timestamp": "2026-04-27T06:27:24.586Z",
+      "scope": "global",
+      "metric": "prediction_drift_psi",
+      "reason": "prediction_drift_psi breached (threshold=0.25, actual=12.43385588583866)",
+      "snapshot_version": 23
+    },
+    {
+      "timestamp": "2026-04-27T06:27:24.586Z",
+      "scope": "global",
+      "metric": "feature_drift",
+      "reason": "feature_drift breached for late_count (mean_shift=0, variance_shift=1)",
+      "snapshot_version": 23
+    },
+    {
+      "timestamp": "2026-04-27T06:27:24.586Z",
+      "scope": "global",
+      "metric": "feature_drift",
+      "reason": "feature_drift breached for payment_volatility (mean_shift=1.6940658945086007e-21, variance_shift=0.9997353028788027)",
+      "snapshot_version": 23
+    },
+    {
+      "timestamp": "2026-04-27T06:27:44.581Z",
+      "scope": "global",
+      "metric": "fallback_rate",
+      "reason": "fallback_rate breached (threshold=0.3, actual=0.5)",
+      "snapshot_version": 24
+    },
+    {
+      "timestamp": "2026-04-27T06:27:44.581Z",
+      "scope": "global",
+      "metric": "prediction_drift_psi",
+      "reason": "prediction_drift_psi breached (threshold=0.25, actual=12.43385588583866)",
+      "snapshot_version": 24
+    },
+    {
+      "timestamp": "2026-04-27T06:27:44.581Z",
+      "scope": "global",
+      "metric": "feature_drift",
+      "reason": "feature_drift breached for late_count (mean_shift=0, variance_shift=1)",
+      "snapshot_version": 24
+    },
+    {
+      "timestamp": "2026-04-27T06:27:44.581Z",
+      "scope": "global",
+      "metric": "feature_drift",
+      "reason": "feature_drift breached for payment_volatility (mean_shift=1.6940658945086007e-21, variance_shift=0.9997353028788027)",
+      "snapshot_version": 24
+    },
+    {
+      "timestamp": "2026-04-27T06:28:04.588Z",
+      "scope": "global",
+      "metric": "fallback_rate",
+      "reason": "fallback_rate breached (threshold=0.3, actual=0.5)",
+      "snapshot_version": 25
+    },
+    {
+      "timestamp": "2026-04-27T06:28:04.588Z",
+      "scope": "global",
+      "metric": "prediction_drift_psi",
+      "reason": "prediction_drift_psi breached (threshold=0.25, actual=12.43385588583866)",
+      "snapshot_version": 25
+    },
+    {
+      "timestamp": "2026-04-27T06:28:04.588Z",
+      "scope": "global",
+      "metric": "feature_drift",
+      "reason": "feature_drift breached for late_count (mean_shift=0, variance_shift=1)",
+      "snapshot_version": 25
+    },
+    {
+      "timestamp": "2026-04-27T06:28:04.588Z",
+      "scope": "global",
+      "metric": "feature_drift",
+      "reason": "feature_drift breached for payment_volatility (mean_shift=1.6940658945086007e-21, variance_shift=0.9997353028788027)",
+      "snapshot_version": 25
+    },
+    {
+      "timestamp": "2026-04-27T06:28:38.921Z",
+      "scope": "global",
+      "metric": "fallback_rate",
+      "reason": "fallback_rate breached (threshold=0.3, actual=0.5)",
+      "snapshot_version": 26
+    },
+    {
+      "timestamp": "2026-04-27T06:28:38.921Z",
+      "scope": "global",
+      "metric": "prediction_drift_psi",
+      "reason": "prediction_drift_psi breached (threshold=0.25, actual=12.43385588583866)",
+      "snapshot_version": 26
+    },
+    {
+      "timestamp": "2026-04-27T06:28:38.921Z",
+      "scope": "global",
+      "metric": "feature_drift",
+      "reason": "feature_drift breached for late_count (mean_shift=0, variance_shift=1)",
+      "snapshot_version": 26
+    },
+    {
+      "timestamp": "2026-04-27T06:28:38.921Z",
+      "scope": "global",
+      "metric": "feature_drift",
+      "reason": "feature_drift breached for payment_volatility (mean_shift=1.6940658945086007e-21, variance_shift=0.9997353028788027)",
+      "snapshot_version": 26
+    },
+    {
+      "timestamp": "2026-04-27T06:29:00.920Z",
+      "scope": "global",
+      "metric": "fallback_rate",
+      "reason": "fallback_rate breached (threshold=0.3, actual=0.5)",
+      "snapshot_version": 27
+    },
+    {
+      "timestamp": "2026-04-27T06:29:00.920Z",
+      "scope": "global",
+      "metric": "prediction_drift_psi",
+      "reason": "prediction_drift_psi breached (threshold=0.25, actual=12.43385588583866)",
+      "snapshot_version": 27
+    },
+    {
+      "timestamp": "2026-04-27T06:29:00.920Z",
+      "scope": "global",
+      "metric": "feature_drift",
+      "reason": "feature_drift breached for late_count (mean_shift=0, variance_shift=1)",
+      "snapshot_version": 27
+    },
+    {
+      "timestamp": "2026-04-27T06:29:00.920Z",
+      "scope": "global",
+      "metric": "feature_drift",
+      "reason": "feature_drift breached for payment_volatility (mean_shift=1.6940658945086007e-21, variance_shift=0.9997353028788027)",
+      "snapshot_version": 27
+    }
+  ],
   "metadata": {
     "app_version": "1.0.0",
-    "user_id": "69d9ca4361ba86616f019e14",
+    "user_id": "69d9c4c6a5bda0b03e45f251",
     "rollout_stage": "stage_1_canary",
     "rollout_percentage": 5
   }

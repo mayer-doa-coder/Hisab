@@ -922,10 +922,10 @@ function MainDataShell() {
             ...row,
             trust_score: Number.isFinite(Number(onlineTrust.trust_score))
               ? Number(onlineTrust.trust_score)
-              : Number(row.trust_score || 0),
+              : (Number.isFinite(Number(row.trust_score)) ? Number(row.trust_score) : null),
             risk_score: Number.isFinite(Number(onlineTrust.risk_score))
               ? Number(onlineTrust.risk_score)
-              : Number(row.risk_score || 0),
+              : (Number.isFinite(Number(row.risk_score)) ? Number(row.risk_score) : null),
             risk_level: toUiRiskLabel(onlineTrust.risk_level || row.risk_level),
             risk_level_token: String(onlineTrust.risk_level || '').trim().toUpperCase() || null,
             risk_reasons: Array.isArray(onlineTrust.risk_reasons)

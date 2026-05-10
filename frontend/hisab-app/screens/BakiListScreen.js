@@ -71,9 +71,10 @@ export default function BakiListScreen() {
     () => customers.find((c) => String(c.id) === String(selectedCustomerId)) || null,
     [customers, selectedCustomerId],
   );
-  const selectedTrustScore = Number.isFinite(Number(selectedCustomer?.trust_score))
-    ? Number(selectedCustomer.trust_score)
-    : null;
+  const selectedTrustRaw = selectedCustomer?.trust_score;
+  const selectedTrustScore = selectedTrustRaw === null || selectedTrustRaw === undefined || selectedTrustRaw === ''
+    ? null
+    : (Number.isFinite(Number(selectedTrustRaw)) ? Number(selectedTrustRaw) : null);
   const requiresPhoto =
     activeMode === MODE_CREDIT &&
     selectedTrustScore !== null &&

@@ -35,7 +35,10 @@ const GATE_REASON_MESSAGES = {
  * @returns {{ scope, trustAllowed, phoneVerified, pinVerified, reason, message }}
  */
 export function evaluateTrustGate(verificationLevel) {
-  const rank = LEVEL_ORDER.indexOf(verificationLevel);
+  const normalizedLevel = typeof verificationLevel === 'string'
+    ? verificationLevel.trim().toUpperCase()
+    : '';
+  const rank = LEVEL_ORDER.indexOf(normalizedLevel);
 
   if (rank < 0) {
     return {

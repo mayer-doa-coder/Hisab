@@ -1,0 +1,112 @@
+{
+  "event_type": "quarterly_retraining",
+  "generated_at": "2026-04-27T10:08:20.566Z",
+  "bundle_version": "115.0.0",
+  "model_version_label": "trust_model_v115.0",
+  "dataset_source": "synthetic_fallback",
+  "deployment_status": "candidate_blocked_by_gates",
+  "lifecycle_state": "candidate_blocked_by_gates",
+  "pipeline_steps": [
+    "dataset rebuild with latest snapshots",
+    "feature recomputation with Phase 1 schema",
+    "champion retraining (monotonic logistic)",
+    "challenger retraining (lightgbm)",
+    "phase 7 rolling-window backtest",
+    "phase 8 guardrail gate check before deployment candidate creation"
+  ],
+  "metrics": {
+    "champion": {
+      "auc_pr": 0.866493,
+      "recall_at_precision_90": 0.441176,
+      "brier_calibrated": 0.154384,
+      "ece_calibrated": 0.00638
+    },
+    "challenger": {
+      "auc_pr": 0.987072,
+      "recall_at_precision_90": 0.985294,
+      "brier_raw": 0.062945,
+      "brier_calibrated": 0.034547,
+      "ece_calibrated": 0.004813
+    },
+    "challenger_comparison": {
+      "delta_auc_pr": 0.136091,
+      "delta_recall_at_precision_90": 0.544118,
+      "delta_brier": 0.13221,
+      "estimated_loss_reduction_vs_champion": 0.929615
+    }
+  },
+  "gate_results": {
+    "objective": {
+      "pass": true,
+      "checks": {
+        "champion_auc_pr_ok": true,
+        "champion_recall_p90_ok": true,
+        "champion_brier_ok": true,
+        "champion_ece_ok": true,
+        "challenger_auc_pr_ok": true,
+        "challenger_recall_p90_ok": true,
+        "challenger_brier_ok": true,
+        "challenger_ece_ok": true,
+        "business_loss_reduction_ok": true
+      },
+      "diagnostics": []
+    },
+    "phase7": {
+      "pass": true,
+      "reason": "phase7_backtest_completed",
+      "evaluated_segments": 4
+    },
+    "phase8": {
+      "pass": false,
+      "reason": "active_guardrail_breach",
+      "triggered_guardrails": [
+        {
+          "scope": "global",
+          "segmentKey": null,
+          "metric": "fallback_rate",
+          "reason": "fallback_rate breached (threshold=0.3, actual=0.5)",
+          "timestamp": null
+        },
+        {
+          "scope": "global",
+          "segmentKey": null,
+          "metric": "prediction_drift_psi",
+          "reason": "prediction_drift_psi breached (threshold=0.25, actual=12.43385588583866)",
+          "timestamp": null
+        },
+        {
+          "scope": "global",
+          "segmentKey": null,
+          "metric": "feature_drift",
+          "reason": "feature_drift breached for late_count (mean_shift=0, variance_shift=1)",
+          "timestamp": null
+        },
+        {
+          "scope": "global",
+          "segmentKey": null,
+          "metric": "feature_drift",
+          "reason": "feature_drift breached for payment_volatility (mean_shift=1.6940658945086007e-21, variance_shift=0.9997353028788027)",
+          "timestamp": null
+        }
+      ]
+    }
+  },
+  "artifacts": {
+    "champion_model": {
+      "path": "D:\\Hisab\\backend\\artifacts\\trustChampionModel.v115.0.0.json",
+      "sha256": "7112c68f4d593ad94bc3107823b187260c5f113b888208e26b2114a402d0993d"
+    },
+    "challenger_model": {
+      "path": "D:\\Hisab\\backend\\artifacts\\trustChallengerModel.v115.0.0.json",
+      "sha256": "804ae2014a7cea2e088d599d85d6dcb3dbde3214b5891a5e6532f3c24c517d66"
+    },
+    "backtest_report": {
+      "path": "D:\\Hisab\\backend\\artifacts\\trustBacktestReport.v115.0.0.json",
+      "sha256": "4c6820c08375cd67ca95a4c16844e11fea59af301d10ce1af544ee91322b66b0"
+    },
+    "segment_decisions": {
+      "path": "D:\\Hisab\\backend\\artifacts\\trustSegmentPromotion.v115.0.0.json",
+      "sha256": "3835d1ecf634e2554f2c352a4158e54c6e45e94faabcade101863ba8dcd1f616"
+    }
+  }
+}

@@ -706,25 +706,11 @@ const loadOpenBatchesForProductTx = async ({ userId, productId }) => {
 	);
 };
 
-const consumeInventoryBatchesTx = async ({
-	userId,
-	productId,
-	quantity,
-	syncUpdatedAt,
-	sourceEventType = null,
-	sourceEventId = null,
-	sourceEventClientRefId = null,
-} = {}) => {
-	const requestedQty = Number(quantity);
-	if (!Number.isInteger(requestedQty) || requestedQty <= 0) {
-		return [];
-	}
-
-	const rows = await loadOpenBatchesForProductTx({ userId, productId });
-	let remaining = requestedQty;
+const allocateBatchesForQuantity = ({ rows = [], requestedQty = 0 } = {}) => {
+	let remaining = Number(requestedQty);
 	const allocations = [];
 
-	for (const row of rows) {
+	for (const row of rows || []) {
 		if (remaining <= 0) {
 			break;
 		}
@@ -744,8 +730,106 @@ const consumeInventoryBatchesTx = async ({
 		});
 	}
 
+	return {
+		allocations,
+		remaining,
+	};
+};
+
+const reconcileInventoryBatchGapTx = async ({
+	userId,
+	productId,
+	productQuantityBefore = null,
+	syncUpdatedAt,
+} = {}) => {
+	const productRow = await db.getFirstAsync(
+		`SELECT id, quantity, price, expiry_date
+		 FROM products
+		 WHERE id = ?
+			AND user_id = ?
+		 LIMIT 1;`,
+		productId,
+		userId
+	);
+	if (!productRow) {
+		return null;
+	}
+
+	const batchTotalsRow = await db.getFirstAsync(
+		`SELECT COALESCE(SUM(quantity), 0) AS batch_quantity
+		 FROM inventory_batches
+		 WHERE user_id = ?
+			AND product_id = ?
+			AND deleted_at IS NULL;`,
+		userId,
+		productId
+	);
+
+	const baselineProductQuantity = Number.isFinite(Number(productQuantityBefore))
+		? Math.max(0, Number(productQuantityBefore))
+		: Math.max(0, Number(productRow.quantity || 0));
+	const existingBatchQuantity = Math.max(0, Number(batchTotalsRow?.batch_quantity || 0));
+	const gapQuantity = Math.max(0, Math.trunc(baselineProductQuantity - existingBatchQuantity));
+
+	if (!Number.isInteger(gapQuantity) || gapQuantity <= 0) {
+		return null;
+	}
+
+	return createInventoryBatchTx({
+		userId,
+		productId,
+		quantity: gapQuantity,
+		batchNumber: buildInventoryBatchNumber({ productId, prefix: 'RECON' }),
+		expiryDate: productRow.expiry_date || null,
+		purchaseDate: syncUpdatedAt,
+		costPriceCents: toMoneyCents(productRow.price) || 0,
+		syncUpdatedAt,
+		sourceEventType: 'reconcile',
+		sourceEventId: null,
+		sourceEventClientRefId: null,
+	});
+};
+
+const consumeInventoryBatchesTx = async ({
+	userId,
+	productId,
+	quantity,
+	productQuantityBefore = null,
+	syncUpdatedAt,
+	sourceEventType = null,
+	sourceEventId = null,
+	sourceEventClientRefId = null,
+} = {}) => {
+	const requestedQty = Number(quantity);
+	if (!Number.isInteger(requestedQty) || requestedQty <= 0) {
+		return [];
+	}
+
+	let rows = await loadOpenBatchesForProductTx({ userId, productId });
+	let { allocations, remaining } = allocateBatchesForQuantity({
+		rows,
+		requestedQty,
+	});
+
 	if (remaining > 0) {
-		throw new Error('Insufficient batch stock for FEFO allocation. Please reconcile inventory batches first.');
+		await reconcileInventoryBatchGapTx({
+			userId,
+			productId,
+			productQuantityBefore,
+			syncUpdatedAt,
+		});
+
+		rows = await loadOpenBatchesForProductTx({ userId, productId });
+		const retryResult = allocateBatchesForQuantity({
+			rows,
+			requestedQty,
+		});
+		allocations = retryResult.allocations;
+		remaining = retryResult.remaining;
+
+		if (remaining > 0) {
+			throw new Error('Insufficient batch stock for FEFO allocation. Please reconcile inventory batches first.');
+		}
 	}
 
 	for (const allocation of allocations) {
@@ -4773,14 +4857,33 @@ export const getDashboardKpiSummary = ({ startDateIso, endDateIso, transactionTy
 		return Promise.reject(new Error('startDateIso cannot be after endDateIso.'));
 	}
 
-	const salesRow = await db.getFirstAsync(
-		`SELECT ROUND(COALESCE(SUM(total_amount_cents), 0) / 100.0, 2) AS total_sales
-		 FROM sales_header
-		 WHERE datetime(COALESCE(timestamp, created_at)) >= datetime(?)
-		   AND datetime(COALESCE(timestamp, created_at)) <= datetime(?)
-		   AND user_id = ?
-		   AND (deleted_at IS NULL)
-		   AND status = 'posted';`,
+	const salesAndPaymentRow = await db.getFirstAsync(
+		`WITH sale_totals AS (
+			SELECT
+				COALESCE(SUM(sh.total_amount_cents), 0) AS total_sales_cents
+			FROM sales_header sh
+			WHERE datetime(COALESCE(sh.timestamp, sh.created_at)) >= datetime(?)
+				AND datetime(COALESCE(sh.timestamp, sh.created_at)) <= datetime(?)
+				AND sh.user_id = ?
+				AND sh.deleted_at IS NULL
+				AND sh.status = 'posted'
+		),
+		sale_payment_totals AS (
+			SELECT
+				COALESCE(SUM(p.amount_cents), 0) AS total_sale_payments_cents
+			FROM payments p
+			WHERE datetime(p.created_at) >= datetime(?)
+				AND datetime(p.created_at) <= datetime(?)
+				AND p.user_id = ?
+				AND p.deleted_at IS NULL
+				AND UPPER(COALESCE(p.status, 'PAID')) = 'PAID'
+		)
+		SELECT
+			ROUND((SELECT total_sales_cents FROM sale_totals) / 100.0, 2) AS total_sales,
+			ROUND((SELECT total_sale_payments_cents FROM sale_payment_totals) / 100.0, 2) AS total_sale_payments;`,
+		start.toISOString(),
+		end.toISOString(),
+		userId,
 		start.toISOString(),
 		end.toISOString(),
 		userId,
@@ -4861,8 +4964,8 @@ export const getDashboardKpiSummary = ({ startDateIso, endDateIso, transactionTy
 		)
 		.then((row) => ({
 			total_credit: Number(row?.total_credit || 0),
-			total_payment: Number(row?.total_payment || 0),
-			total_sales: Number(salesRow?.total_sales || 0),
+			total_payment: Number(row?.total_payment || 0) + Number(salesAndPaymentRow?.total_sale_payments || 0),
+			total_sales: Number(salesAndPaymentRow?.total_sales || 0),
 			net: Number(row?.net || 0),
 			transactions_count: Number(row?.transactions_count || 0),
 			active_customers: Number(row?.active_customers || 0),
@@ -7034,6 +7137,7 @@ export const recordCycleCount = async ({
 					userId,
 					productId: normalizedProductId,
 					quantity: Math.abs(variance),
+					productQuantityBefore: systemQuantity,
 					syncUpdatedAt: countedAtIso,
 					sourceEventType: 'cycle_count',
 					sourceEventId: cycleCountId,
@@ -7277,6 +7381,7 @@ export const createStockMovement = async ({
 				userId,
 				productId: normalizedProductId,
 				quantity: Math.abs(quantityDelta),
+				productQuantityBefore: currentQuantity,
 				syncUpdatedAt,
 				sourceEventType: normalizedSourceEventType,
 				sourceEventId: Number.isInteger(normalizedSourceEventId) && normalizedSourceEventId > 0 ? normalizedSourceEventId : null,
@@ -7481,24 +7586,30 @@ export const getProductSalesDailyAggregation = ({ days = 30, productId = null } 
 	const run = async () => {
 		const userId = await getActiveScopedUserId();
 	const normalizedDays = Number.isInteger(Number(days)) && Number(days) > 0 ? Number(days) : 30;
-	const fromModifier = `-${Math.max(0, normalizedDays - 1)} days`;
+	const nowIso = new Date().toISOString();
+	const fromDate = new Date();
+	fromDate.setDate(fromDate.getDate() - Math.max(0, normalizedDays - 1));
+	fromDate.setHours(0, 0, 0, 0);
+	const fromIso = fromDate.toISOString();
 
 	if (productId === null || productId === undefined) {
 		return db.getAllAsync(
 			`SELECT
 				si.product_id,
-				DATE(sh.timestamp) AS sale_date,
+				DATE(COALESCE(sh.timestamp, sh.created_at)) AS sale_date,
 				SUM(si.quantity) AS units_sold
 			FROM sales_items si
 			JOIN sales_header sh ON sh.id = si.sales_header_id
 			WHERE sh.user_id = ?
 				AND sh.deleted_at IS NULL
 				AND sh.status = 'posted'
-				AND DATE(sh.timestamp) >= DATE('now', ?)
-			GROUP BY si.product_id, DATE(sh.timestamp)
+				AND datetime(COALESCE(sh.timestamp, sh.created_at)) >= datetime(?)
+				AND datetime(COALESCE(sh.timestamp, sh.created_at)) <= datetime(?)
+			GROUP BY si.product_id, DATE(COALESCE(sh.timestamp, sh.created_at))
 			ORDER BY si.product_id ASC, sale_date ASC;`,
 			userId,
-			fromModifier
+			fromIso,
+			nowIso
 		);
 	}
 
@@ -7510,19 +7621,21 @@ export const getProductSalesDailyAggregation = ({ days = 30, productId = null } 
 	return db.getAllAsync(
 		`SELECT
 			si.product_id,
-			DATE(sh.timestamp) AS sale_date,
+			DATE(COALESCE(sh.timestamp, sh.created_at)) AS sale_date,
 			SUM(si.quantity) AS units_sold
 		 FROM sales_items si
 		 JOIN sales_header sh ON sh.id = si.sales_header_id
 		 WHERE sh.user_id = ?
 			AND sh.deleted_at IS NULL
 			AND sh.status = 'posted'
-			AND DATE(sh.timestamp) >= DATE('now', ?)
+			AND datetime(COALESCE(sh.timestamp, sh.created_at)) >= datetime(?)
+			AND datetime(COALESCE(sh.timestamp, sh.created_at)) <= datetime(?)
 			AND si.product_id = ?
-		 GROUP BY si.product_id, DATE(sh.timestamp)
+		 GROUP BY si.product_id, DATE(COALESCE(sh.timestamp, sh.created_at))
 		 ORDER BY sale_date ASC;`,
 		userId,
-		fromModifier,
+		fromIso,
+		nowIso,
 		normalizedProductId
 	);
 	};
@@ -7801,6 +7914,7 @@ export const createSale = async ({
 				userId,
 				productId: Number(item.productId),
 				quantity: Number(item.quantity),
+				productQuantityBefore: Number(item.quantityBefore),
 				syncUpdatedAt,
 				sourceEventType: 'sale',
 				sourceEventId: salesHeaderId,
