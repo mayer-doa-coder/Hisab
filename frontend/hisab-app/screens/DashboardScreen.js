@@ -1,5 +1,5 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   RefreshControl,
@@ -14,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { UI_COLORS } from '../constants/ui-theme';
 import { useAppData } from '../context/AppDataContext';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import { DATE_RANGE_TYPES, buildKpiDateFilter } from '../services/analytics/dateRangeUtils';
 import { fetchComplianceDashboardOnline } from '../services/backend/reportingApi';
 import { fetchActivityInsightExampleOnline } from '../services/backend/pilotApi';
@@ -23,15 +24,17 @@ import { SPACING } from '../theme/spacing';
 import { TYPOGRAPHY } from '../theme/typography';
 
 const REPORT_PERIODS = [
-  { key: 'daily', label: 'দৈনিক', rangeType: DATE_RANGE_TYPES.TODAY },
-  { key: 'weekly', label: 'সাপ্তাহিক', rangeType: DATE_RANGE_TYPES.WEEK },
-  { key: 'monthly', label: 'মাসিক', rangeType: DATE_RANGE_TYPES.MONTH },
+  { key: 'daily', labelKey: 'dashboard.daily', rangeType: DATE_RANGE_TYPES.TODAY },
+  { key: 'weekly', labelKey: 'dashboard.weekly', rangeType: DATE_RANGE_TYPES.WEEK },
+  { key: 'monthly', labelKey: 'dashboard.monthly', rangeType: DATE_RANGE_TYPES.MONTH },
 ];
 
-const SECONDARY_NAV = [
-  { icon: 'groups', label: 'কাস্টমার', route: 'Customers' },
-  { icon: 'inventory-2', label: 'মাল', route: 'Products' },
-  { icon: 'analytics', label: 'রিপোর্ট', route: 'Reports' },
+const QUICK_OPTIONS = [
+  { route: 'Sales', labelKey: 'dashboard.quick.sales', icon: 'point-of-sale' },
+  { route: 'Baki', labelKey: 'dashboard.quick.baki', icon: 'account-balance' },
+  { route: 'Cashbook', labelKey: 'dashboard.quick.cashbook', icon: 'account-balance-wallet' },
+  { route: 'Expenses', labelKey: 'dashboard.quick.expenses', icon: 'receipt' },
+  { route: 'DayClose', labelKey: 'dashboard.quick.dayClose', icon: 'event-available' },
 ];
 
 const toNumber = (value, fallback = 0) => {
@@ -44,8 +47,8 @@ const formatMoney = (value) => `৳${toNumber(value, 0).toFixed(2)}`;
 export default function DashboardScreen() {
   const navigation = useNavigation();
   const { isOnline, session } = useAuth();
+  const { t } = useLanguage();
   const {
-    products,
     customers,
     refreshAll,
     getDashboardKpiSummary,
@@ -63,6 +66,7 @@ export default function DashboardScreen() {
   const [kpis, setKpis] = useState({
     totalCredit: 0,
     totalPayment: 0,
+    totalSales: 0,
     net: 0,
     activeCustomers: 0,
   });
@@ -72,12 +76,9 @@ export default function DashboardScreen() {
       (sum, row) => sum + Math.max(0, toNumber(row.total_due, 0)),
       0,
     );
-    return {
-      totalProducts: (products || []).length,
-      totalCustomers: (customers || []).length,
-      totalOutstandingDue,
-    };
-  }, [customers, products]);
+    return { totalOutstandingDue };
+  }, [customers]);
+  const totalCustomers = (customers || []).length;
 
   const loadDashboard = useCallback(async () => {
     const selectedPeriod = REPORT_PERIODS.find((r) => r.key === period) || REPORT_PERIODS[0];
@@ -113,6 +114,7 @@ export default function DashboardScreen() {
       setKpis({
         totalCredit: toNumber(kpiSummary?.total_credit, 0),
         totalPayment: toNumber(kpiSummary?.total_payment, 0),
+        totalSales: toNumber(kpiSummary?.total_sales, 0),
         net: toNumber(kpiSummary?.net, 0),
         activeCustomers: toNumber(kpiSummary?.active_customers, 0),
       });
@@ -120,11 +122,11 @@ export default function DashboardScreen() {
       setActivityInsightExample(pilotExample?.example || null);
       setLastRefreshAt(new Date().toISOString());
     } catch (error) {
-      setLoadError(error?.message || 'ড্যাশবোর্ড লোড হয়নি।');
+      setLoadError(error?.message || t('dashboard.loadError'));
     } finally {
       setLoading(false);
     }
-  }, [getDashboardKpiSummary, getStockMovementCountInRange, isOnline, period, session?.access_token]);
+  }, [getDashboardKpiSummary, getStockMovementCountInRange, isOnline, period, session?.access_token, t]);
 
   const handleRefresh = useCallback(async () => {
     try {
@@ -140,10 +142,13 @@ export default function DashboardScreen() {
     loadDashboard();
   }, [loadDashboard]);
 
-  const todaySales = toNumber(
-    complianceDashboard?.sales?.totalSales ?? kpis.totalCredit,
-    kpis.totalCredit,
+  useFocusEffect(
+    useCallback(() => {
+      void loadDashboard();
+    }, [loadDashboard])
   );
+
+  const todaySales = toNumber(kpis.totalSales, 0);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -160,35 +165,28 @@ export default function DashboardScreen() {
         {/* ── Header ──────────────────────────────────────── */}
         <View style={styles.headerRow}>
           <View style={styles.headerLeft}>
-            <Text style={styles.headerTitle}>হিসাব</Text>
-            <Text style={styles.headerSubtitle}>আজকের সারসংক্ষেপ</Text>
+            <Text style={styles.headerTitle}>{t('dashboard.title')}</Text>
+            <Text style={styles.headerSubtitle}>{t('dashboard.subtitle')}</Text>
           </View>
-          <TouchableOpacity
-            style={styles.profileBtn}
-            onPress={() => navigation.navigate('Profile')}
-            accessibilityRole="button"
-          >
-            <MaterialIcons name="account-circle" size={30} color={UI_COLORS.primary} />
-          </TouchableOpacity>
         </View>
 
         {/* ── Hero metric ──────────────────────────────────── */}
         <View style={styles.heroCard}>
-          <Text style={styles.heroLabel}>মোট বাকি</Text>
+          <Text style={styles.heroLabel}>{t('dashboard.totalDue')}</Text>
           <Text style={styles.heroAmount} adjustsFontSizeToFit numberOfLines={1}>
             {formatMoney(summary.totalOutstandingDue)}
           </Text>
 
           <View style={styles.metricsRow}>
             <View style={styles.metricBlock}>
-              <Text style={styles.metricLabel}>আজকের বিক্রি</Text>
+              <Text style={styles.metricLabel}>{t('dashboard.todaySales')}</Text>
               <Text style={styles.metricValue}>{formatMoney(todaySales)}</Text>
             </View>
 
             <View style={styles.metricDivider} />
 
             <View style={styles.metricBlock}>
-              <Text style={styles.metricLabel}>আজকের জমা</Text>
+              <Text style={styles.metricLabel}>{t('dashboard.todayPayments')}</Text>
               <Text style={[styles.metricValue, styles.metricValueGreen]}>
                 {formatMoney(kpis.totalPayment)}
               </Text>
@@ -204,7 +202,7 @@ export default function DashboardScreen() {
             onPress={() => navigation.navigate('Baki')}
           >
             <MaterialIcons name="sync-alt" size={24} color={UI_COLORS.textOnPrimary} />
-            <Text style={styles.ctaPrimaryText}>বাকি দিন/নিন</Text>
+            <Text style={styles.ctaPrimaryText}>{t('dashboard.bakiAction')}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -213,23 +211,22 @@ export default function DashboardScreen() {
             onPress={() => navigation.navigate('Sales')}
           >
             <MaterialIcons name="shopping-cart" size={24} color={UI_COLORS.textOnPrimary} />
-            <Text style={styles.ctaGreenText}>বিক্রি করুন</Text>
+            <Text style={styles.ctaGreenText}>{t('dashboard.sellAction')}</Text>
           </TouchableOpacity>
         </View>
 
-        {/* ── Secondary navigation ─────────────────────────── */}
-        <View style={styles.secondaryNav}>
-          {SECONDARY_NAV.map((item) => (
+        <View style={styles.quickOptionsWrap}>
+          {QUICK_OPTIONS.map((option) => (
             <TouchableOpacity
-              key={item.route}
-              style={styles.secondaryNavItem}
-              activeOpacity={0.78}
-              onPress={() => navigation.navigate(item.route)}
+              key={option.route}
+              style={styles.quickOptionCard}
+              activeOpacity={0.84}
+              onPress={() => navigation.navigate(option.route)}
             >
-              <View style={styles.secondaryNavIcon}>
-                <MaterialIcons name={item.icon} size={24} color={UI_COLORS.primary} />
+              <View style={styles.quickOptionIconWrap}>
+                <MaterialIcons name={option.icon} size={18} color={UI_COLORS.primary} />
               </View>
-              <Text style={styles.secondaryNavLabel}>{item.label}</Text>
+              <Text style={styles.quickOptionLabel}>{t(option.labelKey)}</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -240,7 +237,7 @@ export default function DashboardScreen() {
           activeOpacity={0.75}
           onPress={() => setShowAnalytics((v) => !v)}
         >
-          <Text style={styles.analyticsToggleText}>বিশ্লেষণ</Text>
+          <Text style={styles.analyticsToggleText}>{t('dashboard.analytics')}</Text>
           <MaterialIcons
             name={showAnalytics ? 'keyboard-arrow-up' : 'keyboard-arrow-down'}
             size={20}
@@ -251,14 +248,29 @@ export default function DashboardScreen() {
         {/* ── Collapsible analytics ────────────────────────── */}
         {showAnalytics && (
           <>
+            <View style={styles.analyticsKpiGrid}>
+              <View style={styles.analyticsKpiCard}>
+                <Text style={styles.analyticsKpiValue}>{formatMoney(kpis.totalSales)}</Text>
+                <Text style={styles.analyticsKpiLabel}>{t('dashboard.totalSales')}</Text>
+              </View>
+              <View style={styles.analyticsKpiCard}>
+                <Text style={[styles.analyticsKpiValue, { color: UI_COLORS.textSuccess }]}>{formatMoney(kpis.totalPayment)}</Text>
+                <Text style={styles.analyticsKpiLabel}>{t('dashboard.todayPayments')}</Text>
+              </View>
+              <View style={styles.analyticsKpiCard}>
+                <Text style={styles.analyticsKpiValue}>{toNumber(kpis.activeCustomers, 0)}</Text>
+                <Text style={styles.analyticsKpiLabel}>{t('dashboard.activeCustomers')}</Text>
+              </View>
+            </View>
+
             {/* Period selector — ghost/outlined feel */}
-            <AppCard variant="outlined" style={styles.card}>
-              <Text style={styles.cardTitle}>সময়কাল</Text>
+            <AppCard variant="outlined" style={[styles.card, styles.analyticsCardNeo]}>
+              <Text style={styles.cardTitle}>{t('dashboard.period')}</Text>
               <View style={styles.periodRow}>
                 {REPORT_PERIODS.map((option) => (
                   <AppButton
                     key={option.key}
-                    title={option.label}
+                    title={t(option.labelKey)}
                     variant={period === option.key ? 'primary' : 'secondary'}
                     size="sm"
                     style={styles.periodButton}
@@ -269,90 +281,90 @@ export default function DashboardScreen() {
             </AppCard>
 
             {/* Sales — flat background, inline metrics */}
-            <AppCard variant="flat" style={styles.card}>
-              <Text style={styles.cardTitle}>বিক্রির হিসাব</Text>
+            <AppCard variant="flat" style={[styles.card, styles.analyticsCardNeo]}>
+              <Text style={styles.cardTitle}>{t('dashboard.salesReport')}</Text>
               <View style={styles.inlineMetrics}>
                 <View style={styles.inlineMetricItem}>
                   <Text style={styles.inlineMetricValue}>{formatMoney(complianceDashboard?.sales?.totalSales)}</Text>
-                  <Text style={styles.inlineMetricLabel}>মোট বিক্রি</Text>
+                  <Text style={styles.inlineMetricLabel}>{t('dashboard.totalSales')}</Text>
                 </View>
                 <View style={styles.inlineMetricItem}>
                   <Text style={styles.inlineMetricValue}>{toNumber(complianceDashboard?.sales?.transactionCount, 0)}</Text>
-                  <Text style={styles.inlineMetricLabel}>লেনদেন</Text>
+                  <Text style={styles.inlineMetricLabel}>{t('dashboard.transactions')}</Text>
                 </View>
               </View>
-              <Text style={styles.cardSubtitle}>সেরা পণ্য</Text>
+              <Text style={styles.cardSubtitle}>{t('dashboard.topProducts')}</Text>
               {(complianceDashboard?.sales?.topSellingProducts || []).slice(0, 5).map((row) => (
                 <Text key={`top-${row.productId}`} style={styles.cardLine}>
-                  {row.productName}: {toNumber(row.unitsSold, 0)} টি
+                  {row.productName}: {toNumber(row.unitsSold, 0)}
                 </Text>
               ))}
             </AppCard>
 
             {/* Inventory — default with stronger border */}
-            <AppCard style={styles.card}>
-              <Text style={styles.cardTitle}>মালের হিসাব</Text>
+            <AppCard style={[styles.card, styles.analyticsCardNeo]}>
+              <Text style={styles.cardTitle}>{t('dashboard.inventoryReport')}</Text>
               <View style={styles.inlineMetrics}>
                 <View style={styles.inlineMetricItem}>
                   <Text style={styles.inlineMetricValue}>{(complianceDashboard?.inventory?.currentStockLevels || []).length}</Text>
-                  <Text style={styles.inlineMetricLabel}>বর্তমান</Text>
+                  <Text style={styles.inlineMetricLabel}>{t('dashboard.current')}</Text>
                 </View>
-                <View style={[styles.inlineMetricItem, { borderLeftWidth: 1, borderLeftColor: UI_COLORS.borderSoft, paddingLeft: 12 }]}>
+                <View style={styles.inlineMetricItem}>
                   <Text style={[styles.inlineMetricValue, { color: UI_COLORS.textWarning }]}>{(complianceDashboard?.inventory?.lowStockItems || []).length}</Text>
-                  <Text style={styles.inlineMetricLabel}>কম</Text>
+                  <Text style={styles.inlineMetricLabel}>{t('dashboard.low')}</Text>
                 </View>
-                <View style={[styles.inlineMetricItem, { borderLeftWidth: 1, borderLeftColor: UI_COLORS.borderSoft, paddingLeft: 12 }]}>
+                <View style={styles.inlineMetricItem}>
                   <Text style={[styles.inlineMetricValue, { color: UI_COLORS.textDanger }]}>{(complianceDashboard?.inventory?.deadStockItems || []).length}</Text>
-                  <Text style={styles.inlineMetricLabel}>বন্ধ</Text>
+                  <Text style={styles.inlineMetricLabel}>{t('dashboard.dead')}</Text>
                 </View>
               </View>
             </AppCard>
 
             {/* Finance — accent stripe */}
-            <AppCard variant="accent" style={styles.card}>
-              <Text style={styles.cardTitle}>আর্থিক হিসাব</Text>
+            <AppCard variant="accent" style={[styles.card, styles.analyticsCardNeo]}>
+              <Text style={styles.cardTitle}>{t('dashboard.financeReport')}</Text>
               <View style={styles.inlineMetrics}>
                 <View style={styles.inlineMetricItem}>
                   <Text style={[styles.inlineMetricValue, { color: UI_COLORS.textSuccess }]}>{formatMoney(complianceDashboard?.finance?.totalRevenue)}</Text>
-                  <Text style={styles.inlineMetricLabel}>আয়</Text>
+                  <Text style={styles.inlineMetricLabel}>{t('dashboard.income')}</Text>
                 </View>
                 <View style={styles.inlineMetricItem}>
                   <Text style={[styles.inlineMetricValue, { color: UI_COLORS.textDanger }]}>{formatMoney(complianceDashboard?.finance?.totalExpenses)}</Text>
-                  <Text style={styles.inlineMetricLabel}>খরচ</Text>
+                  <Text style={styles.inlineMetricLabel}>{t('dashboard.expense')}</Text>
                 </View>
                 <View style={styles.inlineMetricItem}>
                   <Text style={styles.inlineMetricValue}>{formatMoney(complianceDashboard?.finance?.netProfit)}</Text>
-                  <Text style={styles.inlineMetricLabel}>লাভ</Text>
+                  <Text style={styles.inlineMetricLabel}>{t('dashboard.profit')}</Text>
                 </View>
               </View>
             </AppCard>
 
             {/* Collections — elevated */}
-            <AppCard variant="elevated" style={styles.card}>
-              <Text style={styles.cardTitle}>আদায়ের হিসাব</Text>
-              <Text style={styles.cardLine}>মোট বাকি: {formatMoney(complianceDashboard?.collections?.totalBaki)}</Text>
-              <Text style={styles.cardLine}>বকেয়া: {formatMoney(complianceDashboard?.collections?.overdueAmount)}</Text>
-              <Text style={styles.cardLine}>আদায়ের হার: {toNumber(complianceDashboard?.collections?.recoveryRate, 0).toFixed(2)}%</Text>
+            <AppCard variant="elevated" style={[styles.card, styles.analyticsCardNeo]}>
+              <Text style={styles.cardTitle}>{t('dashboard.collectionsReport')}</Text>
+              <Text style={styles.cardLine}>{t('dashboard.totalBaki', { amount: formatMoney(complianceDashboard?.collections?.totalBaki) })}</Text>
+              <Text style={styles.cardLine}>{t('dashboard.overdue', { amount: formatMoney(complianceDashboard?.collections?.overdueAmount) })}</Text>
+              <Text style={styles.cardLine}>{t('dashboard.recoveryRate', { rate: toNumber(complianceDashboard?.collections?.recoveryRate, 0).toFixed(2) })}</Text>
             </AppCard>
 
             {/* Tip — accent */}
-            <AppCard variant="accent" style={styles.card}>
-              <Text style={styles.cardTitle}>পরামর্শ</Text>
+            <AppCard variant="accent" style={[styles.card, styles.analyticsCardNeo]}>
+              <Text style={styles.cardTitle}>{t('dashboard.tip')}</Text>
               <Text style={styles.cardLine}>{getDashboardTip({
                 period,
-                totalCustomers: summary.totalCustomers,
+                totalCustomers,
                 isOnline,
               })}</Text>
               <View style={styles.inlineButtonRow}>
                 <AppButton
-                  title="পরিচিতি"
+                  title={t('dashboard.onboarding')}
                   variant="secondary"
                   size="sm"
                   style={styles.inlineButton}
                   onPress={() => navigation.navigate('Onboarding')}
                 />
                 <AppButton
-                  title="সাহায্য"
+                  title={t('dashboard.help')}
                   variant="secondary"
                   size="sm"
                   style={styles.inlineButton}
@@ -362,43 +374,19 @@ export default function DashboardScreen() {
             </AppCard>
 
             {/* Activity — flat */}
-            <AppCard variant="flat" style={styles.card}>
-              <Text style={styles.cardTitle}>কার্যক্রমের বিশ্লেষণ</Text>
-              <Text style={styles.cardLine}>কার্যক্রম: {activityInsightExample?.activity?.event_type || 'sale_created'}</Text>
-              <Text style={styles.cardLine}>{activityInsightExample?.metrics?.dao || 'অপারেটরের কার্যক্রম DAO আপডেট করে।'}</Text>
-              <Text style={styles.cardLine}>{activityInsightExample?.metrics?.digitalSalesRatio || 'বিক্রির মোট ডিজিটাল অনুপাত আপডেট করে।'}</Text>
-              <Text style={styles.cardLine}>{activityInsightExample?.metrics?.featureUsage || 'ফিচার ব্যবহারের সংখ্যা বাড়ে।'}</Text>
-              <Text style={styles.cardLine}>{activityInsightExample?.insight || 'গ্রহণযোগ্যতার সংকেত কার্যকর অন্তর্দৃষ্টিতে রূপান্তরিত হয়।'}</Text>
+            <AppCard variant="flat" style={[styles.card, styles.analyticsCardNeo]}>
+              <Text style={styles.cardTitle}>{t('dashboard.activityReport')}</Text>
+              <Text style={styles.cardLine}>{activityInsightExample?.activity?.event_type || 'sale_created'}</Text>
+              <Text style={styles.cardLine}>{activityInsightExample?.metrics?.dao || ''}</Text>
+              <Text style={styles.cardLine}>{activityInsightExample?.metrics?.digitalSalesRatio || ''}</Text>
+              <Text style={styles.cardLine}>{activityInsightExample?.metrics?.featureUsage || ''}</Text>
+              <Text style={styles.cardLine}>{activityInsightExample?.insight || ''}</Text>
             </AppCard>
           </>
         )}
 
-        {/* ── Footer ──────────────────────────────────────── */}
-        <View style={styles.footer}>
-          <View style={styles.footerItem}>
-            <MaterialIcons name="groups" size={14} color={UI_COLORS.textMuted} />
-            <Text style={styles.footerText}>{summary.totalCustomers} কাস্টমার</Text>
-          </View>
-          <Text style={styles.footerDot}>·</Text>
-          <View style={styles.footerItem}>
-            <MaterialIcons name="inventory-2" size={14} color={UI_COLORS.textMuted} />
-            <Text style={styles.footerText}>{summary.totalProducts} পণ্য</Text>
-          </View>
-          <Text style={styles.footerDot}>·</Text>
-          <View style={styles.footerItem}>
-            <MaterialIcons
-              name={isOnline ? 'cloud-done' : 'cloud-off'}
-              size={14}
-              color={isOnline ? UI_COLORS.textSuccess : UI_COLORS.textMuted}
-            />
-            <Text style={[styles.footerText, isOnline && { color: UI_COLORS.textSuccess }]}>
-              {isOnline ? 'সংযুক্ত' : 'অফলাইন'}
-            </Text>
-          </View>
-        </View>
-
         {loading && !refreshing && (
-          <Text style={styles.statusText}>লোড হচ্ছে...</Text>
+          <Text style={styles.statusText}>{t('dashboard.loading')}</Text>
         )}
         {loadError ? <Text style={styles.errorText}>{loadError}</Text> : null}
       </ScrollView>
@@ -421,7 +409,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   headerLeft: { flex: 1 },
-  headerTitle: { ...TYPOGRAPHY.h2, color: UI_COLORS.textPrimary, fontWeight: '800' },
+  headerTitle: { ...TYPOGRAPHY.h2, color: UI_COLORS.textPrimary, fontFamily: 'AnekBangla_800ExtraBold' },
   headerSubtitle: { ...TYPOGRAPHY.small, color: UI_COLORS.textSecondary, marginTop: 2 },
   profileBtn: {
     width: 44,
@@ -447,13 +435,13 @@ const styles = StyleSheet.create({
   },
   heroLabel: {
     fontSize: 13,
-    fontWeight: '600',
+    fontFamily: 'AnekBangla_600SemiBold',
     color: UI_COLORS.textSecondary,
     letterSpacing: 0.5,
   },
   heroAmount: {
     fontSize: 48,
-    fontWeight: '800',
+    fontFamily: 'AnekBangla_800ExtraBold',
     color: UI_COLORS.textPrimary,
     letterSpacing: -1,
     lineHeight: 54,
@@ -470,8 +458,8 @@ const styles = StyleSheet.create({
     backgroundColor: UI_COLORS.borderSoft,
     marginHorizontal: SPACING.md,
   },
-  metricLabel: { fontSize: 12, color: UI_COLORS.textMuted, fontWeight: '600' },
-  metricValue: { fontSize: 20, fontWeight: '700', color: UI_COLORS.textPrimary },
+  metricLabel: { fontSize: 12, color: UI_COLORS.textMuted, fontFamily: 'AnekBangla_600SemiBold' },
+  metricValue: { fontSize: 20, fontFamily: 'AnekBangla_700Bold', color: UI_COLORS.textPrimary },
   metricValueGreen: { color: UI_COLORS.textSuccess },
 
   /* primary CTAs */
@@ -489,7 +477,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     paddingVertical: 18,
   },
-  ctaPrimaryText: { fontSize: 16, fontWeight: '800', color: UI_COLORS.textOnPrimary },
+  ctaPrimaryText: { fontSize: 16, fontFamily: 'AnekBangla_800ExtraBold', color: UI_COLORS.textOnPrimary },
   ctaGreen: {
     flex: 1,
     flexDirection: 'row',
@@ -500,7 +488,49 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     paddingVertical: 18,
   },
-  ctaGreenText: { fontSize: 16, fontWeight: '800', color: UI_COLORS.textOnPrimary },
+  ctaGreenText: { fontSize: 16, fontFamily: 'AnekBangla_800ExtraBold', color: UI_COLORS.textOnPrimary },
+
+  quickOptionsWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    rowGap: 10,
+  },
+  quickOptionCard: {
+    flexBasis: '31%',
+    maxWidth: '31%',
+    minHeight: 82,
+    borderRadius: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: UI_COLORS.surface,
+    borderWidth: 1,
+    borderColor: UI_COLORS.borderSoft,
+    shadowColor: '#FFFFFF',
+    shadowOffset: { width: -2, height: -2 },
+    shadowOpacity: 0.35,
+    shadowRadius: 3,
+    elevation: 4,
+  },
+  quickOptionIconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: UI_COLORS.surfaceSoft,
+    borderWidth: 1,
+    borderColor: UI_COLORS.border,
+  },
+  quickOptionLabel: {
+    fontSize: 12,
+    fontFamily: 'AnekBangla_700Bold',
+    color: UI_COLORS.textPrimary,
+    textAlign: 'center',
+  },
 
   /* secondary nav */
   secondaryNav: {
@@ -527,7 +557,7 @@ const styles = StyleSheet.create({
   },
   secondaryNavLabel: {
     fontSize: 12,
-    fontWeight: '700',
+    fontFamily: 'AnekBangla_700Bold',
     color: UI_COLORS.textPrimary,
     textAlign: 'center',
   },
@@ -543,34 +573,83 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: UI_COLORS.border,
     backgroundColor: UI_COLORS.surface,
+    shadowColor: '#FFFFFF',
+    shadowOffset: { width: -4, height: -4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 4,
+    elevation: 4,
   },
-  analyticsToggleText: { ...TYPOGRAPHY.body, color: UI_COLORS.primary, fontWeight: '600' },
+  analyticsToggleText: { ...TYPOGRAPHY.body, color: UI_COLORS.primary, fontFamily: 'AnekBangla_600SemiBold' },
 
   /* analytics cards */
   card: {},
+  analyticsKpiGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: SPACING.sm,
+  },
+  analyticsKpiCard: {
+    flex: 1,
+    backgroundColor: UI_COLORS.surface,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: UI_COLORS.borderSoft,
+    paddingVertical: SPACING.md,
+    paddingHorizontal: SPACING.sm,
+    alignItems: 'center',
+    shadowColor: '#FFFFFF',
+    shadowOffset: { width: -4, height: -4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  analyticsKpiValue: {
+    fontSize: 16,
+    fontFamily: 'AnekBangla_800ExtraBold',
+    color: UI_COLORS.textPrimary,
+  },
+  analyticsKpiLabel: {
+    ...TYPOGRAPHY.small,
+    color: UI_COLORS.textMuted,
+    marginTop: 2,
+    textAlign: 'center',
+  },
+  analyticsCardNeo: {
+    borderWidth: 1,
+    borderColor: UI_COLORS.borderSoft,
+    backgroundColor: UI_COLORS.surface,
+    shadowColor: '#FFFFFF',
+    shadowOffset: { width: -4, height: -4 },
+    shadowOpacity: 0.45,
+    shadowRadius: 4,
+    elevation: 4,
+  },
   cardTitle: { ...TYPOGRAPHY.subheading, color: UI_COLORS.textPrimary, marginBottom: SPACING.sm },
-  cardSubtitle: { ...TYPOGRAPHY.small, color: UI_COLORS.textPrimary, marginTop: SPACING.sm, fontWeight: '700' },
+  cardSubtitle: { ...TYPOGRAPHY.small, color: UI_COLORS.textPrimary, marginTop: SPACING.sm, fontFamily: 'AnekBangla_700Bold' },
   cardLine: { ...TYPOGRAPHY.small, color: UI_COLORS.textSecondary },
   periodRow: { flexDirection: 'row', gap: SPACING.sm, flexWrap: 'wrap' },
   periodButton: { flexGrow: 1 },
   inlineButtonRow: { flexDirection: 'row', gap: SPACING.sm, marginTop: SPACING.sm },
   inlineButton: { flex: 1 },
-  inlineMetrics: { flexDirection: 'row', gap: 12, marginBottom: SPACING.xs },
-  inlineMetricItem: { gap: 2 },
-  inlineMetricValue: { fontSize: 18, fontWeight: '800', color: UI_COLORS.textPrimary },
-  inlineMetricLabel: { fontSize: 11, fontWeight: '600', color: UI_COLORS.textMuted },
-
-  /* footer */
-  footer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    flexWrap: 'wrap',
+  inlineMetrics: { flexDirection: 'row', gap: SPACING.sm, marginBottom: SPACING.xs, flexWrap: 'wrap' },
+  inlineMetricItem: {
+    flexBasis: '31%',
+    maxWidth: '31%',
+    gap: 2,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: UI_COLORS.borderSoft,
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.xs,
+    backgroundColor: UI_COLORS.surface,
+    shadowColor: '#FFFFFF',
+    shadowOffset: { width: -3, height: -3 },
+    shadowOpacity: 0.4,
+    shadowRadius: 3,
+    elevation: 3,
   },
-  footerItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  footerText: { fontSize: 12, color: UI_COLORS.textMuted },
-  footerDot: { fontSize: 12, color: UI_COLORS.textMuted },
+  inlineMetricValue: { fontSize: 18, fontFamily: 'AnekBangla_800ExtraBold', color: UI_COLORS.textPrimary },
+  inlineMetricLabel: { fontSize: 11, fontFamily: 'AnekBangla_600SemiBold', color: UI_COLORS.textMuted },
 
   statusText: { ...TYPOGRAPHY.small, color: UI_COLORS.textMuted, textAlign: 'center' },
   errorText: { ...TYPOGRAPHY.small, color: UI_COLORS.danger, textAlign: 'center' },

@@ -4,6 +4,8 @@ const TRUST_OBJECTIVE_CONFIG_PATH = path.join(__dirname, 'trustObjective.json');
 const TRUST_OBJECTIVE_CONFIG = require('./trustObjective.json');
 
 const ALIASES = Object.freeze({
+  '1d': '1_day',
+  '1_day': '1_day',
   '1w': '1_week',
   '1_week': '1_week',
   '7d': '1_week',
@@ -16,6 +18,7 @@ const ALIASES = Object.freeze({
 });
 
 const TRUST_HORIZON_KEYS = Object.freeze([
+  '1_day',
   '1_week',
   '1_month',
   '3_month',

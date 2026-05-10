@@ -10,9 +10,11 @@ import {
 import AuthScene, { AUTH_FORM_STYLES } from '../../components/auth/AuthScene';
 import { UI_COLORS } from '../../constants/ui-theme';
 import { useAuth } from '../../context/AuthContext';
+import { useLanguage } from '../../context/LanguageContext';
 
 export default function SetupPinScreen({ navigation }) {
   const { setupPin } = useAuth();
+  const { t } = useLanguage();
 
   const [pin, setPin] = useState('');
   const [confirmPin, setConfirmPin] = useState('');
@@ -21,39 +23,23 @@ export default function SetupPinScreen({ navigation }) {
   const [message, setMessage] = useState('');
 
   const handleSetupPin = async () => {
-    if (loading) {
-      return;
-    }
+    if (loading) return;
 
     const normalizedPin = String(pin || '').trim();
     const normalizedConfirm = String(confirmPin || '').trim();
 
-    if (!normalizedPin || !normalizedConfirm) {
-      setMessage('PIN এবং নিশ্চিতকরণ দেওয়া আবশ্যক।');
-      return;
-    }
-
-    if (!/^\d{4,6}$/.test(normalizedPin)) {
-      setMessage('PIN ৪ থেকে ৬ সংখ্যার হতে হবে।');
-      return;
-    }
-
-    if (normalizedPin !== normalizedConfirm) {
-      setMessage('PIN মিলছে না।');
-      return;
-    }
+    if (!normalizedPin || !normalizedConfirm) { setMessage(t('setupPin.error.required')); return; }
+    if (!/^\d{4,6}$/.test(normalizedPin)) { setMessage(t('auth.error.pinFormat')); return; }
+    if (normalizedPin !== normalizedConfirm) { setMessage(t('auth.error.pinMismatch')); return; }
 
     try {
       setMessage('');
       setLoading(true);
-      await setupPin({
-        pin: normalizedPin,
-        trustDevice,
-      });
-      setMessage('PIN সেটআপ সম্পন্ন।');
+      await setupPin({ pin: normalizedPin, trustDevice });
+      setMessage(t('setupPin.success'));
       navigation.goBack();
     } catch (error) {
-      setMessage(error?.message || 'PIN সেটআপ ব্যর্থ হয়েছে।');
+      setMessage(error?.message || t('setupPin.error.failed'));
     } finally {
       setLoading(false);
     }
@@ -61,14 +47,15 @@ export default function SetupPinScreen({ navigation }) {
 
   return (
     <AuthScene
-      eyebrow="হিসাব নিরাপত্তা"
-      title="PIN সেটআপ"
-      subtitle="দ্রুত লগইনের জন্য নিরাপদ PIN সেট করুন"
+      eyebrow={t('setupPin.eyebrow')}
+      title={t('setupPin.title')}
+      subtitle={t('setupPin.subtitle')}
     >
       <TextInput
         value={pin}
         onChangeText={setPin}
-        placeholder="নতুন PIN"
+        placeholder={t('auth.pin.new')}
+        placeholderTextColor={UI_COLORS.textSecondary}
         keyboardType="number-pad"
         maxLength={6}
         secureTextEntry
@@ -78,7 +65,8 @@ export default function SetupPinScreen({ navigation }) {
       <TextInput
         value={confirmPin}
         onChangeText={setConfirmPin}
-        placeholder="PIN নিশ্চিত করুন"
+        placeholder={t('auth.pin.confirm')}
+        placeholderTextColor={UI_COLORS.textSecondary}
         keyboardType="number-pad"
         maxLength={6}
         secureTextEntry
@@ -87,9 +75,9 @@ export default function SetupPinScreen({ navigation }) {
 
       <TouchableOpacity style={AUTH_FORM_STYLES.checkboxRow} onPress={() => setTrustDevice((prev) => !prev)}>
         <View style={[AUTH_FORM_STYLES.checkbox, trustDevice && AUTH_FORM_STYLES.checkboxActive]}>
-          {trustDevice ? <Text style={AUTH_FORM_STYLES.checkboxTick}>v</Text> : null}
+          {trustDevice ? <Text style={AUTH_FORM_STYLES.checkboxTick}>✓</Text> : null}
         </View>
-        <Text style={AUTH_FORM_STYLES.checkboxText}>এই ডিভাইসে PIN লগইন বিশ্বাস করুন</Text>
+        <Text style={AUTH_FORM_STYLES.checkboxText}>{t('setupPin.trustDevice')}</Text>
       </TouchableOpacity>
 
       {message ? (
@@ -103,9 +91,8 @@ export default function SetupPinScreen({ navigation }) {
         onPress={handleSetupPin}
         disabled={loading}
       >
-        {loading ? <ActivityIndicator size="small" color={UI_COLORS.onAccent} /> : <Text style={AUTH_FORM_STYLES.primaryButtonText}>PIN সেটআপ করুন</Text>}
+        {loading ? <ActivityIndicator size="small" color={UI_COLORS.onAccent} /> : <Text style={AUTH_FORM_STYLES.primaryButtonText}>{t('setupPin.submit')}</Text>}
       </TouchableOpacity>
     </AuthScene>
   );
 }
-

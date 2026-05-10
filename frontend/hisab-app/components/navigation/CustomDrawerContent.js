@@ -1,87 +1,88 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { DrawerContentScrollView } from '@react-navigation/drawer';
 import { useMemo } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
+import { useAuth } from '../../context/AuthContext';
+import { useLanguage } from '../../context/LanguageContext';
 import { COLORS } from '../../theme/colors';
 
 // ── Navigation map ──────────────────────────────────────────────────────────
-// route → { icon, label }
 const ROUTE_META = {
-  Dashboard:        { icon: 'dashboard',              label: 'ড্যাশবোর্ড' },
-  Sales:            { icon: 'point-of-sale',           label: 'বিক্রি' },
-  Baki:             { icon: 'account-balance',         label: 'বাকি' },
-  SalesHistory:     { icon: 'history-edu',             label: 'বিক্রির ইতিহাস' },
-  Cashbook:         { icon: 'account-balance-wallet',  label: 'ক্যাশবুক' },
-  Expenses:         { icon: 'receipt',                 label: 'খরচ' },
-  DayClose:         { icon: 'event-available',         label: 'দিন বন্ধ' },
-  Customers:        { icon: 'groups',                  label: 'কাস্টমার' },
-  Ledger:           { icon: 'receipt-long',            label: 'খাতা' },
-  CustomerCredit:   { icon: 'credit-score',            label: 'ক্রেডিট' },
-  Collections:      { icon: 'analytics',               label: 'সংগ্রহ' },
-  CustomerStatement:{ icon: 'description',             label: 'বিবৃতি' },
-  Products:         { icon: 'inventory-2',             label: 'পণ্য' },
-  Movement:         { icon: 'swap-horiz',              label: 'স্টক চলাচল' },
-  Alerts:           { icon: 'notification-important',  label: 'স্টক সতর্কতা' },
-  CycleCount:       { icon: 'fact-check',              label: 'চক্র গণনা' },
-  StockSuggestions: { icon: 'insights',                label: 'পরামর্শ' },
-  InventoryBatches: { icon: 'layers',                  label: 'ইনভেন্টরি ব্যাচ' },
-  Suppliers:        { icon: 'local-shipping',          label: 'সরবরাহকারী' },
-  PurchaseOrders:   { icon: 'assignment',              label: 'ক্রয় আদেশ' },
-  GoodsReceive:     { icon: 'inventory',               label: 'পণ্য গ্রহণ' },
-  PurchaseHistory:  { icon: 'history-toggle-off',      label: 'ক্রয়ের ইতিহাস' },
-  Reports:          { icon: 'bar-chart',               label: 'রিপোর্ট' },
-  ProfitReport:     { icon: 'trending-up',             label: 'লাভ রিপোর্ট' },
-  Audit:            { icon: 'history',                 label: 'অডিট' },
-  ApprovalRequests: { icon: 'verified-user',           label: 'অনুমোদন' },
-  VoiceAssistant:   { icon: 'keyboard-voice',          label: 'ভয়েস সহকারী' },
-  Profile:          { icon: 'person',                  label: 'প্রোফাইল' },
-  HelpCenter:       { icon: 'help-center',             label: 'সাহায্য' },
-  Feedback:         { icon: 'forum',                   label: 'ফিডব্যাক' },
-  BackupRestore:    { icon: 'backup',                  label: 'ব্যাকআপ' },
+  Dashboard:        { icon: 'dashboard',              labelKey: 'map.ড্যাশবোর্ড' },
+  Sales:            { icon: 'point-of-sale',           labelKey: 'map.বিক্রি' },
+  Baki:             { icon: 'account-balance',         labelKey: 'map.বাকি' },
+  SalesHistory:     { icon: 'history-edu',             labelKey: 'map.বিক্রির ইতিহাস' },
+  Cashbook:         { icon: 'account-balance-wallet',  labelKey: 'map.ক্যাশবুক' },
+  Expenses:         { icon: 'receipt',                 labelKey: 'map.খরচ' },
+  DayClose:         { icon: 'event-available',         labelKey: 'map.দিন বন্ধ' },
+  Customers:        { icon: 'groups',                  labelKey: 'map.কাস্টমার' },
+  Ledger:           { icon: 'receipt-long',            labelKey: 'map.খাতা' },
+  CustomerCredit:   { icon: 'credit-score',            labelKey: 'map.ক্রেডিট' },
+  Collections:      { icon: 'analytics',               labelKey: 'map.সংগ্রহ' },
+  CustomerStatement:{ icon: 'description',             labelKey: 'map.বিবৃতি' },
+  Products:         { icon: 'inventory-2',             labelKey: 'map.পণ্য' },
+  Movement:         { icon: 'swap-horiz',              labelKey: 'map.স্টক চলাচল' },
+  Alerts:           { icon: 'notification-important',  labelKey: 'map.স্টক সতর্কতা' },
+  CycleCount:       { icon: 'fact-check',              labelKey: 'map.চক্র গণনা' },
+  StockSuggestions: { icon: 'insights',                labelKey: 'map.পরামর্শ' },
+  InventoryBatches: { icon: 'layers',                  labelKey: 'map.ইনভেন্টরি ব্যাচ' },
+  Suppliers:        { icon: 'local-shipping',          labelKey: 'map.সরবরাহকারী' },
+  PurchaseOrders:   { icon: 'assignment',              labelKey: 'map.ক্রয় আদেশ' },
+  GoodsReceive:     { icon: 'inventory',               labelKey: 'map.পণ্য গ্রহণ' },
+  PurchaseHistory:  { icon: 'history-toggle-off',      labelKey: 'map.ক্রয়ের ইতিহাস' },
+  Reports:          { icon: 'bar-chart',               labelKey: 'map.রিপোর্ট' },
+  ProfitReport:     { icon: 'trending-up',             labelKey: 'map.লাভ রিপোর্ট' },
+  Audit:            { icon: 'history',                 labelKey: 'map.অডিট' },
+  ApprovalRequests: { icon: 'verified-user',           labelKey: 'map.অনুমোদন' },
+  VoiceAssistant:   { icon: 'keyboard-voice',          labelKey: 'map.ভয়েস সহকারী' },
+  Profile:          { icon: 'person',                  labelKey: 'map.প্রোফাইল' },
+  HelpCenter:       { icon: 'help-center',             labelKey: 'map.সাহায্য' },
+  Feedback:         { icon: 'forum',                   labelKey: 'map.ফিডব্যাক' },
+  BackupRestore:    { icon: 'backup',                  labelKey: 'map.ব্যাকআপ' },
 };
 
 const GROUPS = [
   {
     key: 'primary',
-    label: null, // no section header for top items
+    labelKey: null,
     accent: COLORS.accent,
     routes: ['Dashboard', 'Sales'],
     primary: true,
   },
   {
     key: 'transactions',
-    label: 'লেনদেন',
+    labelKey: 'nav.transactions',
     accent: '#4A7C59',
     routes: ['Baki', 'SalesHistory', 'Cashbook', 'Expenses', 'DayClose'],
   },
   {
     key: 'customers',
-    label: 'কাস্টমার',
+    labelKey: 'nav.customers',
     accent: '#3A6B9E',
     routes: ['Customers', 'Ledger', 'CustomerCredit', 'Collections', 'CustomerStatement'],
   },
   {
     key: 'inventory',
-    label: 'ইনভেন্টরি',
+    labelKey: 'nav.inventory',
     accent: '#7A4F9B',
     routes: ['Products', 'Movement', 'Alerts', 'CycleCount', 'StockSuggestions', 'InventoryBatches'],
   },
   {
     key: 'purchase',
-    label: 'ক্রয়',
+    labelKey: 'nav.purchase',
     accent: '#8A5A2A',
     routes: ['Suppliers', 'PurchaseOrders', 'GoodsReceive', 'PurchaseHistory'],
   },
   {
     key: 'reports',
-    label: 'রিপোর্ট',
+    labelKey: 'nav.reports',
     accent: '#A53A49',
     routes: ['Reports', 'ProfitReport', 'Audit', 'ApprovalRequests'],
   },
   {
     key: 'system',
-    label: 'সিস্টেম',
+    labelKey: 'nav.system',
     accent: COLORS.textMuted,
     routes: ['VoiceAssistant', 'Profile', 'HelpCenter', 'Feedback', 'BackupRestore'],
   },
@@ -89,7 +90,18 @@ const GROUPS = [
 
 export default function CustomDrawerContent(props) {
   const { state, navigation, canAccess } = props;
+  const { t } = useLanguage();
+  const { user } = useAuth();
   const activeRouteName = state.routes[state.index]?.name;
+
+  const profileImageUri = String(user?.profileImageUrl || user?.profile_image_uri || '').trim() || null;
+  const displayName = String(user?.name || '').trim() || t('profile.noName');
+  const initials = displayName
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((w) => w[0] || '')
+    .join('')
+    .toUpperCase() || '?';
 
   const visibleRoutes = useMemo(() => {
     const set = new Set();
@@ -109,16 +121,31 @@ export default function CustomDrawerContent(props) {
       contentContainerStyle={styles.scrollContent}
       showsVerticalScrollIndicator={false}
     >
-      {/* ── App header ──────────────────────────────────── */}
-      <View style={styles.appHeader}>
-        <View style={styles.appIconWrap}>
-          <MaterialIcons name="storefront" size={28} color={COLORS.accent} />
+      {/* ── Profile header ──────────────────────────────── */}
+      <TouchableOpacity
+        style={styles.profileHeader}
+        onPress={() => navigation.navigate('Profile')}
+        activeOpacity={0.85}
+      >
+        <View style={styles.avatarWrap}>
+          {profileImageUri ? (
+            <Image source={{ uri: profileImageUri }} style={styles.avatarImage} />
+          ) : (
+            <View style={styles.avatarCircle}>
+              <Text style={styles.avatarInitials}>{initials}</Text>
+            </View>
+          )}
+          <View style={styles.avatarBadge}>
+            <MaterialIcons name="edit" size={10} color="#fff" />
+          </View>
         </View>
-        <View>
-          <Text style={styles.appName}>হিসাব</Text>
-          <Text style={styles.appTagline}>ব্যবসার হিসাব</Text>
+        <View style={styles.profileMeta}>
+          <Text style={styles.profileName} numberOfLines={1}>{displayName}</Text>
+          <Text style={styles.profileRole} numberOfLines={1}>
+            {String(user?.email || '').trim() || t('profile.noEmail')}
+          </Text>
         </View>
-      </View>
+      </TouchableOpacity>
 
       <View style={styles.divider} />
 
@@ -129,9 +156,9 @@ export default function CustomDrawerContent(props) {
 
         return (
           <View key={group.key} style={styles.group}>
-            {group.label ? (
+            {group.labelKey ? (
               <View style={[styles.groupHeaderRow, { borderLeftColor: group.accent }]}>
-                <Text style={styles.groupLabel}>{group.label}</Text>
+                <Text style={styles.groupLabel}>{t(group.labelKey)}</Text>
               </View>
             ) : null}
 
@@ -147,7 +174,11 @@ export default function CustomDrawerContent(props) {
                   style={[
                     styles.item,
                     isPrimary && styles.primaryItem,
-                    isActive && (isPrimary ? styles.primaryItemActive : styles.itemActive),
+                    isActive
+                      ? isPrimary
+                        ? styles.primaryItemActive
+                        : styles.itemActive
+                      : styles.itemRaised,
                   ]}
                   onPress={() => handleNavigate(routeName)}
                   activeOpacity={0.75}
@@ -155,7 +186,7 @@ export default function CustomDrawerContent(props) {
                   <View
                     style={[
                       styles.iconWrap,
-                      isActive && { backgroundColor: group.accent + '28' },
+                      isActive && { backgroundColor: group.accent + '30' },
                     ]}
                   >
                     <MaterialIcons
@@ -178,7 +209,7 @@ export default function CustomDrawerContent(props) {
                       isActive && [styles.itemLabelActive, { color: group.accent }],
                     ]}
                   >
-                    {meta.label}
+                    {t(meta.labelKey)}
                   </Text>
 
                   {isActive ? (
@@ -196,50 +227,96 @@ export default function CustomDrawerContent(props) {
   );
 }
 
+const NM_BG = '#7B542F';          // sidebar background (BRAND.primaryDark)
+const NM_RAISED = '#8E6035';      // slightly lighter — elevated items
+const NM_ACTIVE = '#622F0F';      // darker — pressed/active
+const NM_SHADOW = '#4A2E12';      // shadow color
+const NM_HIGHLIGHT = 'rgba(255,220,150,0.10)'; // warm top-edge highlight
+
 const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: 24,
   },
 
-  // App header
-  appHeader: {
+  // ── Profile header ─────────────────────────────────────
+  profileHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 14,
     paddingHorizontal: 16,
     paddingTop: 20,
-    paddingBottom: 16,
+    paddingBottom: 18,
   },
-  appIconWrap: {
-    width: 46,
-    height: 46,
-    borderRadius: 14,
-    backgroundColor: COLORS.sidebarActiveBackground,
+  avatarWrap: {
+    position: 'relative',
+  },
+  avatarImage: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    borderWidth: 2,
+    borderColor: COLORS.accent,
+  },
+  avatarCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: NM_RAISED,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: COLORS.accent,
+    // neumorphic pop
+    shadowColor: NM_SHADOW,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.6,
+    shadowRadius: 5,
+    elevation: 5,
   },
-  appName: {
-    fontSize: 22,
-    fontWeight: '800',
+  avatarInitials: {
+    fontSize: 18,
+    fontFamily: 'AnekBangla_800ExtraBold',
+    color: COLORS.accent,
+    letterSpacing: 1,
+  },
+  avatarBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: -2,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: COLORS.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: NM_BG,
+  },
+  profileMeta: {
+    flex: 1,
+    gap: 2,
+  },
+  profileName: {
+    fontSize: 16,
+    fontFamily: 'AnekBangla_800ExtraBold',
     color: '#FFFFFF',
-    letterSpacing: 0.5,
+    letterSpacing: 0.3,
   },
-  appTagline: {
+  profileRole: {
     fontSize: 11,
+    fontFamily: 'AnekBangla_500Medium',
     color: COLORS.sidebarText,
-    fontWeight: '500',
-    opacity: 0.8,
+    opacity: 0.75,
   },
 
   divider: {
     height: 1,
-    backgroundColor: COLORS.sidebarActiveBackground,
+    backgroundColor: 'rgba(255,255,255,0.12)',
     marginHorizontal: 16,
     marginBottom: 8,
-    opacity: 0.5,
   },
 
-  // Groups
+  // ── Groups ─────────────────────────────────────────────
   group: {
     marginBottom: 4,
   },
@@ -252,35 +329,68 @@ const styles = StyleSheet.create({
   },
   groupLabel: {
     fontSize: 10,
-    fontWeight: '800',
+    fontFamily: 'AnekBangla_800ExtraBold',
     color: COLORS.sidebarText,
     textTransform: 'uppercase',
-    letterSpacing: 1.2,
-    opacity: 0.65,
+    letterSpacing: 1.4,
+    opacity: 0.6,
   },
 
-  // Items
+  // ── Items (neumorphic) ─────────────────────────────────
   item: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
     marginHorizontal: 10,
+    marginVertical: 2,
     paddingHorizontal: 10,
     paddingVertical: 10,
     borderRadius: 12,
     minHeight: 50,
     position: 'relative',
   },
+  // Raised (default) neumorphic state
+  itemRaised: {
+    backgroundColor: NM_RAISED,
+    shadowColor: NM_SHADOW,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.45,
+    shadowRadius: 5,
+    elevation: 3,
+    borderTopWidth: 0.5,
+    borderTopColor: NM_HIGHLIGHT,
+  },
+  // Active/pressed neumorphic state
+  itemActive: {
+    backgroundColor: NM_ACTIVE,
+    shadowColor: NM_SHADOW,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 0,
+    borderTopWidth: 0,
+  },
   primaryItem: {
     marginHorizontal: 10,
     paddingHorizontal: 12,
     minHeight: 54,
-  },
-  itemActive: {
-    backgroundColor: 'rgba(255,255,255,0.10)',
+    marginVertical: 2,
+    borderRadius: 14,
+    backgroundColor: NM_RAISED,
+    shadowColor: NM_SHADOW,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.45,
+    shadowRadius: 5,
+    elevation: 3,
+    borderTopWidth: 0.5,
+    borderTopColor: NM_HIGHLIGHT,
   },
   primaryItemActive: {
-    backgroundColor: COLORS.sidebarActiveBackground,
+    backgroundColor: NM_ACTIVE,
+    elevation: 0,
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    borderTopWidth: 0,
   },
   iconWrap: {
     width: 38,
@@ -292,16 +402,16 @@ const styles = StyleSheet.create({
   itemLabel: {
     flex: 1,
     fontSize: 14,
-    fontWeight: '600',
+    fontFamily: 'AnekBangla_600SemiBold',
     color: COLORS.sidebarText,
   },
   primaryItemLabel: {
     fontSize: 15,
-    fontWeight: '700',
+    fontFamily: 'AnekBangla_700Bold',
     color: '#FFFFFF',
   },
   itemLabelActive: {
-    fontWeight: '800',
+    fontFamily: 'AnekBangla_800ExtraBold',
   },
   activePip: {
     width: 6,

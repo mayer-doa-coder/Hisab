@@ -2,22 +2,41 @@
 
 # Dependencies
 node_modules/
-backend/node_modules/
-frontend/hisab-app/node_modules/
 
 # Build and generated
 .expo/
-frontend/hisab-app/.expo/
 dist/
+web-build/
 coverage/
+*.tsbuildinfo
 
-# Env and local files
+# Runtime-generated artifacts and logs
+backend/artifacts/
+*.log
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+
+# Env and secrets
 .env
 .env.*
 !.env.example
-*.log
+*.pem
+*.key
+*.p8
+*.p12
+*.jks
+*.mobileprovision
+
+# Native mobile build output
+/ios/
+/android/
+.kotlin/
 
 # OS/Editor
 .DS_Store
 Thumbs.db
 .vscode/
+.expo-export-size/

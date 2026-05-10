@@ -6,6 +6,7 @@ import {
   logoutCurrentUser,
   saveAuthenticatedUserSession,
   setAuthDeviceProfile,
+  updateAuthenticatedUserProfileLocal,
   updateSessionServerStatus,
   updateSessionTokens,
 } from '../database/db';
@@ -21,6 +22,7 @@ import {
   refreshOnlineToken,
   setupPinOnline,
   signupOnline,
+  updateOnlineProfile,
   updatePinOnline,
   verifyEmailCodeOnline,
 } from '../services/backend/authApi';
@@ -99,6 +101,7 @@ export function AuthProvider({ children }) {
     deviceId: null,
     preferredEmail: null,
     pinEnabled: false,
+    lowStockNotificationsEnabled: true,
   });
   const [authStatus, setAuthStatus] = useState(buildStateSnapshot(SESSION_STATES.BOOTING, 'Restoring saved session...'));
 
@@ -112,6 +115,7 @@ export function AuthProvider({ children }) {
       deviceId: null,
       preferredEmail: null,
       pinEnabled: false,
+      lowStockNotificationsEnabled: true,
     });
     return profile;
   }, []);
@@ -472,7 +476,8 @@ export function AuthProvider({ children }) {
     }
 
     const rememberMe = Boolean(options?.rememberMe);
-    const signupPayload = await signupOnline({ email, pin, rememberMe });
+    const name = String(options?.username || options?.name || '').trim() || null;
+    const signupPayload = await signupOnline({ email, pin, rememberMe, name });
 
     if (signupPayload?.verificationRequired) {
       await setAuthDeviceProfile({
@@ -677,6 +682,44 @@ export function AuthProvider({ children }) {
   }, [hardLogout, session?.access_token, session?.token, syncAuthDeviceProfile]);
 
   const requestPasswordRecovery = requestPinRecovery;
+  const updateDevicePreferences = useCallback(async ({ preferredEmail, pinEnabled, lowStockNotificationsEnabled } = {}) => {
+    const profile = await setAuthDeviceProfile({ preferredEmail, pinEnabled, lowStockNotificationsEnabled });
+    setAuthDeviceProfileState(profile);
+    return profile;
+  }, []);
+
+  const updateProfile = useCallback(async ({ name, profileImageUri = null } = {}) => {
+    const accessToken = await ensureValidAccessToken();
+    const userId = Number(user?.id || 0);
+    if (!accessToken || !Number.isInteger(userId) || userId <= 0) {
+      const error = new Error('Active authenticated session is required.');
+      error.code = 'NO_ACTIVE_SESSION';
+      throw error;
+    }
+
+    const normalizedName = String(name || '').trim();
+    if (!normalizedName) {
+      const error = new Error('Name is required.');
+      error.code = 'PROFILE_NAME_REQUIRED';
+      throw error;
+    }
+
+    const payload = await updateOnlineProfile({
+      accessToken,
+      name: normalizedName,
+      profileImageUrl: String(profileImageUri || '').trim() || null,
+    });
+
+    const nextUser = payload?.user || null;
+    const localUser = await updateAuthenticatedUserProfileLocal({
+      userId,
+      name: nextUser?.name || normalizedName,
+      profileImageUri: nextUser?.profileImageUrl || profileImageUri || null,
+    });
+    setUser((prev) => mergeLocalAndServerUser(localUser || prev, nextUser || null));
+    return localUser;
+  }, [ensureValidAccessToken, user?.id]);
+
   const resetPassword = useCallback(async ({ resetToken, newPassword }) => {
     return resetPin({ resetToken, newPin: newPassword });
   }, [resetPin]);
@@ -702,6 +745,8 @@ export function AuthProvider({ children }) {
       resetPin,
       updatePin,
       requestPasswordRecovery,
+      updateDevicePreferences,
+      updateProfile,
       resetPassword,
       updatePassword,
       setupPin,
@@ -719,6 +764,8 @@ export function AuthProvider({ children }) {
       requestEmailVerification,
       requestPinRecovery,
       requestPasswordRecovery,
+      updateDevicePreferences,
+      updateProfile,
       resetPin,
       resetPassword,
       session,

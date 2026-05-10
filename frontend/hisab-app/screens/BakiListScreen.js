@@ -20,6 +20,7 @@ import CustomerChipSelector from '../components/customers/CustomerChipSelector';
 import CustomerQuickAddModal from '../components/customers/CustomerQuickAddModal';
 import { UI_COLORS } from '../constants/ui-theme';
 import { useAppData } from '../context/AppDataContext';
+import { useLanguage } from '../context/LanguageContext';
 import { uploadBakiImage } from '../services/backend/bakiImageApi';
 import BakiFilters from './baki/BakiFilters';
 import BakiListItem from './baki/BakiListItem';
@@ -29,15 +30,11 @@ const TRUST_PHOTO_THRESHOLD = 50;
 const MODE_CREDIT = 'credit';
 const MODE_PAYMENT = 'payment';
 const QUICK_AMOUNTS = [50, 100, 500, 1000];
-const PAYMENT_METHODS = [
-  { label: 'নগদ', value: 'cash' },
-  { label: 'বিকাশ', value: 'bkash' },
-  { label: 'নগাদ', value: 'nagad' },
-  { label: 'ব্যাংক', value: 'bank' },
-];
+const PAYMENT_METHOD_KEYS = ['cash', 'bkash', 'nagad', 'bank', 'baki'];
 
 
 export default function BakiListScreen() {
+  const { t } = useLanguage();
   const { customers, bakiRows, addBaki, addBakiPayment, addCustomer, refreshAll, refreshing } = useAppData();
 
   const listRef = useRef(null);
@@ -74,9 +71,10 @@ export default function BakiListScreen() {
     () => customers.find((c) => String(c.id) === String(selectedCustomerId)) || null,
     [customers, selectedCustomerId],
   );
-  const selectedTrustScore = Number.isFinite(Number(selectedCustomer?.trust_score))
-    ? Number(selectedCustomer.trust_score)
-    : null;
+  const selectedTrustRaw = selectedCustomer?.trust_score;
+  const selectedTrustScore = selectedTrustRaw === null || selectedTrustRaw === undefined || selectedTrustRaw === ''
+    ? null
+    : (Number.isFinite(Number(selectedTrustRaw)) ? Number(selectedTrustRaw) : null);
   const requiresPhoto =
     activeMode === MODE_CREDIT &&
     selectedTrustScore !== null &&
@@ -132,33 +130,33 @@ export default function BakiListScreen() {
     const numericAmount = Number(amount);
 
     if (!selectedCustomerId) {
-      Alert.alert('কাস্টমার বেছে নিন', 'প্রথমে একজন কাস্টমার বেছে নিন।');
+      Alert.alert(t('baki.selectCustomer'), t('baki.error.customerRequired'));
       return;
     }
     if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
-      Alert.alert('পরিমাণ লিখুন', 'সঠিক পরিমাণ লিখুন।');
+      Alert.alert(t('baki.amount'), t('baki.error.amountRequired'));
       return;
     }
 
     if (activeMode === MODE_PAYMENT) {
       if (selectedCustomerDue <= 0) {
-        Alert.alert('বাকি নেই', 'এই কাস্টমারের কোনো বাকি নেই।');
+        Alert.alert(t('baki.noDueTitle'), t('baki.noDueMsg'));
         return;
       }
       if (numericAmount - selectedCustomerDue > 0.000001) {
         Alert.alert(
-          'বেশি পরিমাণ',
-          `বাকির চেয়ে বেশি নেওয়া যাবে না (৳${selectedCustomerDue.toFixed(2)})।`,
+          t('baki.overAmountTitle'),
+          t('baki.overAmountMsg', { amount: selectedCustomerDue.toFixed(2) }),
         );
         return;
       }
       Alert.alert(
-        'জমা নিশ্চিত করুন',
-        `৳${numericAmount.toFixed(2)} জমা নেওয়া হবে?`,
+        t('baki.confirmPaymentTitle'),
+        t('baki.confirmPaymentMsg', { amount: numericAmount.toFixed(2) }),
         [
-          { text: 'বাতিল', style: 'cancel' },
+          { text: t('common.cancel'), style: 'cancel' },
           {
-            text: 'নিশ্চিত',
+            text: t('baki.confirm'),
             onPress: async () => {
               try {
                 setSaving(true);
@@ -169,9 +167,9 @@ export default function BakiListScreen() {
                   paymentMethod,
                 });
                 resetForm(true);
-                Alert.alert('সফল', 'জমা নেওয়া হয়েছে।');
+                Alert.alert(t('baki.success'), t('baki.paymentSuccess'));
               } catch (error) {
-                Alert.alert('ব্যর্থ', error?.message || 'জমা নেওয়া যায়নি।');
+                Alert.alert(t('baki.failed'), error?.message || t('baki.paymentFailed'));
               } finally {
                 setSaving(false);
               }
@@ -182,11 +180,11 @@ export default function BakiListScreen() {
     } else {
       if (requiresPhoto && !capturedImageUri) {
         Alert.alert(
-          'ছবি প্রয়োজন',
-          'এই কাস্টমারের বিশ্বাসযোগ্যতা কম। ছবি সংরক্ষণ করুন।',
+          t('baki.photoRequiredTitle'),
+          t('baki.photoRequiredMsg'),
           [
-            { text: 'বাতিল', style: 'cancel' },
-            { text: 'ছবি তুলুন', onPress: () => setShowCamera(true) },
+            { text: t('common.cancel'), style: 'cancel' },
+            { text: t('baki.takePhoto'), onPress: () => setShowCamera(true) },
           ],
         );
         return;
@@ -202,7 +200,6 @@ export default function BakiListScreen() {
             });
             imageUrl = result?.image_url || null;
           } catch {
-            // upload failed — save entry anyway with local uri as fallback
             imageUrl = capturedImageUri;
           }
         }
@@ -213,9 +210,9 @@ export default function BakiListScreen() {
           imageUrl,
         });
         resetForm(true);
-        Alert.alert('সফল', 'বাকি যোগ হয়েছে।');
+        Alert.alert(t('baki.success'), t('baki.creditSuccess'));
       } catch (error) {
-        Alert.alert('ব্যর্থ', error?.message || 'বাকি যোগ করা যায়নি।');
+        Alert.alert(t('baki.failed'), error?.message || t('baki.creditFailed'));
       } finally {
         setSaving(false);
       }
@@ -265,7 +262,7 @@ export default function BakiListScreen() {
                     color={!isPayment ? UI_COLORS.textOnPrimary : UI_COLORS.textSecondary}
                   />
                   <Text style={[styles.modeTabText, !isPayment && styles.modeTabTextActive]}>
-                    বাকি দিন
+                    {t('baki.giveCredit')}
                   </Text>
                 </TouchableOpacity>
 
@@ -280,7 +277,7 @@ export default function BakiListScreen() {
                     color={isPayment ? UI_COLORS.textOnPrimary : UI_COLORS.textSecondary}
                   />
                   <Text style={[styles.modeTabText, isPayment && styles.modeTabTextActive]}>
-                    জমা নিন
+                    {t('baki.receivePayment')}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -289,7 +286,7 @@ export default function BakiListScreen() {
               <View style={[styles.formCard, { borderColor: modeColor }]}>
 
                 {/* Customer */}
-                <Text style={styles.fieldLabel}>কাস্টমার</Text>
+                <Text style={styles.fieldLabel}>{t('baki.customer')}</Text>
                 <CustomerChipSelector
                   customers={customers}
                   selectedId={selectedCustomerId}
@@ -303,7 +300,7 @@ export default function BakiListScreen() {
                     styles.dueBadge,
                     selectedCustomerDue > 0 ? styles.dueBadgeActive : styles.dueBadgeZero,
                   ]}>
-                    <Text style={styles.dueBadgeLabel}>বর্তমান বাকি</Text>
+                    <Text style={styles.dueBadgeLabel}>{t('baki.currentDue')}</Text>
                     <Text style={[
                       styles.dueBadgeAmount,
                       selectedCustomerDue > 0 ? styles.dueBadgeAmountRed : styles.dueBadgeAmountGray,
@@ -314,7 +311,7 @@ export default function BakiListScreen() {
                 ) : null}
 
                 {/* Quick amounts */}
-                <Text style={styles.fieldLabel}>পরিমাণ</Text>
+                <Text style={styles.fieldLabel}>{t('baki.amount')}</Text>
                 <View style={styles.quickRow}>
                   {QUICK_AMOUNTS.map((q) => {
                     const isSelected = amount === String(q);
@@ -355,7 +352,7 @@ export default function BakiListScreen() {
                           amount === selectedCustomerDue.toFixed(2) && styles.quickBtnTextActive,
                         ]}
                       >
-                        পুরো ৳{selectedCustomerDue.toFixed(0)}
+                        {t('baki.fullAmount', { amount: selectedCustomerDue.toFixed(0) })}
                       </Text>
                     </TouchableOpacity>
                   )}
@@ -383,31 +380,31 @@ export default function BakiListScreen() {
                   ) : null}
                 </View>
 
-                {/* Payment method — জমা নিন only */}
+                {/* Payment method — receive mode only */}
                 {isPayment && (
                   <>
-                    <Text style={styles.fieldLabel}>পেমেন্ট পদ্ধতি</Text>
+                    <Text style={styles.fieldLabel}>{t('baki.paymentMethod')}</Text>
                     <View style={styles.methodRow}>
-                      {PAYMENT_METHODS.map((m) => (
+                      {PAYMENT_METHOD_KEYS.map((key) => (
                         <TouchableOpacity
-                          key={m.value}
+                          key={key}
                           style={[
                             styles.methodChip,
-                            paymentMethod === m.value && {
+                            paymentMethod === key && {
                               backgroundColor: UI_COLORS.success,
                               borderColor: UI_COLORS.success,
                             },
                           ]}
                           activeOpacity={0.78}
-                          onPress={() => setPaymentMethod(m.value)}
+                          onPress={() => setPaymentMethod(key)}
                         >
                           <Text
                             style={[
                               styles.methodChipText,
-                              paymentMethod === m.value && styles.methodChipTextActive,
+                              paymentMethod === key && styles.methodChipTextActive,
                             ]}
                           >
-                            {m.label}
+                            {t(`baki.${key}`)}
                           </Text>
                         </TouchableOpacity>
                       ))}
@@ -420,7 +417,7 @@ export default function BakiListScreen() {
                   <TextInput
                     value={note}
                     onChangeText={setNote}
-                    placeholder="নোট লিখুন..."
+                    placeholder={t('baki.writeNote')}
                     placeholderTextColor={UI_COLORS.textMuted}
                     style={styles.noteInput}
                     multiline
@@ -432,7 +429,7 @@ export default function BakiListScreen() {
                     onPress={() => setShowNote(true)}
                   >
                     <MaterialIcons name="add" size={14} color={UI_COLORS.textMuted} />
-                    <Text style={styles.noteToggleText}>নোট যোগ করুন</Text>
+                    <Text style={styles.noteToggleText}>{t('baki.addNote')}</Text>
                   </TouchableOpacity>
                 )}
 
@@ -443,7 +440,7 @@ export default function BakiListScreen() {
                       <View style={styles.trustAlert}>
                         <MaterialIcons name="warning" size={16} color={UI_COLORS.textWarning} />
                         <Text style={styles.trustAlertText}>
-                          এই কাস্টমারের বিশ্বাসযোগ্যতা কম। ছবি সংরক্ষণ করুন।
+                          {t('baki.lowTrust')}
                         </Text>
                       </View>
                     )}
@@ -466,7 +463,7 @@ export default function BakiListScreen() {
                             color={requiresPhoto ? UI_COLORS.textWarning : UI_COLORS.primary}
                           />
                           <Text style={[styles.photoBtnText, requiresPhoto && styles.photoBtnTextRequired]}>
-                            ছবি তুলুন
+                            {t('baki.takePhoto')}
                           </Text>
                         </TouchableOpacity>
 
@@ -476,7 +473,7 @@ export default function BakiListScreen() {
                           activeOpacity={0.8}
                         >
                           <MaterialIcons name="photo-library" size={22} color={UI_COLORS.primary} />
-                          <Text style={styles.photoBtnText}>আপলোড করুন</Text>
+                          <Text style={styles.photoBtnText}>{t('baki.upload')}</Text>
                         </TouchableOpacity>
                       </View>
                     )}
@@ -495,7 +492,7 @@ export default function BakiListScreen() {
                   activeOpacity={0.85}
                 >
                   <Text style={styles.ctaText}>
-                    {saving ? 'সেভ হচ্ছে...' : isPayment ? 'জমা নিন' : 'বাকি দিন'}
+                    {saving ? t('baki.saving') : isPayment ? t('baki.receivePayment') : t('baki.giveCredit')}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -503,10 +500,10 @@ export default function BakiListScreen() {
               {/* ── Summary strip ─────────────────────────────── */}
               <View style={styles.summaryStrip}>
                 <Text style={styles.summaryText}>
-                  মোট বাকি:{' '}
+                  {t('baki.totalDue')}:{' '}
                   <Text style={styles.summaryValue}>৳{totalDue.toFixed(2)}</Text>
                 </Text>
-                <Text style={styles.summaryText}>{filteredRows.length} জন কাস্টমার</Text>
+                <Text style={styles.summaryText}>{t('baki.customerCount', { count: filteredRows.length })}</Text>
               </View>
 
               {/* ── List filters ──────────────────────────────── */}
@@ -522,22 +519,22 @@ export default function BakiListScreen() {
 
               {/* ── List header ───────────────────────────────── */}
               <View style={styles.listHeaderRow}>
-                <Text style={styles.listHeaderTitle}>কাস্টমারের বাকি</Text>
+                <Text style={styles.listHeaderTitle}>{t('baki.customerBaki')}</Text>
                 <TouchableOpacity
                   style={styles.refreshBtn}
                   onPress={async () => {
                     try { await refreshAll(); }
-                    catch (e) { Alert.alert('রিফ্রেশ ব্যর্থ', e?.message || 'তথ্য লোড হয়নি।'); }
+                    catch (e) { Alert.alert(t('baki.refreshFailed'), e?.message || t('baki.refreshFailedMsg')); }
                   }}
                 >
                   <Text style={styles.refreshBtnText}>
-                    {refreshing ? 'রিফ্রেশ হচ্ছে...' : 'রিফ্রেশ'}
+                    {refreshing ? t('baki.refreshing') : t('baki.refresh')}
                   </Text>
                 </TouchableOpacity>
               </View>
             </View>
           }
-          ListEmptyComponent={<Text style={styles.emptyText}>কোনো বাকি নেই।</Text>}
+          ListEmptyComponent={<Text style={styles.emptyText}>{t('baki.emptyList')}</Text>}
           renderItem={({ item }) => (
             <BakiListItem
               item={item}

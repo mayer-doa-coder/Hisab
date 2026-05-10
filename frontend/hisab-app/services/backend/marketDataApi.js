@@ -46,7 +46,7 @@ const assertString = (value, name) => {
 export const STOCK_SUGGESTION_CONTRACT_V1 = Object.freeze({
   contract_name: 'stock_suggestion_contract',
   contract_version: 'stock_suggestion_contract_v1',
-  horizons: ['1W', '1M'],
+  horizons: ['1D', '7D', '1W', '1M'],
   decisions: ['BUY_NOW', 'WATCH', 'HOLD'],
 });
 
@@ -60,7 +60,7 @@ export const EMA_SIGNAL_CONTRACT_V1 = Object.freeze({
   contract_name: 'ema_signal_output',
   contract_version: 'ema_signal_output_v1',
   trends: ['UP', 'DOWN', 'NEUTRAL'],
-  horizons: ['1W', '1M'],
+  horizons: ['1D', '7D', '1W', '1M'],
 });
 
 export const REORDER_DECISION_CONTRACT_V1 = Object.freeze({
@@ -139,7 +139,7 @@ export const assertEmaSignalRowContractV1 = (row, rowIndex = 0) => {
     throw new Error(`trend must be one of UP, DOWN, NEUTRAL at row index ${rowIndex}.`);
   }
   if (!EMA_SIGNAL_CONTRACT_V1.horizons.includes(horizon)) {
-    throw new Error(`horizon must be one of 1W, 1M at row index ${rowIndex}.`);
+    throw new Error(`horizon must be one of 1D, 7D, 1W, 1M at row index ${rowIndex}.`);
   }
 
   return row;
@@ -289,7 +289,7 @@ export const assertStockSuggestionRowContractV1 = (row, rowIndex = 0) => {
     throw new Error(`confidence must be within [0,1] at row index ${rowIndex}.`);
   }
   if (!STOCK_SUGGESTION_CONTRACT_V1.horizons.includes(horizon)) {
-    throw new Error(`horizon must be one of 1W, 1M at row index ${rowIndex}.`);
+    throw new Error(`horizon must be one of 1D, 7D, 1W, 1M at row index ${rowIndex}.`);
   }
   if (!STOCK_SUGGESTION_CONTRACT_V1.decisions.includes(decision)) {
     throw new Error(`decision must be one of BUY_NOW, WATCH, HOLD at row index ${rowIndex}.`);
@@ -951,7 +951,7 @@ export const fetchMarkovStockSuggestionsOnline = async ({
   queueFeatures = null,
   start = null,
   end = null,
-  horizons = ['1W', '1M'],
+  horizons = ['7D', '1D'],
   decisionConstraints = null,
   strategyConfig = null,
   allocationBase = 100,

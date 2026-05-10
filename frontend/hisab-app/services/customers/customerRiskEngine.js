@@ -7,6 +7,7 @@ import {
   resolveFallbackReason,
   createStandardTrustOutput,
 } from './trustFallbackPolicy.js';
+import { evaluateTrustGate } from './trustGating.js';
 import { predictChampionTrust } from './trustChampionModel.js';
 import {
   predictChallengerTrust,
@@ -1023,6 +1024,8 @@ export const applyCustomerRiskClassification = (
       average_payment_delay: null,
     };
     const featureItem = featureMap.get(customerId) || null;
+    const verificationLevel = customer.verification_level ?? customer.verificationLevel ?? 'L0';
+    const trustGate = evaluateTrustGate(verificationLevel);
     let scoring = null;
     let scoringErrored = false;
 
@@ -1119,6 +1122,8 @@ export const applyCustomerRiskClassification = (
       trust_routing_event: scoring?.routingLog || null,
       trust_shadow_comparison: scoring?.shadowComparison || null,
       trust_fallback_event: scoring.fallbackLog,
+      trust_scope: trustGate.scope,
+      trust_gate: trustGate,
     };
 
     if (monitoringEngine && typeof monitoringEngine.recordRequest === 'function') {

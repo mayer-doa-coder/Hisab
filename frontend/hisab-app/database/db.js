@@ -1,8 +1,72 @@
 import * as SQLite from 'expo-sqlite';
 
-const db = SQLite.openDatabaseSync('hisab.db');
+let dbInstance = null;
+let pragmaInitialized = false;
 
-db.execSync('PRAGMA foreign_keys = ON;');
+const isNativeDatabaseNullError = (error) => {
+	if (!error) {
+		return false;
+	}
+
+	const text = String(error?.message || error);
+	return text.includes('NativeDatabase.prepareAsync')
+		|| text.includes('NativeDatabase.execAsync')
+		|| text.includes('NullPointerException');
+};
+
+const getDbInstance = () => {
+	if (!dbInstance) {
+		dbInstance = SQLite.openDatabaseSync('hisab.db');
+		pragmaInitialized = false;
+	}
+
+	if (!pragmaInitialized) {
+		dbInstance.execSync('PRAGMA foreign_keys = ON;');
+		pragmaInitialized = true;
+	}
+
+	return dbInstance;
+};
+
+const bindDbMethod = (methodName) => {
+	return (...args) => {
+		const execute = () => {
+			const connection = getDbInstance();
+			const method = connection?.[methodName];
+			if (typeof method !== 'function') {
+				throw new Error(`SQLite method ${methodName} is not available.`);
+			}
+			return method.call(connection, ...args);
+		};
+
+		try {
+			const result = execute();
+			if (result && typeof result.then === 'function') {
+				return result.catch((error) => {
+					if (!isNativeDatabaseNullError(error)) {
+						throw error;
+					}
+					dbInstance = null;
+					return execute();
+				});
+			}
+			return result;
+		} catch (error) {
+			if (!isNativeDatabaseNullError(error)) {
+				throw error;
+			}
+			dbInstance = null;
+			return execute();
+		}
+	};
+};
+
+const db = new Proxy({}, {
+	get(_, prop) {
+		const methodName = String(prop);
+		return bindDbMethod(methodName);
+	},
+});
 
 const ensureColumn = async (tableName, columnName, alterSql) => {
 	const tableInfo = await db.getAllAsync(`PRAGMA table_info(${tableName});`);
@@ -118,6 +182,8 @@ const sanitizeAuthUser = (row) => {
 	return {
 		id: Number(row.id),
 		email: String(row.email || ''),
+		name: String(row.name || '').trim() || null,
+		profile_image_uri: String(row.profile_image_uri || '').trim() || null,
 		created_at: row.created_at || null,
 		updated_at: row.updated_at || null,
 		last_login_at: row.last_login_at || null,
@@ -640,25 +706,11 @@ const loadOpenBatchesForProductTx = async ({ userId, productId }) => {
 	);
 };
 
-const consumeInventoryBatchesTx = async ({
-	userId,
-	productId,
-	quantity,
-	syncUpdatedAt,
-	sourceEventType = null,
-	sourceEventId = null,
-	sourceEventClientRefId = null,
-} = {}) => {
-	const requestedQty = Number(quantity);
-	if (!Number.isInteger(requestedQty) || requestedQty <= 0) {
-		return [];
-	}
-
-	const rows = await loadOpenBatchesForProductTx({ userId, productId });
-	let remaining = requestedQty;
+const allocateBatchesForQuantity = ({ rows = [], requestedQty = 0 } = {}) => {
+	let remaining = Number(requestedQty);
 	const allocations = [];
 
-	for (const row of rows) {
+	for (const row of rows || []) {
 		if (remaining <= 0) {
 			break;
 		}
@@ -678,8 +730,106 @@ const consumeInventoryBatchesTx = async ({
 		});
 	}
 
+	return {
+		allocations,
+		remaining,
+	};
+};
+
+const reconcileInventoryBatchGapTx = async ({
+	userId,
+	productId,
+	productQuantityBefore = null,
+	syncUpdatedAt,
+} = {}) => {
+	const productRow = await db.getFirstAsync(
+		`SELECT id, quantity, price, expiry_date
+		 FROM products
+		 WHERE id = ?
+			AND user_id = ?
+		 LIMIT 1;`,
+		productId,
+		userId
+	);
+	if (!productRow) {
+		return null;
+	}
+
+	const batchTotalsRow = await db.getFirstAsync(
+		`SELECT COALESCE(SUM(quantity), 0) AS batch_quantity
+		 FROM inventory_batches
+		 WHERE user_id = ?
+			AND product_id = ?
+			AND deleted_at IS NULL;`,
+		userId,
+		productId
+	);
+
+	const baselineProductQuantity = Number.isFinite(Number(productQuantityBefore))
+		? Math.max(0, Number(productQuantityBefore))
+		: Math.max(0, Number(productRow.quantity || 0));
+	const existingBatchQuantity = Math.max(0, Number(batchTotalsRow?.batch_quantity || 0));
+	const gapQuantity = Math.max(0, Math.trunc(baselineProductQuantity - existingBatchQuantity));
+
+	if (!Number.isInteger(gapQuantity) || gapQuantity <= 0) {
+		return null;
+	}
+
+	return createInventoryBatchTx({
+		userId,
+		productId,
+		quantity: gapQuantity,
+		batchNumber: buildInventoryBatchNumber({ productId, prefix: 'RECON' }),
+		expiryDate: productRow.expiry_date || null,
+		purchaseDate: syncUpdatedAt,
+		costPriceCents: toMoneyCents(productRow.price) || 0,
+		syncUpdatedAt,
+		sourceEventType: 'reconcile',
+		sourceEventId: null,
+		sourceEventClientRefId: null,
+	});
+};
+
+const consumeInventoryBatchesTx = async ({
+	userId,
+	productId,
+	quantity,
+	productQuantityBefore = null,
+	syncUpdatedAt,
+	sourceEventType = null,
+	sourceEventId = null,
+	sourceEventClientRefId = null,
+} = {}) => {
+	const requestedQty = Number(quantity);
+	if (!Number.isInteger(requestedQty) || requestedQty <= 0) {
+		return [];
+	}
+
+	let rows = await loadOpenBatchesForProductTx({ userId, productId });
+	let { allocations, remaining } = allocateBatchesForQuantity({
+		rows,
+		requestedQty,
+	});
+
 	if (remaining > 0) {
-		throw new Error('Insufficient batch stock for FEFO allocation. Please reconcile inventory batches first.');
+		await reconcileInventoryBatchGapTx({
+			userId,
+			productId,
+			productQuantityBefore,
+			syncUpdatedAt,
+		});
+
+		rows = await loadOpenBatchesForProductTx({ userId, productId });
+		const retryResult = allocateBatchesForQuantity({
+			rows,
+			requestedQty,
+		});
+		allocations = retryResult.allocations;
+		remaining = retryResult.remaining;
+
+		if (remaining > 0) {
+			throw new Error('Insufficient batch stock for FEFO allocation. Please reconcile inventory batches first.');
+		}
 	}
 
 	for (const allocation of allocations) {
@@ -1257,13 +1407,15 @@ const migrateLegacyUsersTable = async () => {
 		await db.execAsync(`CREATE TABLE users_migrated (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			email TEXT NOT NULL UNIQUE,
+			name TEXT,
+			profile_image_uri TEXT,
 			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			last_login_at DATETIME
 		);`);
 
-		await db.execAsync(`INSERT INTO users_migrated (id, email, created_at, updated_at, last_login_at)
-			SELECT id, email, COALESCE(created_at, CURRENT_TIMESTAMP), COALESCE(updated_at, CURRENT_TIMESTAMP), last_login_at
+		await db.execAsync(`INSERT INTO users_migrated (id, email, name, profile_image_uri, created_at, updated_at, last_login_at)
+			SELECT id, email, NULL, NULL, COALESCE(created_at, CURRENT_TIMESTAMP), COALESCE(updated_at, CURRENT_TIMESTAMP), last_login_at
 			FROM users;`);
 
 		await db.execAsync(`DROP TABLE users;`);
@@ -1319,6 +1471,8 @@ export const createTables = async () => {
 	await db.execAsync(`CREATE TABLE IF NOT EXISTS users (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		email TEXT NOT NULL UNIQUE,
+		name TEXT,
+		profile_image_uri TEXT,
 		created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 		updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 		last_login_at DATETIME
@@ -1348,6 +1502,7 @@ export const createTables = async () => {
 		device_id TEXT NOT NULL,
 		preferred_email TEXT,
 		pin_enabled INTEGER NOT NULL DEFAULT 0 CHECK (pin_enabled IN (0, 1)),
+		low_stock_notifications_enabled INTEGER NOT NULL DEFAULT 1 CHECK (low_stock_notifications_enabled IN (0, 1)),
 		created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 		updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 	);`);
@@ -1953,6 +2108,8 @@ export const createTables = async () => {
 	await ensureColumn('customers', 'last_payment_date', `ALTER TABLE customers ADD COLUMN last_payment_date DATETIME;`);
 
 	await ensureColumn('users', 'last_login_at', `ALTER TABLE users ADD COLUMN last_login_at DATETIME;`);
+	await ensureColumn('users', 'name', `ALTER TABLE users ADD COLUMN name TEXT;`);
+	await ensureColumn('users', 'profile_image_uri', `ALTER TABLE users ADD COLUMN profile_image_uri TEXT;`);
 	await migrateLegacyUsersTable();
 	await ensureColumn('auth_sessions', 'access_token', `ALTER TABLE auth_sessions ADD COLUMN access_token TEXT;`);
 	await ensureColumn('auth_sessions', 'refresh_token', `ALTER TABLE auth_sessions ADD COLUMN refresh_token TEXT;`);
@@ -1969,6 +2126,11 @@ export const createTables = async () => {
 		'auth_sessions',
 		'server_sync_pending',
 		`ALTER TABLE auth_sessions ADD COLUMN server_sync_pending INTEGER NOT NULL DEFAULT 0;`
+	);
+	await ensureColumn(
+		'auth_device_profile',
+		'low_stock_notifications_enabled',
+		`ALTER TABLE auth_device_profile ADD COLUMN low_stock_notifications_enabled INTEGER NOT NULL DEFAULT 1;`
 	);
 
 	await ensureColumn('baki_entries', 'paid_amount', `ALTER TABLE baki_entries ADD COLUMN paid_amount REAL NOT NULL DEFAULT 0;`);
@@ -1991,6 +2153,10 @@ export const createTables = async () => {
 	await ensureColumn('baki_transactions', 'payment_code', `ALTER TABLE baki_transactions ADD COLUMN payment_code TEXT;`);
 	await ensureColumn('baki_transactions', 'payment_code_expires_at', `ALTER TABLE baki_transactions ADD COLUMN payment_code_expires_at DATETIME;`);
 	await ensureColumn('baki_transactions', 'payment_code_used', `ALTER TABLE baki_transactions ADD COLUMN payment_code_used INTEGER NOT NULL DEFAULT 0;`);
+	await ensureColumn('baki_transactions', 'image_url', `ALTER TABLE baki_transactions ADD COLUMN image_url TEXT;`);
+	await ensureColumn('customers', 'pin_hash', `ALTER TABLE customers ADD COLUMN pin_hash TEXT;`);
+	await ensureColumn('customers', 'verification_level', `ALTER TABLE customers ADD COLUMN verification_level TEXT NOT NULL DEFAULT 'L0';`);
+	await ensureColumn('customers', 'global_id', `ALTER TABLE customers ADD COLUMN global_id TEXT;`);
 	await ensureColumn('stock_movements', 'user_id', `ALTER TABLE stock_movements ADD COLUMN user_id INTEGER;`);
 	await ensureColumn('stock_movements', 'server_id', `ALTER TABLE stock_movements ADD COLUMN server_id TEXT;`);
 	await ensureColumn('stock_movements', 'client_ref_id', `ALTER TABLE stock_movements ADD COLUMN client_ref_id TEXT;`);
@@ -3306,6 +3472,7 @@ const insertBakiTransaction = async ({
 	dueDate = null,
 	dueTermsDays = null,
 	referenceId = null,
+	imageUrl = null,
 }) => {
 	const userId = await getActiveScopedUserId();
 	const syncUpdatedAt = new Date().toISOString();
@@ -3409,6 +3576,7 @@ const insertBakiTransaction = async ({
 				resolved_at,
 				note,
 				payment_method,
+				image_url,
 				client_ref_id,
 				sync_version,
 				sync_updated_at,
@@ -3417,7 +3585,7 @@ const insertBakiTransaction = async ({
 				payment_code_expires_at,
 				payment_code_used
 			)
-			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, 0);`,
+			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, 0);`,
 			userId,
 			normalizedCustomerId,
 			normalizedType,
@@ -3431,6 +3599,7 @@ const insertBakiTransaction = async ({
 			normalizedType === 'payment' ? syncUpdatedAt : null,
 			normalizedNote || null,
 			normalizedType === 'payment' ? normalizedPaymentMethod || 'cash' : null,
+			typeof imageUrl === 'string' && imageUrl.trim() ? imageUrl.trim() : null,
 			null,
 			1,
 			syncUpdatedAt,
@@ -3588,8 +3757,8 @@ const insertBakiTransaction = async ({
 	}
 };
 
-export const insertBakiEntry = ({ customerId, amount, note = null, dueDate = null, dueTermsDays = null, referenceId = null }) =>
-	insertBakiTransaction({ customerId, type: 'credit', amount, note, dueDate, dueTermsDays, referenceId });
+export const insertBakiEntry = ({ customerId, amount, note = null, dueDate = null, dueTermsDays = null, referenceId = null, imageUrl = null }) =>
+	insertBakiTransaction({ customerId, type: 'credit', amount, note, dueDate, dueTermsDays, referenceId, imageUrl });
 
 export const addBaki = (payload) => insertBakiEntry(payload);
 
@@ -4688,6 +4857,38 @@ export const getDashboardKpiSummary = ({ startDateIso, endDateIso, transactionTy
 		return Promise.reject(new Error('startDateIso cannot be after endDateIso.'));
 	}
 
+	const salesAndPaymentRow = await db.getFirstAsync(
+		`WITH sale_totals AS (
+			SELECT
+				COALESCE(SUM(sh.total_amount_cents), 0) AS total_sales_cents
+			FROM sales_header sh
+			WHERE datetime(COALESCE(sh.timestamp, sh.created_at)) >= datetime(?)
+				AND datetime(COALESCE(sh.timestamp, sh.created_at)) <= datetime(?)
+				AND sh.user_id = ?
+				AND sh.deleted_at IS NULL
+				AND sh.status = 'posted'
+		),
+		sale_payment_totals AS (
+			SELECT
+				COALESCE(SUM(p.amount_cents), 0) AS total_sale_payments_cents
+			FROM payments p
+			WHERE datetime(p.created_at) >= datetime(?)
+				AND datetime(p.created_at) <= datetime(?)
+				AND p.user_id = ?
+				AND p.deleted_at IS NULL
+				AND UPPER(COALESCE(p.status, 'PAID')) = 'PAID'
+		)
+		SELECT
+			ROUND((SELECT total_sales_cents FROM sale_totals) / 100.0, 2) AS total_sales,
+			ROUND((SELECT total_sale_payments_cents FROM sale_payment_totals) / 100.0, 2) AS total_sale_payments;`,
+		start.toISOString(),
+		end.toISOString(),
+		userId,
+		start.toISOString(),
+		end.toISOString(),
+		userId,
+	);
+
 	return db
 		.getFirstAsync(
 			`WITH filtered AS (
@@ -4763,7 +4964,8 @@ export const getDashboardKpiSummary = ({ startDateIso, endDateIso, transactionTy
 		)
 		.then((row) => ({
 			total_credit: Number(row?.total_credit || 0),
-			total_payment: Number(row?.total_payment || 0),
+			total_payment: Number(row?.total_payment || 0) + Number(salesAndPaymentRow?.total_sale_payments || 0),
+			total_sales: Number(salesAndPaymentRow?.total_sales || 0),
 			net: Number(row?.net || 0),
 			transactions_count: Number(row?.transactions_count || 0),
 			active_customers: Number(row?.active_customers || 0),
@@ -5305,7 +5507,7 @@ export const getOrCreateDeviceId = async () => {
 export const getAuthDeviceProfile = async () => {
 	const deviceId = await getOrCreateDeviceId();
 	const row = await db.getFirstAsync(
-		`SELECT preferred_email, pin_enabled
+		`SELECT preferred_email, pin_enabled, low_stock_notifications_enabled
 		 FROM auth_device_profile
 		 WHERE id = 1
 		 LIMIT 1;`
@@ -5315,15 +5517,17 @@ export const getAuthDeviceProfile = async () => {
 		deviceId,
 		preferredEmail: String(row?.preferred_email || '').trim() || null,
 		pinEnabled: Boolean(Number(row?.pin_enabled || 0)),
+		lowStockNotificationsEnabled: Number(row?.low_stock_notifications_enabled ?? 1) !== 0,
 	};
 };
 
-export const setAuthDeviceProfile = async ({ preferredEmail, pinEnabled } = {}) => {
+export const setAuthDeviceProfile = async ({ preferredEmail, pinEnabled, lowStockNotificationsEnabled } = {}) => {
 	await getOrCreateDeviceId();
 
 	const shouldUpdateEmail = preferredEmail !== undefined;
 	const normalizedEmail = shouldUpdateEmail ? normalizeAuthEmail(preferredEmail) : null;
 	const shouldUpdatePinEnabled = pinEnabled !== undefined;
+	const shouldUpdateLowStock = lowStockNotificationsEnabled !== undefined;
 
 	await db.runAsync(
 		`UPDATE auth_device_profile
@@ -5335,12 +5539,18 @@ export const setAuthDeviceProfile = async ({ preferredEmail, pinEnabled } = {}) 
 				WHEN ? = 1 THEN ?
 				ELSE pin_enabled
 			END,
+			low_stock_notifications_enabled = CASE
+				WHEN ? = 1 THEN ?
+				ELSE low_stock_notifications_enabled
+			END,
 			updated_at = datetime('now')
 		 WHERE id = 1;`,
 		shouldUpdateEmail ? 1 : 0,
 		normalizedEmail || null,
 		shouldUpdatePinEnabled ? 1 : 0,
-		shouldUpdatePinEnabled && pinEnabled ? 1 : 0
+		shouldUpdatePinEnabled && pinEnabled ? 1 : 0,
+		shouldUpdateLowStock ? 1 : 0,
+		shouldUpdateLowStock && lowStockNotificationsEnabled ? 1 : 0
 	);
 
 	return getAuthDeviceProfile();
@@ -5762,6 +5972,13 @@ const normalizeServerUserPayload = (userPayload) => {
 
 	return {
 		email,
+		name: String(userPayload?.name || '').trim() || null,
+		profileImageUri: String(
+			userPayload?.profile_image_uri
+			|| userPayload?.profileImageUri
+			|| userPayload?.profileImageUrl
+			|| ''
+		).trim() || null,
 		createdAt: userPayload?.createdAt ? String(userPayload.createdAt) : null,
 	};
 };
@@ -5784,9 +6001,11 @@ export const saveAuthenticatedUserSession = async ({
 	let userId = Number(existing?.id || 0);
 	if (!Number.isInteger(userId) || userId <= 0) {
 		const inserted = await db.runAsync(
-			`INSERT INTO users (email, created_at, updated_at, last_login_at)
-			 VALUES (?, COALESCE(?, CURRENT_TIMESTAMP), datetime('now'), datetime('now'));`,
+			`INSERT INTO users (email, name, profile_image_uri, created_at, updated_at, last_login_at)
+			 VALUES (?, ?, ?, COALESCE(?, CURRENT_TIMESTAMP), datetime('now'), datetime('now'));`,
 			normalizedUser.email,
+			normalizedUser.name,
+			normalizedUser.profileImageUri,
 			normalizedUser.createdAt
 		);
 		userId = Number(inserted?.lastInsertRowId || 0);
@@ -5799,10 +6018,14 @@ export const saveAuthenticatedUserSession = async ({
 	await db.runAsync(
 		`UPDATE users
 		 SET email = ?,
+			 name = ?,
+			 profile_image_uri = ?,
 			 updated_at = datetime('now'),
 			 last_login_at = datetime('now')
 		 WHERE id = ?;`,
 		normalizedUser.email,
+		normalizedUser.name,
+		normalizedUser.profileImageUri,
 		userId
 	);
 
@@ -5828,7 +6051,7 @@ export const saveAuthenticatedUserSession = async ({
 	});
 
 	const userRow = await db.getFirstAsync(
-		`SELECT id, email, created_at, updated_at, last_login_at
+		`SELECT id, email, name, profile_image_uri, created_at, updated_at, last_login_at
 		 FROM users
 		 WHERE id = ?
 		 LIMIT 1;`,
@@ -5848,6 +6071,8 @@ export const getCurrentUser = async () => {
 		`SELECT
 			u.id,
 			u.email,
+			u.name,
+			u.profile_image_uri,
 			u.created_at,
 			u.updated_at,
 			u.last_login_at,
@@ -5878,6 +6103,37 @@ export const getCurrentUser = async () => {
 		user: sanitizeAuthUser(row),
 		session: sanitizeAuthSession(row),
 	};
+};
+
+export const updateAuthenticatedUserProfileLocal = async ({ userId, name, profileImageUri } = {}) => {
+	const normalizedUserId = Number(userId);
+	if (!Number.isInteger(normalizedUserId) || normalizedUserId <= 0) {
+		throw new Error('Valid userId is required to update profile.');
+	}
+
+	const normalizedName = String(name || '').trim() || null;
+	const normalizedProfileImageUri = String(profileImageUri || '').trim() || null;
+
+	await db.runAsync(
+		`UPDATE users
+		 SET name = ?,
+			 profile_image_uri = ?,
+			 updated_at = datetime('now')
+		 WHERE id = ?;`,
+		normalizedName,
+		normalizedProfileImageUri,
+		normalizedUserId
+	);
+
+	const row = await db.getFirstAsync(
+		`SELECT id, email, name, profile_image_uri, created_at, updated_at, last_login_at
+		 FROM users
+		 WHERE id = ?
+		 LIMIT 1;`,
+		normalizedUserId
+	);
+
+	return sanitizeAuthUser(row);
 };
 
 export const logoutCurrentUser = async ({ sessionToken } = {}) => {
@@ -6881,6 +7137,7 @@ export const recordCycleCount = async ({
 					userId,
 					productId: normalizedProductId,
 					quantity: Math.abs(variance),
+					productQuantityBefore: systemQuantity,
 					syncUpdatedAt: countedAtIso,
 					sourceEventType: 'cycle_count',
 					sourceEventId: cycleCountId,
@@ -7124,6 +7381,7 @@ export const createStockMovement = async ({
 				userId,
 				productId: normalizedProductId,
 				quantity: Math.abs(quantityDelta),
+				productQuantityBefore: currentQuantity,
 				syncUpdatedAt,
 				sourceEventType: normalizedSourceEventType,
 				sourceEventId: Number.isInteger(normalizedSourceEventId) && normalizedSourceEventId > 0 ? normalizedSourceEventId : null,
@@ -7328,24 +7586,30 @@ export const getProductSalesDailyAggregation = ({ days = 30, productId = null } 
 	const run = async () => {
 		const userId = await getActiveScopedUserId();
 	const normalizedDays = Number.isInteger(Number(days)) && Number(days) > 0 ? Number(days) : 30;
-	const fromModifier = `-${Math.max(0, normalizedDays - 1)} days`;
+	const nowIso = new Date().toISOString();
+	const fromDate = new Date();
+	fromDate.setDate(fromDate.getDate() - Math.max(0, normalizedDays - 1));
+	fromDate.setHours(0, 0, 0, 0);
+	const fromIso = fromDate.toISOString();
 
 	if (productId === null || productId === undefined) {
 		return db.getAllAsync(
 			`SELECT
 				si.product_id,
-				DATE(sh.timestamp) AS sale_date,
+				DATE(COALESCE(sh.timestamp, sh.created_at)) AS sale_date,
 				SUM(si.quantity) AS units_sold
 			FROM sales_items si
 			JOIN sales_header sh ON sh.id = si.sales_header_id
 			WHERE sh.user_id = ?
 				AND sh.deleted_at IS NULL
 				AND sh.status = 'posted'
-				AND DATE(sh.timestamp) >= DATE('now', ?)
-			GROUP BY si.product_id, DATE(sh.timestamp)
+				AND datetime(COALESCE(sh.timestamp, sh.created_at)) >= datetime(?)
+				AND datetime(COALESCE(sh.timestamp, sh.created_at)) <= datetime(?)
+			GROUP BY si.product_id, DATE(COALESCE(sh.timestamp, sh.created_at))
 			ORDER BY si.product_id ASC, sale_date ASC;`,
 			userId,
-			fromModifier
+			fromIso,
+			nowIso
 		);
 	}
 
@@ -7357,19 +7621,21 @@ export const getProductSalesDailyAggregation = ({ days = 30, productId = null } 
 	return db.getAllAsync(
 		`SELECT
 			si.product_id,
-			DATE(sh.timestamp) AS sale_date,
+			DATE(COALESCE(sh.timestamp, sh.created_at)) AS sale_date,
 			SUM(si.quantity) AS units_sold
 		 FROM sales_items si
 		 JOIN sales_header sh ON sh.id = si.sales_header_id
 		 WHERE sh.user_id = ?
 			AND sh.deleted_at IS NULL
 			AND sh.status = 'posted'
-			AND DATE(sh.timestamp) >= DATE('now', ?)
+			AND datetime(COALESCE(sh.timestamp, sh.created_at)) >= datetime(?)
+			AND datetime(COALESCE(sh.timestamp, sh.created_at)) <= datetime(?)
 			AND si.product_id = ?
-		 GROUP BY si.product_id, DATE(sh.timestamp)
+		 GROUP BY si.product_id, DATE(COALESCE(sh.timestamp, sh.created_at))
 		 ORDER BY sale_date ASC;`,
 		userId,
-		fromModifier,
+		fromIso,
+		nowIso,
 		normalizedProductId
 	);
 	};
@@ -7648,6 +7914,7 @@ export const createSale = async ({
 				userId,
 				productId: Number(item.productId),
 				quantity: Number(item.quantity),
+				productQuantityBefore: Number(item.quantityBefore),
 				syncUpdatedAt,
 				sourceEventType: 'sale',
 				sourceEventId: salesHeaderId,

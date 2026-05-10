@@ -2,11 +2,33 @@ import { getBackendBaseUrl } from './backendHealth';
 
 const REQUEST_TIMEOUT_MS = 10000;
 
-const createApiError = ({ message, status = null, code = null, isNetworkError = false }) => {
+const parseRetryAfterMs = (retryAfterHeader) => {
+  const raw = String(retryAfterHeader || '').trim();
+  if (!raw) {
+    return null;
+  }
+
+  const asSeconds = Number(raw);
+  if (Number.isFinite(asSeconds) && asSeconds >= 0) {
+    return Math.max(0, Math.trunc(asSeconds * 1000));
+  }
+
+  const asDate = new Date(raw);
+  if (Number.isNaN(asDate.getTime())) {
+    return null;
+  }
+
+  return Math.max(0, asDate.getTime() - Date.now());
+};
+
+const createApiError = ({ message, status = null, code = null, isNetworkError = false, retryAfterMs = null }) => {
   const error = new Error(message || 'Request failed.');
   error.status = status;
   error.code = code;
   error.isNetworkError = isNetworkError;
+  if (Number.isFinite(Number(retryAfterMs)) && Number(retryAfterMs) >= 0) {
+    error.retryAfterMs = Math.trunc(Number(retryAfterMs));
+  }
   return error;
 };
 
@@ -47,6 +69,7 @@ const requestJson = async ({ path, method = 'GET', body = null, accessToken = nu
         message: payload?.error?.message || payload?.message || `Request failed with status ${response.status}`,
         status: response.status,
         code: payload?.error?.code || payload?.code || null,
+        retryAfterMs: parseRetryAfterMs(response.headers.get('retry-after')),
       });
     }
 

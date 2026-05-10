@@ -90,11 +90,11 @@ export const isBackendOnline = async () => {
   return Boolean(health?.ok);
 };
 
-export const signupOnline = async ({ email, pin, rememberMe = false }) => {
+export const signupOnline = async ({ email, pin, rememberMe = false, name = null }) => {
   return requestJson({
     path: '/api/auth/signup',
     method: 'POST',
-    body: { email, pin, rememberMe },
+    body: { email, pin, rememberMe, name: String(name || '').trim() || undefined },
   });
 };
 
@@ -151,6 +151,18 @@ export const fetchOnlineProfile = async ({ accessToken }) => {
   return requestJson({
     path: '/api/user/profile',
     method: 'GET',
+    accessToken,
+  });
+};
+
+export const updateOnlineProfile = async ({ accessToken, name, profileImageUrl = null }) => {
+  return requestJson({
+    path: '/api/user/profile',
+    method: 'POST',
+    body: {
+      name: String(name || '').trim(),
+      profileImageUrl: String(profileImageUrl || '').trim() || null,
+    },
     accessToken,
   });
 };

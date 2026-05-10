@@ -111,8 +111,26 @@ export default function CustomerLedgerScreen() {
                     <Text style={styles.riskTitle}>বিশ্বস্ততা / ঝুঁকি সূচক</Text>
                     <CustomerRiskBadge riskLevel={selectedCustomer.risk_level} />
                   </View>
-                  <Text style={styles.riskMeta}>বিশ্বাস স্কোর: {Number(selectedCustomer.trust_score || 0)}/100</Text>
-                  <Text style={styles.riskMeta}>ঝুঁকি স্কোর: {Number(selectedCustomer.risk_score || 0)}/100</Text>
+                  <Text style={styles.riskMeta}>
+                    বিশ্বাস স্কোর:{' '}
+                    {
+                      selectedCustomer.trust_score === null
+                      || selectedCustomer.trust_score === undefined
+                      || selectedCustomer.trust_score === ''
+                        ? 'N/A'
+                        : `${Number(selectedCustomer.trust_score)}/100`
+                    }
+                  </Text>
+                  <Text style={styles.riskMeta}>
+                    ঝুঁকি স্কোর:{' '}
+                    {
+                      selectedCustomer.risk_score === null
+                      || selectedCustomer.risk_score === undefined
+                      || selectedCustomer.risk_score === ''
+                        ? 'N/A'
+                        : `${Number(selectedCustomer.risk_score)}/100`
+                    }
+                  </Text>
                   <Text style={styles.riskMeta}>
                     গড় পেমেন্ট বিলম্ব: {selectedCustomer.average_payment_delay ?? 'অজানা'} দিন
                   </Text>

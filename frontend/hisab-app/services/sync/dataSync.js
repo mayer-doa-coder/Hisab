@@ -34,6 +34,12 @@ const MUTATION_ENTITY_TYPES = [
   'day_close',
 ];
 
+const PAYLOAD_TOO_LARGE_ERROR_MARKER = '[PAYLOAD_TOO_LARGE]';
+const MAX_OUTBOUND_CHUNK_ITEMS = 15;
+const MAX_OUTBOUND_CHUNK_BYTES = 64 * 1024;
+const DEFAULT_RATE_LIMIT_BACKOFF_MS = 60 * 1000;
+let syncRateLimitedUntilMs = 0;
+
 const summarizePendingByEntity = (rows = []) => {
   const summary = {};
   for (const row of rows) {
@@ -169,6 +175,44 @@ const buildOutboundChange = (item) => {
     version: Number(payload.version || 1),
     updatedAt: payload.updatedAt || new Date().toISOString(),
     idempotencyKey: String(payload.idempotencyKey || '').trim(),
+  };
+};
+
+const estimateJsonBytes = (value) => {
+  try {
+    return JSON.stringify(value).length;
+  } catch {
+    return Number.MAX_SAFE_INTEGER;
+  }
+};
+
+const buildSizedChunk = ({ outboundEntries = [], startIndex = 0 } = {}) => {
+  const chunkEntries = [];
+  let bytes = 0;
+  let cursor = Number(startIndex) || 0;
+
+  while (cursor < outboundEntries.length && chunkEntries.length < MAX_OUTBOUND_CHUNK_ITEMS) {
+    const entry = outboundEntries[cursor];
+    const changeBytes = estimateJsonBytes(entry?.change);
+    const wouldExceed = (bytes + changeBytes) > MAX_OUTBOUND_CHUNK_BYTES;
+
+    if (chunkEntries.length > 0 && wouldExceed) {
+      break;
+    }
+
+    chunkEntries.push(entry);
+    bytes += changeBytes;
+    cursor += 1;
+
+    if (wouldExceed) {
+      break;
+    }
+  }
+
+  return {
+    chunkEntries,
+    nextCursor: cursor,
+    chunkBytes: bytes,
   };
 };
 
@@ -2374,13 +2418,32 @@ export const runDataSync = async ({ userId, accessToken, maxQueueItems = 100 } =
     return { synced: 0, appliedServerChanges: 0, skipped: true };
   }
 
+  if (Date.now() < syncRateLimitedUntilMs) {
+    return {
+      synced: 0,
+      appliedServerChanges: 0,
+      skipped: true,
+      rateLimited: true,
+      retryAfterMs: Math.max(0, syncRateLimitedUntilMs - Date.now()),
+    };
+  }
+
+  const normalizedMaxQueueItems = Number.isInteger(Number(maxQueueItems)) && Number(maxQueueItems) > 0
+    ? Number(maxQueueItems)
+    : 100;
+
   const pending = await getPendingSyncItems({
-    limit: maxQueueItems,
+    limit: normalizedMaxQueueItems,
     forCurrentUser: true,
     entityTypes: MUTATION_ENTITY_TYPES,
   });
 
-  const outbound = pending
+  const retryablePending = pending.filter((row) => {
+    const errorMessage = String(row?.last_error || '');
+    return !errorMessage.includes(PAYLOAD_TOO_LARGE_ERROR_MARKER);
+  });
+
+  const outbound = retryablePending
     .map((item) => ({ item, change: buildOutboundChange(item) }))
     .filter((entry) => Boolean(entry.change));
 
@@ -2394,105 +2457,217 @@ export const runDataSync = async ({ userId, accessToken, maxQueueItems = 100 } =
     console.info('[SYNC][CLIENT][REQUEST]', {
       userId: normalizedUserId,
       pendingCount: pending.length,
+      retryablePendingCount: retryablePending.length,
       outboundCount: outbound.length,
       pendingByEntity,
     });
   }
 
   const lastSyncAt = await getLastSyncAt({ userId: normalizedUserId });
-
-  let response = null;
-  try {
-    response = await syncOnline({
-      accessToken,
-      payload: {
-        clientId: `hisab-mobile-${normalizedUserId}`,
-        lastSyncAt,
-        changes: outbound.map((entry) => entry.change),
-      },
-    });
-  } catch (error) {
-    const localDiagnostics = await getLocalSyncDiagnostics({ userId: normalizedUserId });
-    console.error('[SYNC][CLIENT][REQUEST_FAILED]', {
-      message: error?.message || 'Unknown sync request error.',
-      status: error?.status || null,
-      code: error?.code || null,
-      isNetworkError: Boolean(error?.isNetworkError),
-      localDiagnostics,
-    });
-    throw error;
-  }
-
-  const ackRows = Array.isArray(response?.ack) ? response.ack : [];
-  let syncedCount = 0;
-
-  for (let index = 0; index < outbound.length; index += 1) {
-    const pendingEntry = outbound[index].item;
-    const ack = ackRows[index] || null;
-
-    if (!ack) {
-      await markPendingSyncItemFailed({ id: pendingEntry.id, errorMessage: 'Missing ack row from server.' });
-      continue;
-    }
-
-    const status = String(ack.status || '').trim().toLowerCase();
-    if (status === 'applied' || status === 'duplicate_applied') {
-      await applyAckMapping({
-        userId: normalizedUserId,
-        item: pendingEntry,
-        ack,
-        serverTime: response?.serverTime || null,
+  const requestSync = async ({ outgoingChanges = [], syncCursor }) => {
+    try {
+      return await syncOnline({
+        accessToken,
+        payload: {
+          clientId: `hisab-mobile-${normalizedUserId}`,
+          lastSyncAt: syncCursor,
+          changes: outgoingChanges,
+        },
       });
-      await markPendingSyncItemDone(pendingEntry.id);
-      syncedCount += 1;
-      continue;
+    } catch (error) {
+      const status = Number(error?.status || 0);
+      if (status === 429) {
+        const retryAfterMs = Number.isFinite(Number(error?.retryAfterMs))
+          ? Math.max(DEFAULT_RATE_LIMIT_BACKOFF_MS, Number(error.retryAfterMs))
+          : DEFAULT_RATE_LIMIT_BACKOFF_MS;
+        syncRateLimitedUntilMs = Date.now() + retryAfterMs;
+        if (syncVerboseLogs) {
+          console.warn('[SYNC][CLIENT][RATE_LIMITED]', {
+            retryAfterMs,
+            retryAt: new Date(syncRateLimitedUntilMs).toISOString(),
+          });
+        }
+      } else if (status !== 413) {
+        const localDiagnostics = await getLocalSyncDiagnostics({ userId: normalizedUserId });
+        console.error('[SYNC][CLIENT][REQUEST_FAILED]', {
+          message: error?.message || 'Unknown sync request error.',
+          status: status || null,
+          code: error?.code || null,
+          isNetworkError: Boolean(error?.isNetworkError),
+          localDiagnostics,
+        });
+      } else if (syncVerboseLogs) {
+        console.warn('[SYNC][CLIENT][REQUEST_TOO_LARGE_RETRYING]', {
+          status: Number(error?.status || 0),
+          code: error?.code || null,
+        });
+      }
+      throw error;
+    }
+  };
+
+  const processAckRows = async ({ chunkEntries = [], responsePayload = null }) => {
+    const ackRows = Array.isArray(responsePayload?.ack) ? responsePayload.ack : [];
+    let applied = 0;
+
+    for (let index = 0; index < chunkEntries.length; index += 1) {
+      const pendingEntry = chunkEntries[index].item;
+      const ack = ackRows[index] || null;
+
+      if (!ack) {
+        await markPendingSyncItemFailed({ id: pendingEntry.id, errorMessage: 'Missing ack row from server.' });
+        continue;
+      }
+
+      const status = String(ack.status || '').trim().toLowerCase();
+      if (status === 'applied' || status === 'duplicate_applied') {
+        await applyAckMapping({
+          userId: normalizedUserId,
+          item: pendingEntry,
+          ack,
+          serverTime: responsePayload?.serverTime || null,
+        });
+        await markPendingSyncItemDone(pendingEntry.id);
+        applied += 1;
+        continue;
+      }
+
+      if (status === 'rejected_validation' || status === 'rejected_business_rule') {
+        await markPendingSyncItemDone(pendingEntry.id);
+        continue;
+      }
+
+      if (status === 'pending_approval') {
+        await markPendingSyncItemDone(pendingEntry.id);
+        continue;
+      }
+
+      await markPendingSyncItemFailed({ id: pendingEntry.id, errorMessage: ack.message || status || 'Sync conflict.' });
+      console.warn('[SYNC][CLIENT][ACK]', {
+        queueId: pendingEntry.id,
+        entity: normalizeOutboundEntity(pendingEntry.entity_type),
+        status,
+        message: ack.message || null,
+      });
     }
 
-    if (status === 'rejected_validation' || status === 'rejected_business_rule') {
-      // Drop permanently invalid operations so they do not block the queue forever.
-      await markPendingSyncItemDone(pendingEntry.id);
-      continue;
+    return {
+      applied,
+      ackCount: ackRows.length,
+    };
+  };
+
+  let syncedCount = 0;
+  let appliedServerChanges = 0;
+  let hasMoreServerChanges = false;
+  let syncCursor = lastSyncAt;
+  let totalAckCount = 0;
+
+  const applyServerChanges = async (responsePayload) => {
+    const serverChanges = Array.isArray(responsePayload?.serverChanges) ? responsePayload.serverChanges : [];
+    for (const change of serverChanges) {
+      await applyServerChange({ userId: normalizedUserId, change });
     }
+    appliedServerChanges += serverChanges.length;
+    hasMoreServerChanges = hasMoreServerChanges || Boolean(responsePayload?.hasMoreServerChanges);
+    syncCursor = responsePayload?.nextSyncAt || responsePayload?.serverTime || syncCursor || new Date().toISOString();
+  };
 
-    if (status === 'pending_approval') {
-      // The server has accepted the request into approval queue; stop retrying this mutation.
-      await markPendingSyncItemDone(pendingEntry.id);
-      continue;
+  if (outbound.length === 0) {
+    try {
+      const response = await requestSync({
+        outgoingChanges: [],
+        syncCursor,
+      });
+      await applyServerChanges(response);
+    } catch (error) {
+      if (Number(error?.status || 0) === 429) {
+        return {
+          synced: 0,
+          appliedServerChanges: 0,
+          skipped: true,
+          rateLimited: true,
+          retryAfterMs: Math.max(0, syncRateLimitedUntilMs - Date.now()),
+        };
+      }
+      throw error;
     }
+  } else {
+    let cursor = 0;
 
-    await markPendingSyncItemFailed({ id: pendingEntry.id, errorMessage: ack.message || status || 'Sync conflict.' });
+    while (cursor < outbound.length) {
+      const chunkBuild = buildSizedChunk({
+        outboundEntries: outbound,
+        startIndex: cursor,
+      });
+      const chunkEntries = chunkBuild.chunkEntries;
+      if (chunkEntries.length === 0) {
+        break;
+      }
 
-    console.warn('[SYNC][CLIENT][ACK]', {
-      queueId: pendingEntry.id,
-      entity: normalizeOutboundEntity(pendingEntry.entity_type),
-      status,
-      message: ack.message || null,
-    });
+      try {
+        const response = await requestSync({
+          outgoingChanges: chunkEntries.map((entry) => entry.change),
+          syncCursor,
+        });
+
+        const ackResult = await processAckRows({
+          chunkEntries,
+          responsePayload: response,
+        });
+        syncedCount += ackResult.applied;
+        totalAckCount += ackResult.ackCount;
+
+        await applyServerChanges(response);
+        cursor = chunkBuild.nextCursor;
+        continue;
+      } catch (error) {
+        if (Number(error?.status || 0) === 429) {
+          break;
+        }
+
+        if (Number(error?.status || 0) === 413) {
+          const tooLargeEntry = chunkEntries[0]?.item;
+          if (tooLargeEntry?.id) {
+            await markPendingSyncItemFailed({
+              id: tooLargeEntry.id,
+              errorMessage: `${PAYLOAD_TOO_LARGE_ERROR_MARKER} ${error?.message || 'request entity too large'}`,
+            });
+            console.warn('[SYNC][CLIENT][SKIPPED_TOO_LARGE_ITEM]', {
+              queueId: tooLargeEntry.id,
+              entity: normalizeOutboundEntity(tooLargeEntry.entity_type),
+            });
+          }
+
+          cursor += 1;
+          continue;
+        }
+
+        throw error;
+      }
+    }
   }
 
-  const serverChanges = Array.isArray(response?.serverChanges) ? response.serverChanges : [];
-  for (const change of serverChanges) {
-    await applyServerChange({ userId: normalizedUserId, change });
-  }
-
-  const nextSyncAt = response?.nextSyncAt || response?.serverTime || new Date().toISOString();
+  const nextSyncAt = syncCursor || new Date().toISOString();
   await setLastSyncAt({ userId: normalizedUserId, lastSyncAt: nextSyncAt });
 
-  if (syncVerboseLogs || syncedCount > 0 || serverChanges.length > 0 || Boolean(response?.hasMoreServerChanges)) {
+  if (syncVerboseLogs || syncedCount > 0 || appliedServerChanges > 0 || hasMoreServerChanges) {
     console.info('[SYNC][CLIENT][RESPONSE]', {
       userId: normalizedUserId,
       synced: syncedCount,
-      ackCount: ackRows.length,
-      serverChanges: serverChanges.length,
-      hasMoreServerChanges: Boolean(response?.hasMoreServerChanges),
+      ackCount: totalAckCount,
+      serverChanges: appliedServerChanges,
+      hasMoreServerChanges,
       nextSyncAt,
     });
   }
 
   return {
     synced: syncedCount,
-    appliedServerChanges: serverChanges.length,
-    hasMoreServerChanges: Boolean(response?.hasMoreServerChanges),
+    appliedServerChanges,
+    hasMoreServerChanges,
     nextSyncAt,
+    rateLimited: Date.now() < syncRateLimitedUntilMs,
+    retryAfterMs: Math.max(0, syncRateLimitedUntilMs - Date.now()),
   };
 };

@@ -21,6 +21,12 @@ const userSchema = new mongoose.Schema(
       default: null,
       maxlength: 40,
     },
+    profileImageUrl: {
+      type: String,
+      trim: true,
+      default: null,
+      maxlength: 2048,
+    },
     role: {
       type: String,
       enum: [

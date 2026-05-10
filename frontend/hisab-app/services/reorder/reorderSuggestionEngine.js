@@ -11,6 +11,18 @@ const DEFAULT_RULE_CONFIG = {
   minOrderQuantity: 1,
 };
 
+const EID_UL_FITR_BY_YEAR = Object.freeze({
+  2024: '2024-04-10',
+  2025: '2025-03-31',
+  2026: '2026-03-20',
+  2027: '2027-03-10',
+  2028: '2028-02-27',
+  2029: '2029-02-15',
+  2030: '2030-02-05',
+  2031: '2031-01-26',
+  2032: '2032-01-14',
+});
+
 export const PREDICTOR_TYPES = {
   RULE_BASED: 'rule-based',
   MARKOV_CHAIN: 'markov-chain',
@@ -23,6 +35,123 @@ const normalizePositiveInt = (value, fallback) => {
   }
 
   return Math.max(1, Math.trunc(numeric));
+};
+
+const addDaysUtc = (date, days) => {
+  const next = new Date(date.getTime());
+  next.setUTCDate(next.getUTCDate() + Number(days || 0));
+  return next;
+};
+
+const toUtcStartDate = (value) => {
+  const parsed = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+  return new Date(Date.UTC(
+    parsed.getUTCFullYear(),
+    parsed.getUTCMonth(),
+    parsed.getUTCDate(),
+    0,
+    0,
+    0,
+    0
+  ));
+};
+
+const resolveHolidayDemandContext = (asOf = new Date()) => {
+  const date = toUtcStartDate(asOf) || toUtcStartDate(new Date());
+  const fallback = {
+    seasonKey: 'NORMAL',
+    label: 'Normal demand',
+    demandMultiplier: 1,
+    regime: 'NORMAL',
+    isHolidayWindow: false,
+    asOfIso: (date || new Date()).toISOString(),
+    eidFitrDate: null,
+    ramadanStartDate: null,
+  };
+  if (!date) {
+    return fallback;
+  }
+
+  const year = date.getUTCFullYear();
+  const eidRaw = EID_UL_FITR_BY_YEAR[year] || null;
+  const dayOfWeek = date.getUTCDay();
+  const isWeekend = dayOfWeek === 5 || dayOfWeek === 6; // Friday/Saturday
+
+  if (!eidRaw) {
+    if (isWeekend) {
+      return {
+        ...fallback,
+        seasonKey: 'HOLIDAY_WEEKEND',
+        label: 'Weekend holiday demand',
+        demandMultiplier: 1.08,
+        regime: 'HOLIDAY',
+        isHolidayWindow: true,
+      };
+    }
+    return fallback;
+  }
+
+  const eidDate = toUtcStartDate(`${eidRaw}T00:00:00.000Z`);
+  if (!eidDate) {
+    return fallback;
+  }
+
+  const ramadanStart = addDaysUtc(eidDate, -30);
+  const preRamadanStart = addDaysUtc(ramadanStart, -14);
+  const eidHolidayEnd = addDaysUtc(eidDate, 5);
+  const postEidEnd = addDaysUtc(eidDate, 35);
+
+  let seasonKey = 'NORMAL';
+  let label = 'Normal demand';
+  let demandMultiplier = 1;
+  let regime = 'NORMAL';
+  let isHolidayWindow = false;
+
+  if (date >= preRamadanStart && date < ramadanStart) {
+    seasonKey = 'PRE_RAMADAN';
+    label = 'Pre-Ramadan stocking period';
+    demandMultiplier = 1.22;
+    regime = 'FESTIVAL';
+    isHolidayWindow = true;
+  } else if (date >= ramadanStart && date < eidDate) {
+    seasonKey = 'RAMADAN';
+    label = 'Ramadan demand uplift';
+    demandMultiplier = 1.35;
+    regime = 'FESTIVAL';
+    isHolidayWindow = true;
+  } else if (date >= eidDate && date < eidHolidayEnd) {
+    seasonKey = 'EID_UL_FITR_HOLIDAY';
+    label = 'Eid-ul-Fitr holiday spike';
+    demandMultiplier = 1.55;
+    regime = 'FESTIVAL';
+    isHolidayWindow = true;
+  } else if (date >= eidHolidayEnd && date < postEidEnd) {
+    seasonKey = 'POST_EID_COOLDOWN';
+    label = 'Post-Eid demand normalization';
+    demandMultiplier = 0.88;
+    regime = 'NORMAL';
+    isHolidayWindow = true;
+  } else if (isWeekend) {
+    seasonKey = 'HOLIDAY_WEEKEND';
+    label = 'Weekend holiday demand';
+    demandMultiplier = 1.08;
+    regime = 'HOLIDAY';
+    isHolidayWindow = true;
+  }
+
+  return {
+    seasonKey,
+    label,
+    demandMultiplier,
+    regime,
+    isHolidayWindow,
+    asOfIso: date.toISOString(),
+    eidFitrDate: eidDate.toISOString(),
+    ramadanStartDate: ramadanStart.toISOString(),
+  };
 };
 
 const normalizeNonNegativeInt = (value, fallback) => {
@@ -78,6 +207,35 @@ const buildSalesStatsByProduct = (salesRows, windowDays) => {
   return statsMap;
 };
 
+const buildSalesHistoryByProduct = (salesRows = []) => {
+  const byProduct = new Map();
+
+  for (const row of salesRows || []) {
+    const productId = Number(row?.product_id);
+    const unitsSold = Math.max(0, Number(row?.units_sold || 0));
+    const saleDate = String(row?.sale_date || '').trim();
+    if (!Number.isInteger(productId) || productId <= 0 || !saleDate || !Number.isFinite(unitsSold)) {
+      continue;
+    }
+
+    const list = byProduct.get(productId) || [];
+    list.push({
+      sale_date: saleDate,
+      units_sold: unitsSold,
+    });
+    byProduct.set(productId, list);
+  }
+
+  for (const [productId, rows] of byProduct.entries()) {
+    byProduct.set(
+      productId,
+      rows.sort((left, right) => String(left.sale_date).localeCompare(String(right.sale_date)))
+    );
+  }
+
+  return byProduct;
+};
+
 const roundToTwo = (value) => {
   if (!Number.isFinite(value)) {
     return value;
@@ -100,6 +258,31 @@ const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 const normalizeSuggestionHorizon = (value) => {
   const token = String(value || '').trim().toUpperCase();
   return token === '1M' ? '1M' : '1W';
+};
+
+const normalizeEnsembleRationale = (rationale, diagnostics = {}) => {
+  const text = String(rationale || '').trim();
+  if (!text) {
+    return '';
+  }
+
+  if (text.includes('ensemble_feature_disabled')) {
+    return 'Advanced ensemble mode is temporarily paused, so the threshold baseline model is being used.';
+  }
+  if (text.includes('baseline_only_mode_enabled')) {
+    return 'System is currently running in baseline-only mode for stable stock suggestions.';
+  }
+  if (text.includes('subject_not_in_rollout_segment')) {
+    return 'This item is currently in the baseline segment while ensemble rollout is in progress.';
+  }
+  if (text.includes('baseline_fallback_disabled')) {
+    return 'Advanced ensemble mode is unavailable and fallback is disabled; no reorder was recommended.';
+  }
+  if (Boolean(diagnostics?.fallback_applied) && text.startsWith('Ensemble disabled')) {
+    return 'Advanced ensemble mode is currently unavailable, and a safe baseline decision was used.';
+  }
+
+  return text;
 };
 
 const buildReasonText = ({ reorderByDays, reorderByStock, dailySalesRate, daysRemaining }) => {
@@ -129,6 +312,7 @@ const buildReasonText = ({ reorderByDays, reorderByStock, dailySalesRate, daysRe
 export const buildRuleBasedReorderSuggestions = ({ products, salesRows, config }) => {
   const normalizedConfig = normalizeRuleConfig(config);
   const statsByProduct = buildSalesStatsByProduct(salesRows, normalizedConfig.windowDays);
+  const holidayContext = resolveHolidayDemandContext(config?.asOfDate || new Date());
 
   return (products || [])
     .map((product) => {
@@ -141,17 +325,18 @@ export const buildRuleBasedReorderSuggestions = ({ products, salesRows, config }
         dailySalesRate: 0,
       };
 
-      const dailySalesRate = Math.max(0, Number(stats.dailySalesRate || 0));
-      const safetyStockUnits = Math.max(threshold, Math.ceil(dailySalesRate * normalizedConfig.safetyDays));
-      const reorderPoint = Math.max(threshold, Math.ceil(dailySalesRate * normalizedConfig.leadTimeDays) + safetyStockUnits);
+      const baselineDailySalesRate = Math.max(0, Number(stats.dailySalesRate || 0));
+      const adjustedDailySalesRate = Math.max(0, baselineDailySalesRate * Number(holidayContext.demandMultiplier || 1));
+      const safetyStockUnits = Math.max(threshold, Math.ceil(adjustedDailySalesRate * normalizedConfig.safetyDays));
+      const reorderPoint = Math.max(threshold, Math.ceil(adjustedDailySalesRate * normalizedConfig.leadTimeDays) + safetyStockUnits);
       const targetLevel = Math.max(
         reorderPoint,
-        Math.ceil(dailySalesRate * (normalizedConfig.leadTimeDays + normalizedConfig.reviewPeriodDays)) + safetyStockUnits
+        Math.ceil(adjustedDailySalesRate * (normalizedConfig.leadTimeDays + normalizedConfig.reviewPeriodDays)) + safetyStockUnits
       );
 
-      const daysRemaining = dailySalesRate > 0 ? quantity / dailySalesRate : Number.POSITIVE_INFINITY;
+      const daysRemaining = adjustedDailySalesRate > 0 ? quantity / adjustedDailySalesRate : Number.POSITIVE_INFINITY;
       const reorderByStock = quantity <= reorderPoint;
-      const reorderByDays = dailySalesRate > 0 && daysRemaining <= normalizedConfig.leadTimeDays;
+      const reorderByDays = adjustedDailySalesRate > 0 && daysRemaining <= normalizedConfig.leadTimeDays;
       const shouldReorder = reorderByStock || reorderByDays;
 
       let suggestedOrderQuantity = 0;
@@ -162,7 +347,7 @@ export const buildRuleBasedReorderSuggestions = ({ products, salesRows, config }
         );
       }
 
-      if (!shouldReorder && dailySalesRate <= 0 && quantity <= threshold) {
+      if (!shouldReorder && adjustedDailySalesRate <= 0 && quantity <= threshold) {
         suggestedOrderQuantity = Math.max(normalizedConfig.minOrderQuantity, threshold * 2 - quantity);
       }
 
@@ -174,6 +359,16 @@ export const buildRuleBasedReorderSuggestions = ({ products, salesRows, config }
             : 1
         : 0;
 
+      const reasonBase = buildReasonText({
+        reorderByDays,
+        reorderByStock,
+        dailySalesRate: adjustedDailySalesRate,
+        daysRemaining,
+      });
+      const holidayReason = holidayContext.isHolidayWindow
+        ? `${reasonBase} Holiday window applied (${holidayContext.label}, x${roundToTwo(holidayContext.demandMultiplier)}).`
+        : reasonBase;
+
       return {
         productId,
         productName: String(product.name || ''),
@@ -181,14 +376,16 @@ export const buildRuleBasedReorderSuggestions = ({ products, salesRows, config }
         threshold,
         totalUnitsSold: Math.trunc(stats.totalUnitsSold || 0),
         salesDays: Math.trunc(stats.salesDays || 0),
-        dailySalesRate: roundToTwo(dailySalesRate),
+        dailySalesRate: roundToTwo(adjustedDailySalesRate),
+        baselineDailySalesRate: roundToTwo(baselineDailySalesRate),
         daysRemaining: Number.isFinite(daysRemaining) ? roundToTwo(daysRemaining) : null,
         reorderPoint,
         targetLevel,
         shouldReorder,
         suggestedOrderQuantity: Math.max(0, Math.trunc(suggestedOrderQuantity)),
         urgencyScore,
-        reason: buildReasonText({ reorderByDays, reorderByStock, dailySalesRate, daysRemaining }),
+        reason: holidayReason,
+        holidayContext,
       };
     })
     .sort((a, b) => {
@@ -264,7 +461,7 @@ const estimateMarkovCurrentState = ({ thresholdSuggestion, config }) => {
   return 'SIDEWAYS_STABLE';
 };
 
-const buildMarkovFeaturePayload = ({ product, thresholdSuggestion, config }) => {
+const buildMarkovFeaturePayload = ({ product, thresholdSuggestion, config, holidayContext = null }) => {
   const quantity = Math.max(0, Math.trunc(Number(product?.quantity || 0)));
   const threshold = Math.max(0, Math.trunc(Number(product?.low_stock_threshold || thresholdSuggestion?.threshold || 0)));
   const leadTimeDays = Math.max(1, Math.trunc(Number(config?.leadTimeDays || 3)));
@@ -280,6 +477,15 @@ const buildMarkovFeaturePayload = ({ product, thresholdSuggestion, config }) => 
       pending_demand: Math.max(0, Number(thresholdSuggestion?.targetLevel || 0) - quantity),
       supply_capacity: Math.max(1, Number(product?.supply_capacity || 1)),
     },
+    holiday_context: holidayContext && typeof holidayContext === 'object'
+      ? {
+        season_key: holidayContext.seasonKey || 'NORMAL',
+        label: holidayContext.label || 'Normal demand',
+        demand_multiplier: Number(holidayContext.demandMultiplier || 1),
+        is_holiday_window: Boolean(holidayContext.isHolidayWindow),
+      }
+      : null,
+    seasonal_demand_multiplier: Number(holidayContext?.demandMultiplier || 1),
   };
 };
 
@@ -444,6 +650,7 @@ const buildIntegratedSuggestionRow = ({
       markov_state: markovState,
       uncertainty: roundToSix(uncertainty),
       confidence: roundToSix(markovConfidence),
+      holiday_context: thresholdSuggestion?.holidayContext || null,
       ensemble: {
         used: false,
         fallback_to_local_blend: true,
@@ -471,6 +678,7 @@ const buildIntegratedSuggestionRow = ({
     suggestedOrderQuantity: Math.max(0, Math.trunc(buyQuantity)),
     urgencyScore,
     reason: rationale,
+    holidayContext: thresholdSuggestion?.holidayContext || null,
   };
 };
 
@@ -479,6 +687,7 @@ const buildThresholdFallbackRow = ({
   thresholdSuggestion,
   horizon,
   errorMessage,
+  isRateLimited = false,
 }) => {
   const fallbackConfidence = clamp(estimateThresholdConfidence(thresholdSuggestion) * 0.75, 0.05, 0.95);
   const modelVotes = normalizeModelVotes({
@@ -496,9 +705,11 @@ const buildThresholdFallbackRow = ({
     ? Math.max(0, Math.trunc(Number(thresholdSuggestion?.suggestedOrderQuantity || 0)))
     : 0;
 
-  const markovFailureNote = errorMessage
-    ? ` Markov forecast unavailable (${errorMessage}).`
-    : ' Markov forecast unavailable.';
+  const markovFailureNote = isRateLimited
+    ? ' Forecast service is busy; using local baseline.'
+    : errorMessage
+      ? ` Markov forecast unavailable (${errorMessage}).`
+      : ' Markov forecast unavailable.';
 
   const rationale = `${thresholdSuggestion.reason}${markovFailureNote} Using threshold-only fallback.`.trim();
   const urgencyScore = toUrgencyScore(fallbackDecision, fallbackConfidence);
@@ -517,6 +728,7 @@ const buildThresholdFallbackRow = ({
       markov_state: 'UNAVAILABLE',
       uncertainty: 1,
       confidence: 0,
+      holiday_context: thresholdSuggestion?.holidayContext || null,
       ensemble: {
         used: false,
         fallback_to_threshold_only: true,
@@ -543,7 +755,15 @@ const buildThresholdFallbackRow = ({
     suggestedOrderQuantity: fallbackQuantity,
     urgencyScore,
     reason: rationale,
+    holidayContext: thresholdSuggestion?.holidayContext || null,
   };
+};
+
+const isRateLimitedError = (error) => {
+  const status = Number(error?.status || 0);
+  const code = String(error?.code || '').trim().toUpperCase();
+  const message = String(error?.message || '').trim().toLowerCase();
+  return status === 429 || code === 'RATE_LIMITED' || message.includes('too many requests');
 };
 
 const buildEnsembleDecisionPayload = ({
@@ -623,7 +843,10 @@ const buildEnsembleSuggestionRow = ({
   };
 
   const urgencyScore = toUrgencyScore(decision, confidence);
-  const rationale = String(ensembleDecision?.rationale || thresholdSuggestion?.reason || '').trim();
+  const rationale = normalizeEnsembleRationale(
+    ensembleDecision?.rationale || thresholdSuggestion?.reason || '',
+    ensembleDecision?.diagnostics
+  );
 
   return {
     symbol: resolveProductSymbol(product),
@@ -639,6 +862,7 @@ const buildEnsembleSuggestionRow = ({
       markov_state: String(markovSignal?.diagnostics?.markov_state || 'STABLE').trim().toUpperCase() || 'STABLE',
       uncertainty: roundToSix(Number(markovSignal?.uncertainty || 1)),
       confidence: roundToSix(Number(markovSignal?.confidence || 0)),
+      holiday_context: thresholdSuggestion?.holidayContext || null,
       ensemble: {
         used: true,
         score: roundToSix(Number(ensembleDecision?.diagnostics?.score || 0)),
@@ -670,6 +894,7 @@ const buildEnsembleSuggestionRow = ({
     suggestedOrderQuantity: Math.max(0, Math.trunc(buyQuantity)),
     urgencyScore,
     reason: rationale,
+    holidayContext: thresholdSuggestion?.holidayContext || null,
   };
 };
 
@@ -683,6 +908,8 @@ const buildMarkovIntegratedReorderSuggestions = async ({
 }) => {
   const normalizedConfig = normalizeRuleConfig(config);
   const normalizedHorizon = normalizeSuggestionHorizon(horizon);
+  const holidayContext = resolveHolidayDemandContext(config?.asOfDate || new Date());
+  const salesHistoryByProduct = buildSalesHistoryByProduct(salesRows);
 
   const thresholdSuggestions = buildRuleBasedReorderSuggestions({
     products,
@@ -711,71 +938,92 @@ const buildMarkovIntegratedReorderSuggestions = async ({
     });
   }
 
-  const suggestions = await Promise.all(
-    thresholdSuggestions.map(async (thresholdSuggestion) => {
-      const product = productById.get(Number(thresholdSuggestion.productId)) || {
-        id: thresholdSuggestion.productId,
-        name: thresholdSuggestion.productName,
-      };
+  const suggestions = [];
+  let rateLimited = false;
 
-      try {
-        const markovSignal = await fetchMarkovForecastForReorder({
-          accessToken,
+  for (const thresholdSuggestion of thresholdSuggestions) {
+    const product = productById.get(Number(thresholdSuggestion.productId)) || {
+      id: thresholdSuggestion.productId,
+      name: thresholdSuggestion.productName,
+    };
+
+    if (rateLimited) {
+      suggestions.push(buildThresholdFallbackRow({
+        product,
+        thresholdSuggestion,
+        horizon: normalizedHorizon,
+        errorMessage: null,
+        isRateLimited: true,
+      }));
+      continue;
+    }
+
+    try {
+      const markovSignal = await fetchMarkovForecastForReorder({
+        accessToken,
+        product,
+        thresholdSuggestion,
+        config: normalizedConfig,
+        salesHistoryRows: salesHistoryByProduct.get(Number(thresholdSuggestion.productId)) || [],
+        horizon: normalizedHorizon,
+        regime: holidayContext.regime,
+        holidayContext,
+        currentState: estimateMarkovCurrentState({
+          thresholdSuggestion,
+          config: normalizedConfig,
+        }),
+        features: buildMarkovFeaturePayload({
           product,
           thresholdSuggestion,
           config: normalizedConfig,
-          horizon: normalizedHorizon,
-          currentState: estimateMarkovCurrentState({
-            thresholdSuggestion,
-            config: normalizedConfig,
-          }),
-          features: buildMarkovFeaturePayload({
+          holidayContext,
+        }),
+      });
+
+      try {
+        const ensembleDecision = await fetchMarkovEnsembleDecision({
+          accessToken,
+          payload: buildEnsembleDecisionPayload({
             product,
             thresholdSuggestion,
+            markovSignal,
             config: normalizedConfig,
+            horizon: normalizedHorizon,
           }),
         });
 
-        try {
-          const ensembleDecision = await fetchMarkovEnsembleDecision({
-            accessToken,
-            payload: buildEnsembleDecisionPayload({
-              product,
-              thresholdSuggestion,
-              markovSignal,
-              config: normalizedConfig,
-              horizon: normalizedHorizon,
-            }),
-          });
-
-          return buildEnsembleSuggestionRow({
-            product,
-            thresholdSuggestion,
-            markovSignal,
-            ensembleDecision,
-            horizon: normalizedHorizon,
-          });
-        } catch (ensembleError) {
-          return buildIntegratedSuggestionRow({
-            product,
-            thresholdSuggestion,
-            markovSignal,
-            horizon: normalizedHorizon,
-            config: normalizedConfig,
-            ensembleErrorMessage: ensembleError?.message || 'ensemble decision failed',
-          });
-        }
-
-      } catch (error) {
-        return buildThresholdFallbackRow({
+        suggestions.push(buildEnsembleSuggestionRow({
           product,
           thresholdSuggestion,
+          markovSignal,
+          ensembleDecision,
           horizon: normalizedHorizon,
-          errorMessage: error?.message || 'markov forecast failed',
-        });
+        }));
+      } catch (ensembleError) {
+        suggestions.push(buildIntegratedSuggestionRow({
+          product,
+          thresholdSuggestion,
+          markovSignal,
+          horizon: normalizedHorizon,
+          config: normalizedConfig,
+          ensembleErrorMessage: ensembleError?.message || 'ensemble decision failed',
+        }));
       }
-    })
-  );
+    } catch (error) {
+      const hitRateLimit = isRateLimitedError(error);
+      if (hitRateLimit) {
+        rateLimited = true;
+      }
+
+      suggestions.push(buildThresholdFallbackRow({
+        product,
+        thresholdSuggestion,
+        horizon: normalizedHorizon,
+        errorMessage: hitRateLimit ? null : (error?.message || 'markov forecast failed'),
+        isRateLimited: hitRateLimit,
+      }));
+    }
+  }
 
   return suggestions.sort((a, b) => {
     if (b.urgencyScore !== a.urgencyScore) {

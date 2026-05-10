@@ -1,46 +1,41 @@
-import { Platform } from 'react-native';
-
-const FONT_FAMILY = Platform.select({
-  ios: 'System',
-  android: 'sans-serif',
-  default: 'system-ui',
-});
+// All text in this app uses Anek Bangla — loaded via @expo-google-fonts/anek-bangla in App.js.
+// fontWeight is intentionally omitted; weight is baked into the font file name.
 
 export const TYPOGRAPHY = {
   h1: {
-    fontFamily: FONT_FAMILY,
+    fontFamily: 'AnekBangla_800ExtraBold',
     fontSize: 30,
-    lineHeight: 38,
-    fontWeight: '800',
+    lineHeight: 40,
+    includeFontPadding: false,
   },
   h2: {
-    fontFamily: FONT_FAMILY,
+    fontFamily: 'AnekBangla_700Bold',
     fontSize: 22,
     lineHeight: 30,
-    fontWeight: '700',
+    includeFontPadding: false,
   },
   subheading: {
-    fontFamily: FONT_FAMILY,
+    fontFamily: 'AnekBangla_600SemiBold',
     fontSize: 16,
-    lineHeight: 22,
-    fontWeight: '600',
+    lineHeight: 24,
+    includeFontPadding: false,
   },
   body: {
-    fontFamily: FONT_FAMILY,
+    fontFamily: 'AnekBangla_500Medium',
     fontSize: 14,
-    lineHeight: 20,
-    fontWeight: '500',
+    lineHeight: 22,
+    includeFontPadding: false,
   },
   small: {
-    fontFamily: FONT_FAMILY,
+    fontFamily: 'AnekBangla_400Regular',
     fontSize: 12,
-    lineHeight: 16,
-    fontWeight: '500',
+    lineHeight: 18,
+    includeFontPadding: false,
   },
   button: {
-    fontFamily: FONT_FAMILY,
+    fontFamily: 'AnekBangla_700Bold',
     fontSize: 15,
-    lineHeight: 20,
-    fontWeight: '700',
+    lineHeight: 22,
+    includeFontPadding: false,
   },
 };

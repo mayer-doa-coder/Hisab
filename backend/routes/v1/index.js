@@ -17,6 +17,8 @@ const branchesRoutes = require('./branchesRoutes');
 const teamUsersRoutes = require('./teamUsersRoutes');
 const reliabilityRoutes = require('./reliabilityRoutes');
 const pilotRoutes = require('./pilotRoutes');
+const globalIdentityRoutes = require('./globalIdentityRoutes');
+const customerMarkovRoutes = require('./customerMarkovRoutes');
 
 const router = express.Router();
 
@@ -37,5 +39,7 @@ router.use('/branches', branchesRoutes);
 router.use('/team/users', teamUsersRoutes);
 router.use('/reliability', reliabilityRoutes);
 router.use('/pilot', pilotRoutes);
+router.use('/identity', globalIdentityRoutes);
+router.use('/customer-markov', customerMarkovRoutes);
 
 module.exports = router;

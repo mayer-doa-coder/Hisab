@@ -44,6 +44,107 @@ const stdDev = (values = [], baseMean = null) => {
   return Math.sqrt(squared / values.length);
 };
 
+const toUtcStartOfDay = (value) => {
+  const date = value instanceof Date ? value : new Date(value);
+  if (!Number.isFinite(date.getTime())) {
+    return null;
+  }
+
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+};
+
+const addUtcDays = (date, days) => {
+  const base = toUtcStartOfDay(date);
+  if (!base) {
+    return null;
+  }
+
+  const shifted = new Date(base);
+  shifted.setUTCDate(shifted.getUTCDate() + Math.trunc(toNumber(days, 0)));
+  return shifted;
+};
+
+const daysBetweenUtc = (left, right) => {
+  const start = toUtcStartOfDay(left);
+  const end = toUtcStartOfDay(right);
+  if (!start || !end) {
+    return Number.POSITIVE_INFINITY;
+  }
+  return Math.round((end.getTime() - start.getTime()) / 86400000);
+};
+
+const resolveHolidayBaseMultiplier = (name = '') => {
+  const token = String(name || '').trim().toLowerCase();
+  if (!token) {
+    return 1.08;
+  }
+  if (token.includes('ramadan') || token.includes('রমজান')) {
+    return 1.18;
+  }
+  if (token.includes('eid') || token.includes('ঈদ')) {
+    return 1.26;
+  }
+  if (token.includes('holiday') || token.includes('ছুটি')) {
+    return 1.12;
+  }
+  return 1.1;
+};
+
+const resolveHolidayContextForHorizon = ({
+  horizonToken = '7D',
+  asOf = null,
+  manualHolidays = [],
+  holidayImpactScale = 1,
+} = {}) => {
+  const horizonDays = Math.max(1, Math.trunc(toNumber(HORIZON_DAYS[horizonToken], 7)));
+  const anchor = toUtcStartOfDay(asOf) || toUtcStartOfDay(new Date());
+  const endDate = addUtcDays(anchor, horizonDays);
+  const impactScale = clamp(toNumber(holidayImpactScale, 1), 0, 2);
+
+  const matched = [];
+  let strongestBaseMultiplier = 1;
+
+  for (const item of Array.isArray(manualHolidays) ? manualHolidays : []) {
+    const date = toUtcStartOfDay(item?.date);
+    if (!date || !endDate) {
+      continue;
+    }
+
+    const daysAway = daysBetweenUtc(anchor, date);
+    if (daysAway < 0 || daysAway > horizonDays) {
+      continue;
+    }
+
+    const name = String(item?.name || 'Holiday').trim() || 'Holiday';
+    const baseMultiplier = clamp(
+      toNumber(item?.multiplier, resolveHolidayBaseMultiplier(name)),
+      0.85,
+      1.6
+    );
+    strongestBaseMultiplier = Math.max(strongestBaseMultiplier, baseMultiplier);
+    matched.push({
+      name,
+      date: date.toISOString(),
+      days_away: daysAway,
+      base_multiplier: roundSix(baseMultiplier),
+    });
+  }
+
+  const adjustedMultiplier = clamp(
+    1 + ((strongestBaseMultiplier - 1) * impactScale),
+    0.85,
+    1.6
+  );
+
+  return {
+    multiplier: roundSix(adjustedMultiplier),
+    applied: matched.length > 0 && adjustedMultiplier !== 1,
+    matched_holidays: matched.sort((left, right) => left.days_away - right.days_away),
+    as_of: anchor ? anchor.toISOString() : null,
+    window_end: endDate ? endDate.toISOString() : null,
+  };
+};
+
 const DEFAULT_ENGINE_CONFIG = Object.freeze({
   leadTimeDays: 7,
   reviewDays: 7,
@@ -268,7 +369,12 @@ const resolveUrgency = ({ decision = 'HOLD', confidence = 0 }) => {
   return 'low';
 };
 
-const computeSuggestionForFeatureRow = ({ row = {}, horizonToken = '1W', config = DEFAULT_ENGINE_CONFIG } = {}) => {
+const computeSuggestionForFeatureRow = ({
+  row = {},
+  horizonToken = '7D',
+  config = DEFAULT_ENGINE_CONFIG,
+  holidayContext = null,
+} = {}) => {
   const features = row.features || {};
   const weights = resolveModelWeights(features);
 
@@ -282,15 +388,30 @@ const computeSuggestionForFeatureRow = ({ row = {}, horizonToken = '1W', config 
     markovScore: markovSignal.propensity,
   });
 
-  const expectedDemand =
+  let expectedDemand =
     (weights.threshold * thresholdSignal.expected_demand)
     + (weights.ema * emaSignal.expected_demand)
     + (weights.markov * markovSignal.expected_demand);
 
-  const ensemblePropensity =
+  let ensemblePropensity =
     (weights.threshold * thresholdSignal.propensity)
     + (weights.ema * emaSignal.propensity)
     + (weights.markov * markovSignal.propensity);
+
+  const holidayMultiplier = clamp(
+    toNumber(holidayContext?.multiplier, 1),
+    0.85,
+    1.6
+  );
+  const holidayApplied = Boolean(holidayContext?.applied) && holidayMultiplier !== 1;
+  if (holidayApplied) {
+    expectedDemand *= holidayMultiplier;
+    ensemblePropensity = clamp(
+      ensemblePropensity + ((holidayMultiplier - 1) * 0.25),
+      0,
+      1
+    );
+  }
 
   const confidenceBand = computeConfidenceBand({
     expectedDemand,
@@ -302,10 +423,26 @@ const computeSuggestionForFeatureRow = ({ row = {}, horizonToken = '1W', config 
     trendVolatility: features.volatility_daily_std,
   });
 
+  const adjustedConfidenceBand = holidayApplied
+    ? {
+      ...confidenceBand,
+      expected: roundSix(toNumber(confidenceBand.expected, 0) * holidayMultiplier),
+      lower: roundSix(toNumber(confidenceBand.lower, 0) * holidayMultiplier),
+      upper: roundSix(toNumber(confidenceBand.upper, 0) * holidayMultiplier),
+      confidence: roundSix(
+        clamp(
+          toNumber(confidenceBand.confidence, 0) + ((holidayMultiplier - 1) * 0.08),
+          0.05,
+          0.99
+        )
+      ),
+    }
+    : confidenceBand;
+
   const decisionPayload = deriveDecision({
     inventory: features.current_inventory,
     reorderLevel: features.reorder_level,
-    confidenceBand,
+    confidenceBand: adjustedConfidenceBand,
     thresholdSignal,
     ensemblePropensity,
   });
@@ -316,10 +453,17 @@ const computeSuggestionForFeatureRow = ({ row = {}, horizonToken = '1W', config 
     + (weights.markov * markovSignal.confidence);
 
   const finalConfidence = clamp(
-    (0.65 * confidenceBand.confidence) + (0.35 * weightedConfidence),
+    (0.65 * adjustedConfidenceBand.confidence) + (0.35 * weightedConfidence),
     0.05,
     0.99
   );
+
+  const adjustedBuyQuantity = decisionPayload.decision === 'BUY_NOW'
+    ? Math.max(
+      0,
+      Math.ceil(toNumber(decisionPayload.buy_quantity, 0) * (holidayApplied ? holidayMultiplier : 1))
+    )
+    : 0;
 
   const modelBreakdown = {
     ema: roundSix(weights.ema),
@@ -330,11 +474,15 @@ const computeSuggestionForFeatureRow = ({ row = {}, horizonToken = '1W', config 
   const explanation = buildSuggestionExplanation({
     horizon: horizonToken,
     decision: decisionPayload.decision,
-    buyQuantity: decisionPayload.buy_quantity,
-    confidenceBand,
+    buyQuantity: adjustedBuyQuantity,
+    confidenceBand: adjustedConfidenceBand,
     features,
     modelBreakdown,
   });
+
+  const holidaySummary = holidayApplied
+    ? ` Holiday-adjusted demand (+${Math.round((holidayMultiplier - 1) * 100)}%) applied from manual holiday dates.`
+    : '';
 
   return {
     symbol: row.symbol,
@@ -343,20 +491,20 @@ const computeSuggestionForFeatureRow = ({ row = {}, horizonToken = '1W', config 
     category: 'General',
     horizon: horizonToken,
     decision: decisionPayload.decision,
-    buy_quantity: decisionPayload.buy_quantity,
+    buy_quantity: adjustedBuyQuantity,
     confidence: roundSix(finalConfidence),
     model_breakdown: modelBreakdown,
     model_votes: modelBreakdown,
     weights: modelBreakdown,
     confidence_band: {
-      expected: confidenceBand.expected,
-      lower: confidenceBand.lower,
-      upper: confidenceBand.upper,
-      confidence: confidenceBand.confidence,
-      width: confidenceBand.band_width,
+      expected: adjustedConfidenceBand.expected,
+      lower: adjustedConfidenceBand.lower,
+      upper: adjustedConfidenceBand.upper,
+      confidence: adjustedConfidenceBand.confidence,
+      width: adjustedConfidenceBand.band_width,
     },
     explanation,
-    rationale: explanation.summary,
+    rationale: `${explanation.summary}${holidaySummary}`.trim(),
     urgency: resolveUrgency({
       decision: decisionPayload.decision,
       confidence: finalConfidence,
@@ -373,6 +521,13 @@ const computeSuggestionForFeatureRow = ({ row = {}, horizonToken = '1W', config 
         current_inventory: roundSix(toNumber(features.current_inventory, 0)),
         reorder_level: roundSix(toNumber(features.reorder_level, 0)),
         inventory_coverage_days: features.inventory_coverage_days,
+      },
+      holiday_adjustment: {
+        applied: holidayApplied,
+        multiplier: roundSix(holidayMultiplier),
+        matched_holidays: Array.isArray(holidayContext?.matched_holidays)
+          ? holidayContext.matched_holidays
+          : [],
       },
     },
   };
@@ -413,7 +568,7 @@ const safeDivide = (numerator, denominator) => {
 
 const runSalesWalkForwardBacktest = ({
   featureRows = [],
-  horizons = ['1W', '1M'],
+  horizons = ['7D', '1D'],
   config = DEFAULT_ENGINE_CONFIG,
 } = {}) => {
   const safeRows = Array.isArray(featureRows) ? featureRows : [];
@@ -630,10 +785,12 @@ const generateTrustworthySuggestions = async ({
   userId,
   symbol = '',
   asOf = null,
-  horizons = ['1W', '1M'],
+  horizons = ['7D', '1D'],
   config = {},
   includeBacktesting = true,
   includeStability = true,
+  manualHolidays = [],
+  holidayImpactScale = 1,
 } = {}) => {
   const safeConfig = normalizeEngineConfig(config);
   const horizonTokens = normalizeHorizons(horizons);
@@ -648,6 +805,16 @@ const generateTrustworthySuggestions = async ({
   });
 
   const suggestions = [];
+  const holidayContextByHorizon = {};
+  for (const horizonToken of horizonTokens) {
+    holidayContextByHorizon[horizonToken] = resolveHolidayContextForHorizon({
+      horizonToken,
+      asOf: asOf || featureSet?.metadata?.as_of,
+      manualHolidays,
+      holidayImpactScale,
+    });
+  }
+
   for (const row of featureSet.rows) {
     for (const horizonToken of horizonTokens) {
       suggestions.push(
@@ -655,6 +822,7 @@ const generateTrustworthySuggestions = async ({
           row,
           horizonToken,
           config: safeConfig,
+          holidayContext: holidayContextByHorizon[horizonToken] || null,
         })
       );
     }
@@ -680,6 +848,7 @@ const generateTrustworthySuggestions = async ({
       engine: 'trustworthy_sales_inventory_engine_v1',
       horizons: horizonTokens,
       demand_signal_policy: 'sales_header_plus_sales_items_only',
+      holiday_impact_scale: roundSix(clamp(toNumber(holidayImpactScale, 1), 0, 2)),
     },
     suggestions: sortedSuggestions,
     backtesting: backtest,

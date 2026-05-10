@@ -6,8 +6,12 @@ import CustomerRiskBadge from './CustomerRiskBadge';
 export default function CustomerListItem({ item, onEdit, onDelete }) {
   const totalDue = Number.isFinite(Number(item.total_due)) ? Math.max(0, Number(item.total_due)) : 0;
   const hasDue = totalDue > 0;
-  const trustScore = Number.isFinite(Number(item.trust_score)) ? Number(item.trust_score) : null;
-  const riskScore = Number.isFinite(Number(item.risk_score)) ? Number(item.risk_score) : null;
+  const trustScore = item.trust_score === null || item.trust_score === undefined || item.trust_score === ''
+    ? null
+    : (Number.isFinite(Number(item.trust_score)) ? Number(item.trust_score) : null);
+  const riskScore = item.risk_score === null || item.risk_score === undefined || item.risk_score === ''
+    ? null
+    : (Number.isFinite(Number(item.risk_score)) ? Number(item.risk_score) : null);
 
   return (
     <TouchableOpacity style={styles.card} onPress={() => onEdit(item)} activeOpacity={0.85}>

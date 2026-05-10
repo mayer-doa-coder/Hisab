@@ -31,6 +31,20 @@ const toNumber = (value, fallback = 0) => {
   return Number.isFinite(numeric) ? numeric : fallback;
 };
 
+const normalizeSuggestionHorizon = (value) => {
+  const token = String(value || '').trim().toUpperCase();
+  if (token === '1D') {
+    return '1D';
+  }
+  if (token === '1W' || token === '7D') {
+    return '7D';
+  }
+  if (token === '1M') {
+    return '1M';
+  }
+  return '7D';
+};
+
 export default function SuggestionCard({
   suggestion,
   explainOpen = false,
@@ -39,9 +53,9 @@ export default function SuggestionCard({
   const decisionToken = String(suggestion?.decision || 'HOLD').trim().toUpperCase();
   const action = ACTION_META[decisionToken] || ACTION_META.HOLD;
   const quantity = Math.max(0, Math.trunc(toNumber(suggestion?.buy_quantity, 0)));
-  const horizon = String(suggestion?.horizon || '1W').trim().toUpperCase() === '1M' ? '1M' : '1W';
+  const horizon = normalizeSuggestionHorizon(suggestion?.horizon);
   const symbol = String(suggestion?.symbol || 'UNKNOWN');
-  const outlook = String(suggestion?.outlook || '').trim() || `${horizon === '1M' ? 'মাসিক' : 'সাপ্তাহিক'} পূর্বাভাস আছে`;
+  const outlook = String(suggestion?.outlook || '').trim() || `${horizon === '1D' ? '১ দিনের' : horizon === '1M' ? 'মাসিক' : '৭ দিনের'} পূর্বাভাস আছে`;
   const demandExpected = toNumber(suggestion?.confidence_band?.expected, 0);
   const demandLower = toNumber(suggestion?.confidence_band?.lower, 0);
   const demandUpper = toNumber(suggestion?.confidence_band?.upper, 0);

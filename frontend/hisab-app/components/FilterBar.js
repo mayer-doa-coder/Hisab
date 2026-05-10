@@ -2,7 +2,7 @@ import { ScrollView, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { UI_COLORS } from '../constants/ui-theme';
 
-const HORIZONS = ['all', '1W', '1M'];
+const HORIZONS = ['all', '1D', '7D'];
 const URGENCY = ['all', 'high', 'medium', 'low'];
 const CONFIDENCE_STEPS = [0, 0.4, 0.6, 0.8];
 
