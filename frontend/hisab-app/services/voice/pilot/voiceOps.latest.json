@@ -1,0 +1,51 @@
+{
+  "generatedAt": "2026-04-21T18:37:00.218Z",
+  "cycleDays": 7,
+  "weekly_kpi_summary": {
+    "transcription_availability": 0,
+    "intent_accuracy": 0,
+    "slot_accuracy": {
+      "name_accuracy": null,
+      "amount_accuracy": null
+    },
+    "false_execution_rate": 0,
+    "cancellation_rate": 0,
+    "p95_latency_ms": 0
+  },
+  "reliability_summary": {
+    "failure_rate": 0,
+    "retry_rate": 0,
+    "timeout_frequency": 0
+  },
+  "cost_summary": {
+    "request_count": 0,
+    "audio_seconds": 0,
+    "estimated_monthly_spend_usd": 0
+  },
+  "confusion_summary": {
+    "cycleDays": 14,
+    "sampleSize": 0,
+    "misrecognized_names_top": [],
+    "number_extraction_errors_top": [],
+    "intent_confusions_top": [],
+    "generatedAt": "2026-04-21T18:37:00.218Z"
+  },
+  "go_no_go": {
+    "week": "2026-W17",
+    "decision": "NO_GO",
+    "blockers": [
+      "Insufficient command volume for pilot confidence.",
+      "Success rate below pilot threshold."
+    ],
+    "recommendations": [
+      "No threshold changes required; continue one more weekly monitoring cycle."
+    ]
+  },
+  "accuracy_trends": {
+    "intent_accuracy_delta_pct": null,
+    "slot_name_accuracy_delta_pct": null,
+    "slot_amount_accuracy_delta_pct": null,
+    "p95_latency_delta_pct": null,
+    "stt_cost_delta_pct": null
+  }
+}

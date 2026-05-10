@@ -1,0 +1,193 @@
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+
+import { UI_COLORS } from '../../constants/ui-theme';
+
+function KpiCard({ title, value, icon, tone = 'primary' }) {
+  const toneStyles =
+    tone === 'success'
+      ? [styles.kpiCard, styles.successCard]
+      : tone === 'warning'
+        ? [styles.kpiCard, styles.warningCard]
+        : tone === 'danger'
+          ? [styles.kpiCard, styles.dangerCard]
+          : [styles.kpiCard, styles.primaryCard];
+
+  return (
+    <View style={toneStyles}>
+      <View style={styles.kpiTopRow}>
+        <Text style={styles.kpiTitle}>{title}</Text>
+        <MaterialIcons name={icon} size={16} color={UI_COLORS.textSecondary} />
+      </View>
+      <Text style={styles.kpiValue}>{value}</Text>
+    </View>
+  );
+}
+
+export default function BakiKpiDashboard({
+  rangeOptions,
+  selectedRange,
+  onSelectRange,
+  loading,
+  kpis,
+}) {
+  return (
+    <View style={styles.wrap}>
+      <View style={styles.headerRow}>
+        <Text style={styles.sectionTitle}>কার্যক্ষমতার সারসংক্ষেপ</Text>
+        {loading ? <ActivityIndicator size="small" color={UI_COLORS.primary} /> : null}
+      </View>
+
+      <View style={styles.rangeRow}>
+        {rangeOptions.map((option) => (
+          <TouchableOpacity
+            key={option.value}
+            style={[styles.rangeChip, selectedRange === option.value && styles.rangeChipActive]}
+            onPress={() => onSelectRange(option.value)}
+          >
+            <Text style={[styles.rangeChipText, selectedRange === option.value && styles.rangeChipTextActive]}>
+              {option.label}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      <View style={styles.grid}>
+        <KpiCard title="মোট বাকি" value={`৳${Number(kpis.totalCredit || 0).toFixed(2)}`} icon="add-card" tone="warning" />
+        <KpiCard
+          title="মোট জমা"
+          value={`৳${Number(kpis.totalPayments || 0).toFixed(2)}`}
+          icon="payments"
+          tone="success"
+        />
+        <KpiCard
+          title="নিট পরিবর্তন"
+          value={`৳${Number(kpis.netBalanceChange || 0).toFixed(2)}`}
+          icon="account-balance-wallet"
+          tone={Number(kpis.netBalanceChange || 0) >= 0 ? 'danger' : 'success'}
+        />
+        <KpiCard
+          title="লেনদেন"
+          value={String(Math.max(0, Number(kpis.numberOfTransactions || 0)))}
+          icon="receipt-long"
+          tone="primary"
+        />
+        <KpiCard
+          title="গড় দৈনিক বাকি"
+          value={`৳${Number(kpis.averageDailyCredit || 0).toFixed(2)}`}
+          icon="calendar-month"
+          tone="warning"
+        />
+        <KpiCard
+          title="গড় জমা"
+          value={`৳${Number(kpis.averagePayment || 0).toFixed(2)}`}
+          icon="price-check"
+          tone="success"
+        />
+        <KpiCard
+          title="সেরা কাস্টমার"
+          value={kpis.topCustomerName ? `${kpis.topCustomerName} (৳${Number(kpis.topCustomerCredit || 0).toFixed(2)})` : 'N/A'}
+          icon="emoji-events"
+          tone="primary"
+        />
+        <KpiCard
+          title="আদায়ের হার"
+          value={`${Number(kpis.collectionRate || 0).toFixed(1)}%`}
+          icon="query-stats"
+          tone="primary"
+        />
+      </View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  wrap: {
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: UI_COLORS.border,
+    borderRadius: 12,
+    backgroundColor: UI_COLORS.surface,
+    padding: 12,
+    gap: 10,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  sectionTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: UI_COLORS.textPrimary,
+  },
+  rangeRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  rangeChip: {
+    borderRadius: 99,
+    backgroundColor: UI_COLORS.surfaceMuted,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  rangeChipActive: {
+    backgroundColor: UI_COLORS.surfaceSubtle,
+  },
+  rangeChipText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: UI_COLORS.textSecondary,
+  },
+  rangeChipTextActive: {
+    color: UI_COLORS.primary,
+  },
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  kpiCard: {
+    width: '48.5%',
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 10,
+    minHeight: 76,
+  },
+  primaryCard: {
+    borderColor: UI_COLORS.borderInfo,
+    backgroundColor: UI_COLORS.surfaceInfo,
+  },
+  successCard: {
+    borderColor: UI_COLORS.borderSuccess,
+    backgroundColor: UI_COLORS.surfaceSuccess,
+  },
+  warningCard: {
+    borderColor: UI_COLORS.borderWarning,
+    backgroundColor: UI_COLORS.surfaceWarning,
+  },
+  dangerCard: {
+    borderColor: UI_COLORS.borderDanger,
+    backgroundColor: UI_COLORS.surfaceDanger,
+  },
+  kpiTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 6,
+  },
+  kpiTitle: {
+    flex: 1,
+    fontSize: 11,
+    fontWeight: '700',
+    color: UI_COLORS.textSecondary,
+  },
+  kpiValue: {
+    marginTop: 8,
+    fontSize: 14,
+    fontWeight: '800',
+    color: UI_COLORS.textPrimary,
+  },
+});
+

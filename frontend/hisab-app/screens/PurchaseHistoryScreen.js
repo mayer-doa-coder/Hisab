@@ -1,0 +1,365 @@
+import { Picker } from '@react-native-picker/picker';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  Alert,
+  FlatList,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+import { AppButton, AppCard, AppInput } from '../components/ui';
+import { UI_COLORS } from '../constants/ui-theme';
+import { useAppData } from '../context/AppDataContext';
+
+const formatMoney = (value) => `৳${Number(value || 0).toFixed(2)}`;
+
+const PURCHASE_STATUS_OPTIONS = [
+  { label: 'সব অবস্থা', value: '' },
+  { label: 'অপেক্ষাধীন', value: 'pending' },
+  { label: 'আংশিক', value: 'partial' },
+  { label: 'গৃহীত', value: 'received' },
+  { label: 'বাতিল', value: 'cancelled' },
+];
+
+export default function PurchaseHistoryScreen() {
+  const {
+    getPurchaseHistory,
+    listSuppliers,
+    recordSupplierPayment,
+    getSupplierPayables,
+    validatePurchaseMovementConsistency,
+    refreshAll,
+    refreshing,
+  } = useAppData();
+
+  const [suppliers, setSuppliers] = useState([]);
+  const [rows, setRows] = useState([]);
+  const [payables, setPayables] = useState([]);
+  const [payableSummary, setPayableSummary] = useState({ outstanding_due: 0, supplier_name: null });
+  const [loading, setLoading] = useState(false);
+  const [searchText, setSearchText] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [supplierFilter, setSupplierFilter] = useState('');
+  const [paymentSupplierId, setPaymentSupplierId] = useState('');
+  const [paymentPurchaseOrderId, setPaymentPurchaseOrderId] = useState('');
+  const [paymentAmount, setPaymentAmount] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('CASH');
+  const [paymentNote, setPaymentNote] = useState('');
+  const [savingPayment, setSavingPayment] = useState(false);
+  const [consistency, setConsistency] = useState(null);
+
+  const loadSuppliers = useCallback(async () => {
+    const nextSuppliers = await listSuppliers({ limit: 300 });
+    setSuppliers(nextSuppliers);
+
+    if (!supplierFilter && nextSuppliers.length) {
+      setSupplierFilter('');
+    }
+
+    if (!paymentSupplierId && nextSuppliers.length) {
+      setPaymentSupplierId(String(nextSuppliers[0].id));
+    }
+  }, [listSuppliers, paymentSupplierId, supplierFilter]);
+
+  const loadRows = useCallback(async () => {
+    setLoading(true);
+    try {
+      const supplierIdValue = Number(supplierFilter);
+      const nextRows = await getPurchaseHistory({
+        limit: 150,
+        supplierId: Number.isInteger(supplierIdValue) && supplierIdValue > 0 ? supplierIdValue : null,
+        status: statusFilter || null,
+        searchText,
+      });
+      setRows(nextRows);
+    } finally {
+      setLoading(false);
+    }
+  }, [getPurchaseHistory, searchText, statusFilter, supplierFilter]);
+
+  const loadPayables = useCallback(async () => {
+    const supplierIdValue = Number(paymentSupplierId);
+    const result = await getSupplierPayables({
+      supplierId: Number.isInteger(supplierIdValue) && supplierIdValue > 0 ? supplierIdValue : null,
+      limit: 80,
+    });
+    setPayables(Array.isArray(result?.rows) ? result.rows : []);
+    setPayableSummary(result?.summary || { outstanding_due: 0, supplier_name: null });
+  }, [getSupplierPayables, paymentSupplierId]);
+
+  const loadConsistency = useCallback(async () => {
+    const result = await validatePurchaseMovementConsistency({});
+    setConsistency(result);
+  }, [validatePurchaseMovementConsistency]);
+
+  useEffect(() => {
+    loadSuppliers();
+    loadRows();
+    loadPayables();
+    loadConsistency();
+  }, [loadConsistency, loadPayables, loadRows, loadSuppliers]);
+
+  useEffect(() => {
+    loadRows();
+  }, [loadRows]);
+
+  useEffect(() => {
+    loadPayables();
+  }, [loadPayables]);
+
+  const purchaseRowsForPaymentSupplier = useMemo(() => {
+    const supplierIdValue = Number(paymentSupplierId);
+    if (!Number.isInteger(supplierIdValue) || supplierIdValue <= 0) {
+      return [];
+    }
+
+    return rows.filter((row) => Number(row.supplier_id) === supplierIdValue && Number(row.due_amount || 0) > 0);
+  }, [paymentSupplierId, rows]);
+
+  const totalDueInView = useMemo(
+    () => rows.reduce((sum, row) => sum + Number(row.due_amount || 0), 0),
+    [rows]
+  );
+
+  const handlePostPayment = async () => {
+    const supplierIdValue = Number(paymentSupplierId);
+    const amountValue = Number(paymentAmount);
+    const purchaseOrderIdValue = Number(paymentPurchaseOrderId);
+
+    if (!Number.isInteger(supplierIdValue) || supplierIdValue <= 0) {
+      Alert.alert('প্রয়োজনীয়', 'পেমেন্টের জন্য সরবরাহকারী বেছে নিন।');
+      return;
+    }
+
+    if (!Number.isFinite(amountValue) || amountValue <= 0) {
+      Alert.alert('প্রয়োজনীয়', 'সঠিক পেমেন্টের পরিমাণ দিন।');
+      return;
+    }
+
+    if (savingPayment) {
+      return;
+    }
+
+    try {
+      setSavingPayment(true);
+      await recordSupplierPayment({
+        supplierId: supplierIdValue,
+        amount: amountValue,
+        purchaseOrderId: Number.isInteger(purchaseOrderIdValue) && purchaseOrderIdValue > 0 ? purchaseOrderIdValue : null,
+        paymentMethod,
+        note: paymentNote || null,
+      });
+
+      setPaymentAmount('');
+      setPaymentNote('');
+      setPaymentPurchaseOrderId('');
+
+      await refreshAll();
+      await loadSuppliers();
+      await loadRows();
+      await loadPayables();
+      await loadConsistency();
+
+      Alert.alert('পেমেন্ট সেভ হয়েছে', 'সরবরাহকারীর বাকি আপডেট হয়েছে।');
+    } catch (error) {
+      Alert.alert('পেমেন্ট ব্যর্থ', error?.message || 'Unable to record supplier payment.');
+    } finally {
+      setSavingPayment(false);
+    }
+  };
+
+  return (
+    <SafeAreaView style={styles.safeArea}>
+      <FlatList
+        data={rows}
+        keyExtractor={(item) => String(item.id)}
+        contentContainerStyle={styles.container}
+        ListHeaderComponent={
+          <View>
+            <Text style={styles.title}>ক্রয়ের ইতিহাস</Text>
+            <Text style={styles.subtitle}>ক্রয় ফিল্টার করুন এবং সরবরাহকারীর পেমেন্ট রেকর্ড করুন।</Text>
+
+            <AppCard style={styles.card}>
+              <Text style={styles.sectionTitle}>ফিল্টার</Text>
+              <AppInput value={searchText} onChangeText={setSearchText} placeholder="কোড, নোট বা সরবরাহকারী দিয়ে খুঁজুন" />
+
+              <Text style={styles.label}>স্ট্যাটাস</Text>
+              <View style={styles.pickerWrap}>
+                <Picker selectedValue={statusFilter} onValueChange={(value) => setStatusFilter(String(value))}>
+                  {PURCHASE_STATUS_OPTIONS.map((option) => (
+                    <Picker.Item key={`purchase-status-${option.value || 'all'}`} label={option.label} value={option.value} />
+                  ))}
+                </Picker>
+              </View>
+
+              <Text style={styles.label}>সরবরাহকারী</Text>
+              <View style={styles.pickerWrap}>
+                <Picker selectedValue={supplierFilter} onValueChange={(value) => setSupplierFilter(String(value))}>
+                  <Picker.Item label="সব সরবরাহকারী" value="" />
+                  {suppliers.map((supplier) => (
+                    <Picker.Item key={`history-supplier-${supplier.id}`} label={supplier.name} value={String(supplier.id)} />
+                  ))}
+                </Picker>
+              </View>
+
+              <View style={styles.buttonRow}>
+                <AppButton title={loading ? 'লোড হচ্ছে...' : 'ফিল্টার প্রয়োগ করুন'} onPress={loadRows} style={styles.buttonFlex} />
+                <AppButton
+                  title={refreshing ? 'রিফ্রেশ হচ্ছে...' : 'রিফ্রেশ'}
+                  variant="secondary"
+                  style={styles.buttonFlex}
+                  onPress={async () => {
+                    await refreshAll();
+                    await loadSuppliers();
+                    await loadRows();
+                    await loadPayables();
+                    await loadConsistency();
+                  }}
+                />
+              </View>
+
+              <Text style={styles.summaryText}>রেকর্ড: {rows.length} | মোট বাকি: {formatMoney(totalDueInView)}</Text>
+            </AppCard>
+
+            <AppCard style={styles.card}>
+              <Text style={styles.sectionTitle}>সরবরাহকারী পেমেন্ট</Text>
+              <Text style={styles.summaryText}>
+                Current Supplier Due: {formatMoney(payableSummary?.outstanding_due || 0)}
+              </Text>
+
+              <Text style={styles.label}>সরবরাহকারী</Text>
+              <View style={styles.pickerWrap}>
+                <Picker selectedValue={paymentSupplierId} onValueChange={(value) => setPaymentSupplierId(String(value))}>
+                  {suppliers.map((supplier) => (
+                    <Picker.Item
+                      key={`payment-supplier-${supplier.id}`}
+                      label={`${supplier.name} | Due ${formatMoney(supplier.due_amount)}`}
+                      value={String(supplier.id)}
+                    />
+                  ))}
+                </Picker>
+              </View>
+
+              <Text style={styles.label}>ক্রয় আদেশ (ঐচ্ছিক)</Text>
+              <View style={styles.pickerWrap}>
+                <Picker selectedValue={paymentPurchaseOrderId} onValueChange={(value) => setPaymentPurchaseOrderId(String(value))}>
+                  <Picker.Item label="শুধু সরবরাহকারীর বাকিতে প্রয়োগ করুন" value="" />
+                  {purchaseRowsForPaymentSupplier.map((row) => (
+                    <Picker.Item
+                      key={`payment-order-${row.id}`}
+                      label={`${row.purchase_code} | Due ${formatMoney(row.due_amount)}`}
+                      value={String(row.id)}
+                    />
+                  ))}
+                </Picker>
+              </View>
+
+              <View style={styles.rowInputs}>
+                <AppInput
+                  style={styles.inputFlex}
+                  value={paymentAmount}
+                  onChangeText={setPaymentAmount}
+                  keyboardType="decimal-pad"
+                  placeholder="পরিমাণ"
+                />
+                <View style={[styles.pickerWrap, styles.inputFlex]}>
+                  <Picker selectedValue={paymentMethod} onValueChange={(value) => setPaymentMethod(String(value))}>
+                    <Picker.Item label="নগদ" value="CASH" />
+                    <Picker.Item label="বিকাশ" value="BKASH" />
+                    <Picker.Item label="নগাদ" value="NAGAD" />
+                    <Picker.Item label="ব্যাংক" value="BANK" />
+                    <Picker.Item label="কার্ড" value="CARD" />
+                  </Picker>
+                </View>
+              </View>
+
+              <AppInput value={paymentNote} onChangeText={setPaymentNote} placeholder="নোট (ঐচ্ছিক)" />
+
+              <AppButton
+                title={savingPayment ? 'জমা হচ্ছে...' : 'পেমেন্ট জমা দিন'}
+                onPress={handlePostPayment}
+                disabled={savingPayment}
+              />
+            </AppCard>
+
+            {consistency ? (
+              <AppCard style={styles.card}>
+                <Text style={styles.sectionTitle}>সততা যাচাই</Text>
+                <Text style={styles.summaryText}>গৃহীত পরিমাণ: {consistency.purchase_received_quantity}</Text>
+                <Text style={styles.summaryText}>Movement Purchase IN Qty: {consistency.movement_purchase_in_quantity}</Text>
+                <Text style={styles.summaryText}>
+                  Status: {consistency.is_consistent ? 'CONSISTENT' : `MISMATCH (${consistency.difference})`}
+                </Text>
+              </AppCard>
+            ) : null}
+
+            <Text style={styles.sectionTitle}>ক্রয় তালিকা</Text>
+          </View>
+        }
+        ListEmptyComponent={<Text style={styles.emptyText}>{loading ? 'লোড হচ্ছে...' : 'কোনো ক্রয় রেকর্ড পাওয়া যায়নি।'}</Text>}
+        renderItem={({ item }) => (
+          <AppCard style={styles.rowCard}>
+            <View style={styles.rowHeader}>
+              <Text style={styles.rowCode}>{item.purchase_code}</Text>
+              <Text style={styles.rowStatus}>{item.status.toUpperCase()}</Text>
+            </View>
+            <Text style={styles.rowMeta}>{item.supplier_name}</Text>
+            <Text style={styles.rowMeta}>অর্ডার: {item.ordered_qty_total} | গৃহীত: {item.received_qty_total}</Text>
+            <Text style={styles.rowMeta}>
+              Total: {formatMoney(item.total_amount)} | Paid: {formatMoney(item.paid_amount)} | Due: {formatMoney(item.due_amount)}
+            </Text>
+          </AppCard>
+        )}
+        ListFooterComponent={
+          payables.length ? (
+            <View style={styles.footerWrap}>
+              <Text style={styles.sectionTitle}>সাম্প্রতিক সরবরাহকারী বাকি</Text>
+              {payables.slice(0, 20).map((row) => (
+                <AppCard key={`payable-row-${row.id}`} style={styles.payableCard}>
+                  <Text style={styles.rowMeta}>
+                    {row.supplier_name} | {row.entry_type.toUpperCase()} | {formatMoney(row.amount)}
+                  </Text>
+                  <Text style={styles.rowMeta}>
+                    Running Due: {formatMoney(row.running_due)} {row.purchase_code ? `| ${row.purchase_code}` : ''}
+                  </Text>
+                </AppCard>
+              ))}
+            </View>
+          ) : null
+        }
+      />
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  safeArea: { flex: 1, backgroundColor: UI_COLORS.background },
+  container: { padding: 18, gap: 12 },
+  title: { fontSize: 28, fontWeight: '700', color: UI_COLORS.textPrimary },
+  subtitle: { fontSize: 14, color: UI_COLORS.textSecondary, marginBottom: 6 },
+  card: { gap: 8, marginTop: 10 },
+  sectionTitle: { fontSize: 18, fontWeight: '700', color: UI_COLORS.textPrimary, marginTop: 10 },
+  label: { fontSize: 13, color: UI_COLORS.textMuted },
+  pickerWrap: {
+    borderWidth: 1,
+    borderColor: UI_COLORS.border,
+    borderRadius: 10,
+    backgroundColor: UI_COLORS.surface,
+    overflow: 'hidden',
+  },
+  buttonRow: { flexDirection: 'row', gap: 10 },
+  buttonFlex: { flex: 1 },
+  summaryText: { fontSize: 13, color: UI_COLORS.textSecondary },
+  rowInputs: { flexDirection: 'row', gap: 10 },
+  inputFlex: { flex: 1 },
+  emptyText: { fontSize: 14, color: UI_COLORS.textMuted },
+  rowCard: { gap: 4 },
+  rowHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  rowCode: { fontSize: 15, fontWeight: '700', color: UI_COLORS.textPrimary },
+  rowStatus: { fontSize: 12, color: UI_COLORS.primary, fontWeight: '700' },
+  rowMeta: { fontSize: 13, color: UI_COLORS.textSecondary },
+  footerWrap: { marginTop: 10, gap: 8 },
+  payableCard: { gap: 4 },
+});

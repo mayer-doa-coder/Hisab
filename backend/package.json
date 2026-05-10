@@ -1,0 +1,43 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "description": "",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "smoke:auth": "node scripts/auth-v2-smoke.js",
+    "train:trust-champion": "node scripts/trust/trainTrustChampionModel.js",
+    "backtest:trust-promotion": "..\\.venv\\Scripts\\python.exe scripts/trust/backtestTrustPromotion.py",
+    "trust:recalibrate:monthly": "node scripts/trust/runMonthlyTrustRecalibration.js",
+    "trust:retrain:quarterly": "node scripts/trust/runQuarterlyTrustRetraining.js",
+    "trust:update:emergency": "node scripts/trust/runEmergencyTrustUpdate.js",
+    "trust:monitoring:ingest": "node scripts/trust/ingestTrustMonitoringSnapshot.js",
+    "trust:optimize:check": "node scripts/trust/runTrustOptimizationCheck.js",
+    "trust:test:phase9": "node scripts/trust/trustPhase9.testcases.js",
+    "trust:test:phase9:full": "node scripts/trust/trustPhase9.testcases.js --include-monthly",
+    "trust:bundle:validate": "node scripts/trust/validateTrustCandidateBundle.js",
+    "trust:bundle:promote": "node scripts/trust/promoteTrustBundle.js",
+    "trust:bundle:rollback": "node scripts/trust/rollbackTrustBundle.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "axios": "^1.15.2",
+    "bcrypt": "^6.0.0",
+    "cors": "^2.8.6",
+    "dotenv": "^17.3.1",
+    "express": "^5.2.1",
+    "fs-extra": "^11.3.4",
+    "helmet": "^8.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.19.2",
+    "multer": "^2.1.1",
+    "nodemailer": "^8.0.5",
+    "pdfkit": "^0.15.1",
+    "zod": "^4.3.6"
+  }
+}
