@@ -1,9 +1,0 @@
-{
-  "bundle_version": "7.0.0",
-  "model_version_label": "trust_model_v7.0",
-  "type": "quarterly_retraining",
-  "champion_path": "D:\\Hisab\\backend\\artifacts\\trustChampionModel.v7.0.0.json",
-  "challenger_path": "D:\\Hisab\\backend\\artifacts\\trustChallengerModel.v7.0.0.json",
-  "segment_decisions_path": "D:\\Hisab\\backend\\artifacts\\trustSegmentPromotion.v7.0.0.json",
-  "promoted_at": "2026-04-10T21:32:58.943Z"
-}
