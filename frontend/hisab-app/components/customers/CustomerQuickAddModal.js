@@ -14,7 +14,7 @@ import {
 
 import { UI_COLORS } from '../../constants/ui-theme';
 import { useAppData } from '../../context/AppDataContext';
-import CustomerForm from '../../screens/customers/CustomerForm';
+import CustomerForm from './CustomerForm';
 
 export default function CustomerQuickAddModal({ visible, onDismiss, onAdded }) {
   const { addCustomer } = useAppData();

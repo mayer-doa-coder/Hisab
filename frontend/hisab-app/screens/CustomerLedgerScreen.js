@@ -14,8 +14,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { UI_COLORS } from '../constants/ui-theme';
 import { useAppData } from '../context/AppDataContext';
-import CustomerLedgerTimeline from './customers/CustomerLedgerTimeline';
-import CustomerRiskBadge from './customers/CustomerRiskBadge';
+import CustomerLedgerTimeline from '../components/customers/CustomerLedgerTimeline';
+import CustomerRiskBadge from '../components/customers/CustomerRiskBadge';
 import {
   applyLedgerFilter,
   buildLedgerTimeline,

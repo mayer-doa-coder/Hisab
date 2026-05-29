@@ -22,9 +22,9 @@ import {
   CUSTOMER_DUE_FILTERS,
   CUSTOMER_SORT_OPTIONS,
 } from '../services/customers/customerSearchUtils';
-import CustomerForm from './customers/CustomerForm';
-import CustomerListItem from './customers/CustomerListItem';
-import CustomerSearchControls from './customers/CustomerSearchControls';
+import CustomerForm from '../components/customers/CustomerForm';
+import CustomerListItem from '../components/customers/CustomerListItem';
+import CustomerSearchControls from '../components/customers/CustomerSearchControls';
 
 export default function CustomerListScreen() {
   const { customers, addCustomer, updateCustomer, deleteCustomer, refreshAll, refreshing } = useAppData();
