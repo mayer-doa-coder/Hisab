@@ -383,4 +383,58 @@ export default {
   'duration.hours': '{h} ঘণ্টা {m} মিনিট',
   'duration.hoursOnly': '{h} ঘণ্টা',
   'duration.minutesOnly': '{m} মিনিট',
+
+  // ─── Bottom tab navigation labels ─────────────────────────────
+  'nav.tab.dashboard': 'হোম',
+  'nav.tab.sales': 'বিক্রি',
+  'nav.tab.baki': 'বাকি',
+  'nav.tab.products': 'পণ্য',
+  'nav.tab.more': 'আরো',
+
+  // ─── Modal screen titles ───────────────────────────────────────
+  'nav.receipt': 'রসিদ',
+  'nav.updatePassword': 'PIN আপডেট',
+  'nav.setupPin': 'PIN সেটআপ',
+
+  // ─── Payment methods ───────────────────────────────────────────
+  'payment.method.cash': 'নগদ',
+  'payment.method.bkash': 'বিকাশ',
+  'payment.method.nagad': 'নগদ',
+  'payment.method.bank': 'ব্যাংক',
+  'payment.method.mixed': 'মিশ্র',
+  'payment.method.baki': 'বাকিতে',
+
+  // ─── Common actions ────────────────────────────────────────────
+  'action.save': 'সংরক্ষণ করুন',
+  'action.cancel': 'বাতিল',
+  'action.confirm': 'নিশ্চিত করুন',
+  'action.delete': 'মুছুন',
+  'action.edit': 'সম্পাদনা',
+  'action.add': 'যোগ করুন',
+  'action.close': 'বন্ধ',
+  'action.done': 'সম্পন্ন',
+  'action.retry': 'আবার চেষ্টা করুন',
+  'action.back': 'পিছে',
+  'action.next': 'পরবর্তী',
+  'action.search': 'খুঁজুন',
+  'action.clear': 'মুছুন',
+  'action.refresh': 'রিফ্রেশ',
+  'action.export': 'রপ্তানি',
+  'action.share': 'শেয়ার',
+  'action.print': 'প্রিন্ট',
+
+  // ─── Common states ─────────────────────────────────────────────
+  'state.loading': 'লোড হচ্ছে…',
+  'state.saving': 'সংরক্ষণ হচ্ছে…',
+  'state.noData': 'কোনো তথ্য নেই',
+  'state.noResults': 'কোনো ফলাফল নেই',
+  'state.error': 'কিছু একটা ভুল হয়েছে',
+  'state.offlineMode': 'অফলাইন মোড',
+  'state.syncing': 'সিঙ্ক হচ্ছে…',
+
+  // ─── Accessibility ─────────────────────────────────────────────
+  'a11y.required': 'আবশ্যক তথ্য',
+  'a11y.optional': 'ঐচ্ছিক',
+  'a11y.amountHint': 'সংখ্যায় পরিমাণ লিখুন',
+  'a11y.phoneHint': '১১ সংখ্যার মোবাইল নম্বর দিন',
 };

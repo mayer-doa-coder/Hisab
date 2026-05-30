@@ -19,19 +19,21 @@ import CustomerQuickAddModal from '../components/customers/CustomerQuickAddModal
 import SalesHistoryItem from '../components/SalesHistoryItem';
 import { UI_COLORS } from '../constants/ui-theme';
 import { useAppData } from '../context/AppDataContext';
+import { useLanguage } from '../context/LanguageContext';
 
-const formatMoney = (v) => `৳${Number(v || 0).toFixed(2)}`;
 const parseAmount = (v) => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
 
-const PAYMENT_METHODS = [
-  { key: 'CASH',  label: 'নগদ',   icon: 'payments' },
-  { key: 'BKASH', label: 'বিকাশ', icon: 'phone-iphone' },
-  { key: 'NAGAD', label: 'নগাদ',  icon: 'smartphone' },
-  { key: 'MIXED', label: 'মিক্স',  icon: 'call-split' },
+// Payment method keys — labels resolved via t() inside the component
+const PAYMENT_METHOD_KEYS = [
+  { key: 'CASH',  labelKey: 'payment.method.cash',  icon: 'payments' },
+  { key: 'BKASH', labelKey: 'payment.method.bkash', icon: 'phone-iphone' },
+  { key: 'NAGAD', labelKey: 'payment.method.nagad', icon: 'smartphone' },
+  { key: 'MIXED', labelKey: 'payment.method.mixed', icon: 'call-split' },
 ];
 
 export default function SalesScreen() {
   const navigation = useNavigation();
+  const { t, fmtCurrency } = useLanguage();
   const {
     products,
     customers,
@@ -42,6 +44,12 @@ export default function SalesScreen() {
     validateSalesMovementConsistency,
     refreshAll,
   } = useAppData();
+
+  // Resolved payment methods with translated labels — rebuilds on language change
+  const PAYMENT_METHODS = useMemo(
+    () => PAYMENT_METHOD_KEYS.map((m) => ({ ...m, label: t(m.labelKey) })),
+    [t]
+  );
 
   // ── Flow ──────────────────────────────────────────────
   const [step, setStep] = useState(1);

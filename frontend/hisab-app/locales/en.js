@@ -448,4 +448,58 @@ export default {
   'duration.hours': '{h}h {m}m',
   'duration.hoursOnly': '{h}h',
   'duration.minutesOnly': '{m}m',
+
+  // ─── Bottom tab navigation labels ─────────────────────────────
+  'nav.tab.dashboard': 'Home',
+  'nav.tab.sales': 'Sales',
+  'nav.tab.baki': 'Credit',
+  'nav.tab.products': 'Stock',
+  'nav.tab.more': 'More',
+
+  // ─── Modal screen titles (used in MainNavigator) ──────────────
+  'nav.receipt': 'Receipt',
+  'nav.updatePassword': 'Update PIN',
+  'nav.setupPin': 'Setup PIN',
+
+  // ─── Payment methods (used in SalesScreen, BakiListScreen) ────
+  'payment.method.cash': 'Cash',
+  'payment.method.bkash': 'bKash',
+  'payment.method.nagad': 'Nagad',
+  'payment.method.bank': 'Bank',
+  'payment.method.mixed': 'Split',
+  'payment.method.baki': 'Credit',
+
+  // ─── Common actions ────────────────────────────────────────────
+  'action.save': 'Save',
+  'action.cancel': 'Cancel',
+  'action.confirm': 'Confirm',
+  'action.delete': 'Delete',
+  'action.edit': 'Edit',
+  'action.add': 'Add',
+  'action.close': 'Close',
+  'action.done': 'Done',
+  'action.retry': 'Retry',
+  'action.back': 'Back',
+  'action.next': 'Next',
+  'action.search': 'Search',
+  'action.clear': 'Clear',
+  'action.refresh': 'Refresh',
+  'action.export': 'Export',
+  'action.share': 'Share',
+  'action.print': 'Print',
+
+  // ─── Common states ─────────────────────────────────────────────
+  'state.loading': 'Loading…',
+  'state.saving': 'Saving…',
+  'state.noData': 'No data',
+  'state.noResults': 'No results found',
+  'state.error': 'Something went wrong',
+  'state.offlineMode': 'Offline mode',
+  'state.syncing': 'Syncing…',
+
+  // ─── Accessibility ─────────────────────────────────────────────
+  'a11y.required': 'Required field',
+  'a11y.optional': 'Optional',
+  'a11y.amountHint': 'Enter amount in numbers',
+  'a11y.phoneHint': 'Enter 11-digit phone number',
 };

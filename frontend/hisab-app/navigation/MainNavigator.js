@@ -3,19 +3,37 @@ import ReceiptScreen from '../screens/ReceiptScreen';
 import SetupPinScreen from '../screens/auth/SetupPinScreen';
 import UpdatePasswordScreen from '../screens/auth/UpdatePasswordScreen';
 import { UI_COLORS } from '../constants/ui-theme';
-import { MainSidebarNavigator } from './DrawerNavigator';
+import { BottomTabNavigator } from './BottomTabNavigator';
 import { MainStack } from './navigators';
 
+/**
+ * MainStackNavigator — wraps the primary UI in a stack so modal screens
+ * (Receipt, SetupPin, UpdatePassword) can slide over the bottom tab bar.
+ *
+ * Primary navigation: BottomTabNavigator (5 tabs — rural-first UX)
+ * Modal screens:      Receipt, UpdatePassword, SetupPin
+ *
+ * The full drawer (35+ screens) is still accessible via the "More" tab
+ * inside BottomTabNavigator, preserving all existing navigation paths.
+ */
 export function MainStackNavigator() {
-  const { mapText } = useLanguage();
+  const { t } = useLanguage();
+
   return (
     <MainStack.Navigator>
-      <MainStack.Screen name="MainSidebar" component={MainSidebarNavigator} options={{ headerShown: false }} />
+      {/* Primary shell — bottom tabs with 5 core areas */}
+      <MainStack.Screen
+        name="MainTabs"
+        component={BottomTabNavigator}
+        options={{ headerShown: false }}
+      />
+
+      {/* Modal screens that slide over the tab bar */}
       <MainStack.Screen
         name="Receipt"
         component={ReceiptScreen}
         options={{
-          title: mapText('রসিদ'),
+          title: t('nav.receipt'),
           headerStyle: { backgroundColor: UI_COLORS.textPrimary },
           headerTintColor: UI_COLORS.surface,
           headerTitleStyle: { fontFamily: 'AnekBangla_700Bold' },
@@ -26,7 +44,7 @@ export function MainStackNavigator() {
         name="UpdatePassword"
         component={UpdatePasswordScreen}
         options={{
-          title: mapText('PIN আপডেট'),
+          title: t('nav.updatePassword'),
           headerStyle: { backgroundColor: UI_COLORS.textPrimary },
           headerTintColor: UI_COLORS.surface,
           headerTitleStyle: { fontFamily: 'AnekBangla_700Bold' },
@@ -37,7 +55,7 @@ export function MainStackNavigator() {
         name="SetupPin"
         component={SetupPinScreen}
         options={{
-          title: mapText('PIN সেটআপ'),
+          title: t('nav.setupPin'),
           headerStyle: { backgroundColor: UI_COLORS.textPrimary },
           headerTintColor: UI_COLORS.surface,
           headerTitleStyle: { fontFamily: 'AnekBangla_700Bold' },

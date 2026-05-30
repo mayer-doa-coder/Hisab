@@ -4,6 +4,8 @@ import { Alert } from 'react-native';
 import { AppDataContext } from '../../context/AppDataContext';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
+import { registerBackgroundSync } from '../../services/sync/backgroundSync';
+import { startNetworkMonitor } from '../../services/sync/networkMonitor';
 import {
   addBaki as dbAddBaki,
   addPayment as dbAddPayment,
@@ -361,6 +363,14 @@ export function MainDataShell() {
 
       if (disposed) return;
 
+      // Start network monitor (connectivity + circuit breaker)
+      const stopNetworkMonitor = startNetworkMonitor();
+
+      // Register background sync task with the OS (non-blocking)
+      registerBackgroundSync().catch((err) =>
+        console.warn('[APP] background sync registration failed:', err?.message)
+      );
+
       try {
         await loadAllData();
       } catch (error) {
@@ -371,10 +381,13 @@ export function MainDataShell() {
           setBooting(false);
         }
       }
+
+      return stopNetworkMonitor;
     };
 
-    void bootAndHydrate();
-    return () => { disposed = true; };
+    let cleanup = () => {};
+    bootAndHydrate().then((stop) => { if (stop) cleanup = stop; });
+    return () => { disposed = true; cleanup(); };
   }, [loadAllData]);
 
   useEffect(() => {

@@ -31,10 +31,32 @@ export const normalizeRetryPolicy = (override = null) => {
   };
 };
 
+/**
+ * Computes the delay before the next retry using exponential backoff with
+ * full-jitter (±30%). Jitter spreads burst retries from many devices that
+ * all lost connectivity at the same time (e.g., tower outage), preventing
+ * a thundering-herd when connectivity returns.
+ *
+ * Schedule (baseDelayMs=1500, jitter excluded):
+ *   attempt 1 →  1.5s
+ *   attempt 2 →    3s
+ *   attempt 3 →    6s
+ *   attempt 4 →   12s
+ *   attempt 5 →   24s
+ *   attempt 6 →   48s
+ *   attempt 7 →  96s  (~1.6 min)
+ *   attempt 8 → 300s  (5 min cap)
+ */
 export const computeRetryDelayMs = ({ attempt = 1, policy = null } = {}) => {
   const config = normalizeRetryPolicy(policy);
   const safeAttempt = Math.max(1, Math.trunc(Number(attempt) || 1));
-  return Math.min(config.maxDelayMs, config.baseDelayMs * (2 ** (safeAttempt - 1)));
+  const exponential = config.baseDelayMs * (2 ** (safeAttempt - 1));
+  const capped = Math.min(config.maxDelayMs, exponential);
+  // Full jitter: uniform random in [0, capped] — keeps average = capped/2
+  // but fully eliminates correlated retry spikes.
+  const jitter = Math.random() * capped * 0.3; // ±30%
+  const sign = Math.random() < 0.5 ? -1 : 1;
+  return Math.max(500, Math.round(capped + sign * jitter));
 };
 
 export const evaluateRetryVisibility = ({ attempts = 0, lastAttemptAt = null, lastError = null, policy = null } = {}) => {

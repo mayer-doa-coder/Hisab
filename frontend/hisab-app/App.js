@@ -20,6 +20,10 @@ import { AuthStackNavigator } from './navigation/AuthNavigator';
 import { RootStack } from './navigation/navigators';
 import { UI_COLORS } from './constants/ui-theme';
 import { getRuntimeLanguage, toLocalizedUiText } from './utils/bilingualText';
+// The background sync task MUST be imported at module scope so TaskManager
+// can register it before the app UI renders. Moving this import inside a
+// function or component will cause the task definition to be missed.
+import './services/sync/backgroundSync';
 
 // ── Global font defaults ───────────────────────────────────────────────────
 
