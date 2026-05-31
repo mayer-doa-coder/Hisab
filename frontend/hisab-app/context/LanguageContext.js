@@ -4,6 +4,16 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import bn from '../locales/bn';
 import en from '../locales/en';
 import { setRuntimeLanguage, toLocalizedUiText } from '../utils/bilingualText';
+import {
+  formatCurrency,
+  formatCurrencyShort,
+  formatDate,
+  formatDueStatus,
+  formatNumber,
+  formatPercent,
+  formatRelativeDate,
+  toBengaliDigits,
+} from '../utils/numerals';
 
 const DICTIONARIES = { en, bn };
 const DEFAULT_LANGUAGE = 'bn';
@@ -45,6 +55,7 @@ export function LanguageProvider({ children }) {
     await saveLangPref(lang);
   }, []);
 
+  // ── t(): translate a string key with optional variable interpolation ────────
   const t = useCallback(
     (key, vars = {}) => {
       const dict = DICTIONARIES[language] || bn;
@@ -52,17 +63,93 @@ export function LanguageProvider({ children }) {
       if (str === undefined) str = en[key];
       if (str === undefined) return key;
       if (!vars || Object.keys(vars).length === 0) return str;
-      return Object.entries(vars).reduce((s, [k, v]) => s.replace(`{${k}}`, String(v)), str);
+      // Replace {var} placeholders; numeric values auto-convert to Bengali digits
+      return Object.entries(vars).reduce((s, [k, v]) => {
+        const display =
+          language === 'bn' && typeof v === 'number'
+            ? toBengaliDigits(String(v))
+            : String(v);
+        return s.replace(`{${k}}`, display);
+      }, str);
     },
     [language]
   );
 
+  // ── mapText(): translate inline Bengali text for legacy/bilingual content ───
   const mapText = useCallback(
     (text) => toLocalizedUiText(text, language),
     [language]
   );
 
-  const value = useMemo(() => ({ language, setLanguage, t, mapText }), [language, setLanguage, t, mapText]);
+  // ── Locale-aware formatters ─────────────────────────────────────────────────
+  // These are pre-bound to the active language so screens never need to pass it.
+
+  const fmtNumber = useCallback(
+    (value, decimals = 0) => formatNumber(value, language, decimals),
+    [language]
+  );
+
+  const fmtCurrency = useCallback(
+    (value, decimals = 2) => formatCurrency(value, language, decimals),
+    [language]
+  );
+
+  const fmtCurrencyShort = useCallback(
+    (value) => formatCurrencyShort(value, language),
+    [language]
+  );
+
+  const fmtDate = useCallback(
+    (date, style = 'short') => formatDate(date, language, style),
+    [language]
+  );
+
+  const fmtRelativeDate = useCallback(
+    (date) => formatRelativeDate(date, language),
+    [language]
+  );
+
+  const fmtDueStatus = useCallback(
+    (dueDate) => formatDueStatus(dueDate, language),
+    [language]
+  );
+
+  const fmtPercent = useCallback(
+    (ratio, decimals = 1) => formatPercent(ratio, language, decimals),
+    [language]
+  );
+
+  const value = useMemo(
+    () => ({
+      language,
+      setLanguage,
+      isBn: language === 'bn',
+      // Translation
+      t,
+      mapText,
+      // Locale-aware formatters
+      fmtNumber,
+      fmtCurrency,
+      fmtCurrencyShort,
+      fmtDate,
+      fmtRelativeDate,
+      fmtDueStatus,
+      fmtPercent,
+    }),
+    [
+      language,
+      setLanguage,
+      t,
+      mapText,
+      fmtNumber,
+      fmtCurrency,
+      fmtCurrencyShort,
+      fmtDate,
+      fmtRelativeDate,
+      fmtDueStatus,
+      fmtPercent,
+    ]
+  );
 
   return <LanguageContext.Provider value={value}>{children}</LanguageContext.Provider>;
 }

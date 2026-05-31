@@ -14,12 +14,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { UI_COLORS } from '../constants/ui-theme';
 import { useAppData } from '../context/AppDataContext';
-import ProductForm from './products/ProductForm';
-import ProductExpiryAlerts from './products/ProductExpiryAlerts';
-import ProductListItem from './products/ProductListItem';
-import ProductLowStockAlerts from './products/ProductLowStockAlerts';
-import ProductReorderSuggestions from './products/ProductReorderSuggestions';
-import ProductSummaryCards from './products/ProductSummaryCards';
+import ProductForm from '../components/products/ProductForm';
+import ProductExpiryAlerts from '../components/products/ProductExpiryAlerts';
+import ProductListItem from '../components/products/ProductListItem';
+import ProductLowStockAlerts from '../components/products/ProductLowStockAlerts';
+import ProductReorderSuggestions from '../components/products/ProductReorderSuggestions';
+import ProductSummaryCards from '../components/products/ProductSummaryCards';
 
 export default function ProductListScreen() {
   const {

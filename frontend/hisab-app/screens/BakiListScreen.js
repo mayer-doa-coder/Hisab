@@ -22,8 +22,8 @@ import { UI_COLORS } from '../constants/ui-theme';
 import { useAppData } from '../context/AppDataContext';
 import { useLanguage } from '../context/LanguageContext';
 import { uploadBakiImage } from '../services/backend/bakiImageApi';
-import BakiFilters from './baki/BakiFilters';
-import BakiListItem from './baki/BakiListItem';
+import BakiFilters from '../components/baki/BakiFilters';
+import BakiListItem from '../components/baki/BakiListItem';
 
 const TRUST_PHOTO_THRESHOLD = 50;
 

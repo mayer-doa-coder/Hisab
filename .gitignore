@@ -1,25 +1,33 @@
-# Root-level ignores for monorepo
-
-# Dependencies
+# ── Dependencies ──────────────────────────────────────────────────────────────
 node_modules/
 
-# Build and generated
+# ── Build & generated output ──────────────────────────────────────────────────
 .expo/
 dist/
 web-build/
 coverage/
 *.tsbuildinfo
+expo-env.d.ts
 
-# Runtime-generated artifacts and logs
+# ── Runtime-generated artifacts & logs ────────────────────────────────────────
 backend/artifacts/
 *.log
 
-# Python
+# ── Local databases (SQLite dev files) ────────────────────────────────────────
+*.sqlite
+*.sqlite3
+*.db
+
+# ── Uploaded user content (not source-controlled) ─────────────────────────────
+backend/data/baki-images/
+
+# ── Python ────────────────────────────────────────────────────────────────────
 .venv/
 __pycache__/
 *.py[cod]
+*.pyo
 
-# Env and secrets
+# ── Secrets & credentials ─────────────────────────────────────────────────────
 .env
 .env.*
 !.env.example
@@ -30,13 +38,15 @@ __pycache__/
 *.jks
 *.mobileprovision
 
-# Native mobile build output
-/ios/
-/android/
+# ── Native mobile build output ────────────────────────────────────────────────
+# Anchored to frontend app directory (Expo generates ios/ and android/ there)
+frontend/hisab-app/ios/
+frontend/hisab-app/android/
 .kotlin/
 
-# OS/Editor
+# ── OS & editor ───────────────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db
 .vscode/
+.idea/
 .expo-export-size/
