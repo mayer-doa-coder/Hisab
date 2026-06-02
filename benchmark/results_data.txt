@@ -1,0 +1,117 @@
+════════════════════════════════════════════════════════════════════════
+  HISAB SYNC BENCHMARK — RAW RESULTS
+  Run timestamp  : 2026-05-31T22:02:32.495Z
+  Backend URL    : http://localhost:5000
+  MongoDB        : mongodb://127.0.0.1:27017/hisab
+  Devices        : 50 (each a distinct OWNER user account)
+  Ops per device : 20  (12 baki_credit | 4 transaction | 2 product_update | 2 customer_create)
+  Total ops      : 1000 (wave 1) + 200 (wave 2 idempotency replay)
+  Concurrency    : 50 in-flight simultaneous
+  Collision mode : product_update sends expectedVersion=1 twice per device → one must conflict
+  Total wall time: 16627 ms
+════════════════════════════════════════════════════════════════════════
+
+────────────────────────────────────────────────────────────────────────
+  Wave 1  —  1,000 fresh operations
+────────────────────────────────────────────────────────────────────────
+
+  THROUGHPUT
+    Requests     : 1000
+    Wall time    : 14684 ms
+    Ops/sec      : 68.1
+
+  LATENCY (ms)
+    Min  : 251
+    Avg  : 729.29
+    p50  : 656
+    p95  : 1203
+    p99  : 1373
+    Max  : 1931
+
+  STATUS BREAKDOWN
+    applied                         : 950
+    duplicate_applied               : 0
+    conflict_requires_client_res.   : 50
+    rejected_business_rule          : 0
+    rejected_validation             : 0
+    rate_limited (429)              : 0
+    other http / network errors     : 0
+
+  RATES
+    Success rate   : 95.00 %
+    Collision rate : 5.00 %
+    Duplicate rate : 0.00 %
+
+  PER ENTITY TYPE
+    baki_entry          : total= 600  applied= 600  conflict=  0  rl=  0  err=  0
+    transaction         : total= 200  applied= 200  conflict=  0  rl=  0  err=  0
+    product_update      : total= 100  applied=  50  conflict= 50  rl=  0  err=  0
+    customer_create     : total= 100  applied= 100  conflict=  0  rl=  0  err=  0
+
+────────────────────────────────────────────────────────────────────────
+  Wave 2  —  200 replay (idempotency check)
+────────────────────────────────────────────────────────────────────────
+
+  THROUGHPUT
+    Requests     : 200
+    Wall time    : 1085 ms
+    Ops/sec      : 184.3
+
+  LATENCY (ms)
+    Min  : 176
+    Avg  : 267.05
+    p50  : 244
+    p95  : 338
+    p99  : 347
+    Max  : 363
+
+  STATUS BREAKDOWN
+    applied                         : 0
+    duplicate_applied               : 198
+    conflict_requires_client_res.   : 2
+    rejected_business_rule          : 0
+    rejected_validation             : 0
+    rate_limited (429)              : 0
+    other http / network errors     : 0
+
+  RATES
+    Success rate   : 99.00 %
+    Collision rate : 1.00 %
+    Duplicate rate : 99.00 %
+
+  PER ENTITY TYPE
+    baki_entry          : total= 115  applied= 115  conflict=  0  rl=  0  err=  0
+    transaction         : total=  41  applied=  41  conflict=  0  rl=  0  err=  0
+    product_update      : total=  24  applied=  22  conflict=  2  rl=  0  err=  0
+    customer_create     : total=  20  applied=  20  conflict=  0  rl=  0  err=  0
+
+────────────────────────────────────────────────────────────────────────
+  DATABASE LOAD  (MongoDB opcounter delta — wave 1 + wave 2 combined)
+────────────────────────────────────────────────────────────────────────
+
+    Inserts  : 3800
+    Queries  : 4800
+    Updates  : 0
+    Deletes  : 0
+    Commands : 131
+    Connections (start → end) : 30 → 57
+
+    Inserts/op : 3.80
+    Queries/op : 4.80
+    Updates/op : 0.00
+
+════════════════════════════════════════════════════════════════════════
+  RAW STATUS COUNTS — Wave 1
+════════════════════════════════════════════════════════════════════════
+    applied                                       : 950
+    conflict_requires_client_resolution           : 50
+
+════════════════════════════════════════════════════════════════════════
+  RAW STATUS COUNTS — Wave 2 (replay)
+════════════════════════════════════════════════════════════════════════
+    duplicate_applied                             : 198
+    conflict_requires_client_resolution           : 2
+
+════════════════════════════════════════════════════════════════════════
+  END OF BENCHMARK REPORT
+════════════════════════════════════════════════════════════════════════

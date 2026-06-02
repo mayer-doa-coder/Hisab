@@ -63,7 +63,7 @@ const computeDue = async ({ userId, customerId }) => {
   return Math.max(0, Number(row.credit || 0) - Number(row.payment || 0));
 };
 
-const applyProductOperation = async ({ userId, operationType, payload = {} }) => {
+const applyProductOperation = async ({ userId, operationType, payload = {}, idempotencyKey = null }) => {
   if (operationType === 'create') {
     const name = normalizeTrimmedString(payload.name);
     const price = parseMoney(payload.price);
@@ -76,6 +76,7 @@ const applyProductOperation = async ({ userId, operationType, payload = {} }) =>
     const doc = await Product.create({
       userId,
       name,
+      clientRefId: idempotencyKey || null,
       sku: normalizeTrimmedString(payload.sku) || null,
       unit: normalizeTrimmedString(payload.unit) || 'pcs',
       price,
@@ -171,7 +172,7 @@ const applyProductOperation = async ({ userId, operationType, payload = {} }) =>
   return { status: 'rejected_validation', message: 'Unsupported product operationType.' };
 };
 
-const applyCustomerOperation = async ({ userId, operationType, payload = {} }) => {
+const applyCustomerOperation = async ({ userId, operationType, payload = {}, idempotencyKey = null }) => {
   if (operationType === 'create') {
     const name = normalizeTrimmedString(payload.name);
     if (!name) {
@@ -186,6 +187,7 @@ const applyCustomerOperation = async ({ userId, operationType, payload = {} }) =
     const doc = await Customer.create({
       userId,
       name,
+      clientRefId: idempotencyKey || null,
       phone: normalizeTrimmedString(payload.phone) || null,
       address: normalizeTrimmedString(payload.address) || null,
       creditLimit,
@@ -275,7 +277,7 @@ const applyCustomerOperation = async ({ userId, operationType, payload = {} }) =
   return { status: 'rejected_validation', message: 'Unsupported customer operationType.' };
 };
 
-const applyBakiOperation = async ({ userId, operationType, payload = {} }) => {
+const applyBakiOperation = async ({ userId, operationType, payload = {}, idempotencyKey = null }) => {
   if (operationType !== 'create') {
     return { status: 'rejected_validation', message: 'Only create is supported for baki_entry.' };
   }
@@ -311,6 +313,7 @@ const applyBakiOperation = async ({ userId, operationType, payload = {} }) => {
     type,
     amount,
     runningDue,
+    clientRefId: idempotencyKey || null,
     paymentMethod: type === 'payment' ? normalizeTrimmedString(payload.paymentMethod) || 'cash' : null,
     note: normalizeTrimmedString(payload.note) || null,
     occurredAt: parseIsoDate(payload.occurredAt) || new Date(),
@@ -401,7 +404,7 @@ const applyMovementOperation = async ({ userId, operationType, payload = {} }) =
   return { status: 'applied', entityId, version: 1 };
 };
 
-const applyTransactionOperation = async ({ userId, operationType, payload = {} }) => {
+const applyTransactionOperation = async ({ userId, operationType, payload = {}, idempotencyKey = null }) => {
   if (operationType !== 'create') {
     return { status: 'rejected_validation', message: 'Only create is supported for transaction.' };
   }
@@ -426,6 +429,7 @@ const applyTransactionOperation = async ({ userId, operationType, payload = {} }
     amount,
     currency: normalizeTrimmedString(payload.currency || 'BDT').toUpperCase(),
     customerId,
+    clientRefId: idempotencyKey || null,
     referenceType: normalizeTrimmedString(payload.referenceType) || null,
     referenceId: normalizeTrimmedString(payload.referenceId) || null,
     note: normalizeTrimmedString(payload.note) || null,
@@ -448,21 +452,21 @@ const applyTransactionOperation = async ({ userId, operationType, payload = {} }
   return { status: 'applied', entityId, version: 1 };
 };
 
-const applyOperation = async ({ userId, operation = {} }) => {
+const applyOperation = async ({ userId, operation = {}, idempotencyKey = null }) => {
   const entityType = normalizeTrimmedString(operation.entityType).toLowerCase();
   const operationType = normalizeTrimmedString(operation.operationType).toLowerCase();
   const payload = operation.payload || {};
 
   if (entityType === 'product') {
-    return applyProductOperation({ userId, operationType, payload });
+    return applyProductOperation({ userId, operationType, payload, idempotencyKey });
   }
 
   if (entityType === 'customer') {
-    return applyCustomerOperation({ userId, operationType, payload });
+    return applyCustomerOperation({ userId, operationType, payload, idempotencyKey });
   }
 
   if (entityType === 'baki_entry') {
-    return applyBakiOperation({ userId, operationType, payload });
+    return applyBakiOperation({ userId, operationType, payload, idempotencyKey });
   }
 
   if (entityType === 'inventory_movement') {
@@ -470,7 +474,7 @@ const applyOperation = async ({ userId, operation = {} }) => {
   }
 
   if (entityType === 'transaction') {
-    return applyTransactionOperation({ userId, operationType, payload });
+    return applyTransactionOperation({ userId, operationType, payload, idempotencyKey });
   }
 
   return {
@@ -528,7 +532,7 @@ const applyOperationWithIdempotency = async ({ userId, operation }) => {
     };
   }
 
-  const result = await applyOperation({ userId, operation });
+  const result = await applyOperation({ userId, operation, idempotencyKey: key });
 
   await writeRecord({
     userId,
